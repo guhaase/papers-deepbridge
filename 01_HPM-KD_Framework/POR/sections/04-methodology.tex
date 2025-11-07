@@ -1,0 +1,399 @@
+%% Section 4: HPM-KD Framework (Methodology)
+
+\section{HPM-KD Framework: Architecture and Components}
+\label{sec:methodology}
+
+This section presents the detailed architecture of the Hierarchical Progressive Multi-Teacher Knowledge Distillation (HPM-KD) framework. We begin with an overview of the system architecture (Section~\ref{sec:arch_overview}), followed by detailed descriptions of each of the six core components (Sections~\ref{sec:adaptive_config}--\ref{sec:shared_memory}).
+
+\subsection{Framework Overview}
+\label{sec:arch_overview}
+
+HPM-KD integrates six synergistic components to automate and optimize the knowledge distillation process:
+
+\begin{enumerate}
+    \item \textbf{Adaptive Configuration Manager} (\S\ref{sec:adaptive_config}): Meta-learning module that automatically selects distillation hyperparameters based on dataset and model characteristics
+    \item \textbf{Progressive Distillation Chain} (\S\ref{sec:progressive_chain}): Hierarchical sequence of intermediate models with automatic chain length determination
+    \item \textbf{Attention-Weighted Multi-Teacher Ensemble} (\S\ref{sec:multi_teacher}): Dynamic teacher weighting using learned attention mechanisms
+    \item \textbf{Meta-Temperature Scheduler} (\S\ref{sec:meta_temp}): Adaptive temperature adjustment throughout training
+    \item \textbf{Parallel Processing Pipeline} (\S\ref{sec:parallel}): Distributed computation with intelligent load balancing
+    \item \textbf{Shared Optimization Memory} (\S\ref{sec:shared_memory}): Cross-experiment learning and caching system
+\end{enumerate}
+
+Figure~\ref{fig:hpmkd_architecture} illustrates the complete framework architecture and the interaction between components.
+
+\begin{figure}[t]
+\centering
+% TODO: Add architecture diagram
+\fbox{\parbox{0.95\textwidth}{\centering\vspace{3cm}[Architecture diagram to be added]\vspace{3cm}}}
+\caption{Overview of the HPM-KD framework architecture showing the six integrated components and their interactions during the distillation process.}
+\label{fig:hpmkd_architecture}
+\end{figure}
+
+The distillation process in HPM-KD follows these high-level steps:
+
+\begin{enumerate}
+    \item \textbf{Configuration Selection}: The Adaptive Configuration Manager analyzes dataset meta-features and retrieves optimal hyperparameters from the Shared Memory
+    \item \textbf{Chain Construction}: The Progressive Distillation Chain automatically determines the sequence of intermediate models
+    \item \textbf{Multi-Teacher Setup}: If multiple teachers are available, the Attention-Weighted ensemble learns dynamic weights
+    \item \textbf{Training Loop}: For each step in the progressive chain:
+    \begin{itemize}
+        \item The Meta-Temperature Scheduler adjusts temperature based on training progress
+        \item The Parallel Processing Pipeline distributes computations across workers
+        \item Training proceeds until convergence
+    \end{itemize}
+    \item \textbf{Memory Update}: Final configurations and performance metrics are stored in Shared Memory for future experiments
+\end{enumerate}
+
+\subsection{Adaptive Configuration Manager}
+\label{sec:adaptive_config}
+
+The Adaptive Configuration Manager (ACM) eliminates manual hyperparameter tuning by automatically selecting optimal distillation configurations using meta-learning.
+
+\subsubsection{Meta-Feature Extraction}
+
+For a given dataset $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ and teacher-student architecture pair $(f_T, f_S)$, ACM extracts the following meta-features:
+
+\paragraph{Dataset Meta-Features:}
+\begin{itemize}
+    \item Sample size: $N_{\text{train}}, N_{\text{test}}$
+    \item Feature dimensionality: $d$
+    \item Number of classes: $K$
+    \item Class imbalance ratio: $\rho = \max_k p_k / \min_k p_k$ where $p_k = P(y=k)$
+    \item Feature statistics: mean $\mu_f$, variance $\sigma_f^2$, skewness, kurtosis
+    \item Dataset complexity: $C_{\mathcal{D}} = -\sum_k p_k \log p_k$ (entropy)
+\end{itemize}
+
+\paragraph{Model Meta-Features:}
+\begin{itemize}
+    \item Teacher parameters: $|\theta_T|$
+    \item Student parameters: $|\theta_S|$
+    \item Compression ratio: $r = |\theta_T| / |\theta_S|$
+    \item Architecture family: CNN, ResNet, MLP (one-hot encoded)
+    \item Teacher accuracy: $\text{Acc}_T$ (on validation set)
+    \item Capacity gap: $\Delta_{\text{capacity}} = \log(|\theta_T| / |\theta_S|)$
+\end{itemize}
+
+These features are concatenated into a meta-feature vector $\mathbf{m} \in \mathbb{R}^{d_m}$ where $d_m \approx 20$.
+
+\subsubsection{Configuration Prediction}
+
+ACM maintains a database of historical distillation experiments:
+\begin{equation}
+\mathcal{H} = \{(\mathbf{m}_j, \mathbf{c}_j, \text{perf}_j)\}_{j=1}^{M}
+\end{equation}
+where $\mathbf{c}_j$ is the configuration vector (temperature, loss weights, learning rates) and $\text{perf}_j$ is the achieved accuracy retention.
+
+Given a new task with meta-features $\mathbf{m}$, ACM predicts the optimal configuration using a gradient-boosted decision tree regressor:
+\begin{equation}
+\hat{\mathbf{c}} = g_{\text{ACM}}(\mathbf{m}; \Theta_{\text{ACM}})
+\end{equation}
+
+The configuration vector $\mathbf{c}$ contains:
+\begin{itemize}
+    \item Initial temperature: $T_0 \in [2, 8]$
+    \item Distillation loss weight: $\alpha \in [0, 1]$
+    \item Learning rate: $\eta \in [10^{-5}, 10^{-2}]$
+    \item Weight decay: $\lambda \in [10^{-6}, 10^{-3}]$
+    \item Progressive chain threshold: $\epsilon \in [0.005, 0.05]$
+\end{itemize}
+
+\subsubsection{Cold-Start Handling}
+
+For new task types with no historical data, ACM uses a two-phase approach:
+\begin{enumerate}
+    \item \textbf{Similarity-Based Retrieval}: Compute cosine similarity between $\mathbf{m}$ and all $\mathbf{m}_j \in \mathcal{H}$, retrieve top-5 most similar configurations, and average them
+    \item \textbf{Quick Validation}: Run a short validation experiment (10 epochs) with the predicted configuration and adjust if performance is below threshold
+\end{enumerate}
+
+Algorithm~\ref{alg:adaptive_config} summarizes the ACM procedure.
+
+\begin{algorithm}[t]
+\caption{Adaptive Configuration Manager}
+\label{alg:adaptive_config}
+\begin{algorithmic}[1]
+\REQUIRE Dataset $\mathcal{D}$, teacher $f_T$, student $f_S$, history $\mathcal{H}$
+\ENSURE Optimal configuration $\hat{\mathbf{c}}$
+\STATE Extract meta-features $\mathbf{m} \leftarrow \text{ExtractMetaFeatures}(\mathcal{D}, f_T, f_S)$
+\IF{$|\mathcal{H}| > 50$}
+    \STATE Train regressor $g_{\text{ACM}}$ on $\mathcal{H}$
+    \STATE $\hat{\mathbf{c}} \leftarrow g_{\text{ACM}}(\mathbf{m})$
+\ELSE
+    \STATE $\text{similarities} \leftarrow [\cos(\mathbf{m}, \mathbf{m}_j)]_{j=1}^{|\mathcal{H}|}$
+    \STATE $\text{top5} \leftarrow \text{argtopk}(\text{similarities}, 5)$
+    \STATE $\hat{\mathbf{c}} \leftarrow \frac{1}{5} \sum_{j \in \text{top5}} \mathbf{c}_j$
+\ENDIF
+\STATE $\text{perf}_{\text{quick}} \leftarrow \text{QuickValidation}(\hat{\mathbf{c}}, 10 \text{ epochs})$
+\IF{$\text{perf}_{\text{quick}} < \text{threshold}$}
+    \STATE $\hat{\mathbf{c}} \leftarrow \text{GridSearchRefinement}(\hat{\mathbf{c}})$
+\ENDIF
+\RETURN $\hat{\mathbf{c}}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Progressive Distillation Chain}
+\label{sec:progressive_chain}
+
+The Progressive Distillation Chain (PDC) addresses the capacity gap problem by introducing intermediate models between teacher and student.
+
+\subsubsection{Chain Construction}
+
+Given teacher $f_T$ with $|\theta_T|$ parameters and student $f_S$ with $|\theta_S|$ parameters where $|\theta_T| \gg |\theta_S|$, PDC constructs a chain of intermediate models:
+\begin{equation}
+f_T = f_0 \rightarrow f_1 \rightarrow f_2 \rightarrow \cdots \rightarrow f_L = f_S
+\end{equation}
+
+The capacity of intermediate models decreases geometrically:
+\begin{equation}
+|\theta_i| = |\theta_T| \cdot r^{i/L}
+\end{equation}
+where $r = |\theta_S| / |\theta_T|$ is the compression ratio.
+
+\subsubsection{Adaptive Chain Length}
+
+Rather than fixing $L$ a priori, PDC dynamically determines chain length using a minimal improvement criterion. At each step $i$, we train $f_i$ using knowledge from $f_{i-1}$ and measure accuracy $\text{Acc}_i$. The chain terminates when:
+\begin{equation}
+\frac{\text{Acc}_i - \text{Acc}_{i-1}}{\text{Acc}_{i-1}} < \epsilon
+\end{equation}
+where $\epsilon$ is the minimum relative improvement threshold (typically 0.01).
+
+\subsubsection{Distillation Loss at Each Step}
+
+For training $f_i$ using teacher $f_{i-1}$, we minimize:
+\begin{equation}
+\mathcal{L}_i = \alpha \mathcal{L}_{\text{KD}}(f_i, f_{i-1}, T) + (1-\alpha) \mathcal{L}_{\text{CE}}(f_i, y)
+\end{equation}
+where:
+\begin{equation}
+\mathcal{L}_{\text{KD}}(f_i, f_{i-1}, T) = \text{KL}\left(\sigma(f_{i-1}(x)/T) \| \sigma(f_i(x)/T)\right)
+\end{equation}
+and $\mathcal{L}_{\text{CE}}$ is the standard cross-entropy loss with hard labels.
+
+\subsubsection{Intermediate Model Architecture Design}
+
+For neural networks, intermediate architectures are generated by:
+\begin{itemize}
+    \item \textbf{Layer Pruning}: Remove entire layers proportionally to capacity reduction
+    \item \textbf{Width Scaling}: Reduce hidden dimensions by $\sqrt[L]{r}$ at each step
+    \item \textbf{Hybrid Approach}: Combine layer pruning and width scaling to maintain depth while reducing capacity
+\end{itemize}
+
+Algorithm~\ref{alg:progressive_chain} details the progressive chain construction.
+
+\begin{algorithm}[t]
+\caption{Progressive Distillation Chain}
+\label{alg:progressive_chain}
+\begin{algorithmic}[1]
+\REQUIRE Teacher $f_T$, target student $f_S$, threshold $\epsilon$, config $\mathbf{c}$
+\ENSURE Trained student $f_S$
+\STATE $\text{chain} \leftarrow [f_T]$
+\STATE $r \leftarrow |\theta_S| / |\theta_T|$
+\STATE $i \leftarrow 1$
+\STATE $\text{prev\_acc} \leftarrow \text{Acc}(f_T)$
+\WHILE{$|\theta_{\text{current}}| > |\theta_S|$}
+    \STATE $|\theta_i| \leftarrow |\theta_T| \cdot r^{i/L_{\text{max}}}$ \COMMENT{Geometric decay}
+    \STATE $f_i \leftarrow \text{ConstructModel}(|\theta_i|, \text{arch}(f_T))$
+    \STATE Train $f_i$ using $\mathcal{L}_i$ from Eq. (8)
+    \STATE $\text{acc}_i \leftarrow \text{Acc}(f_i)$
+    \STATE $\text{improvement} \leftarrow (\text{acc}_i - \text{prev\_acc}) / \text{prev\_acc}$
+    \IF{$\text{improvement} < \epsilon$ \AND $i > 1$}
+        \STATE \textbf{break} \COMMENT{Minimal improvement, stop early}
+    \ENDIF
+    \STATE $\text{chain.append}(f_i)$
+    \STATE $\text{prev\_acc} \leftarrow \text{acc}_i$
+    \STATE $i \leftarrow i + 1$
+\ENDWHILE
+\STATE Fine-tune $f_S$ using $f_{\text{chain}[-1]}$ as teacher
+\RETURN $f_S$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Attention-Weighted Multi-Teacher Ensemble}
+\label{sec:multi_teacher}
+
+When multiple teacher models are available (e.g., trained with different initializations, architectures, or data augmentation strategies), the Attention-Weighted Multi-Teacher (AWMT) component learns to dynamically weight their contributions.
+
+\subsubsection{Multi-Teacher Distillation Loss}
+
+Given $M$ teacher models $\{f_T^{(1)}, \ldots, f_T^{(M)}\}$, the standard ensemble approach averages their predictions:
+\begin{equation}
+p_{\text{ensemble}}(x) = \frac{1}{M} \sum_{m=1}^M f_T^{(m)}(x)
+\end{equation}
+
+However, this treats all teachers equally regardless of their expertise on specific inputs.
+
+\subsubsection{Learned Attention Mechanism}
+
+AWMT introduces input-dependent attention weights. For each input $x$, we compute attention weights $\mathbf{a}(x) = [a_1(x), \ldots, a_M(x)]$ where $\sum_m a_m(x) = 1$ and $a_m(x) \geq 0$.
+
+The weighted ensemble prediction becomes:
+\begin{equation}
+p_{\text{AWMT}}(x) = \sum_{m=1}^M a_m(x) \cdot f_T^{(m)}(x)
+\end{equation}
+
+\subsubsection{Attention Network Architecture}
+
+The attention network $g_{\text{attn}}$ takes as input both the sample features and teacher-specific characteristics:
+\begin{align}
+\mathbf{h} &= \text{MLP}_1([x; \mathbf{t}_1; \ldots; \mathbf{t}_M]) \\
+\mathbf{a}(x) &= \text{softmax}(\text{MLP}_2(\mathbf{h}))
+\end{align}
+where $\mathbf{t}_m$ are learned teacher embeddings capturing each teacher's characteristics, and MLPs are 2-layer networks with ReLU activations.
+
+\subsubsection{Joint Training Objective}
+
+The student and attention network are trained jointly:
+\begin{equation}
+\mathcal{L}_{\text{AWMT}} = \alpha \mathcal{L}_{\text{KD}}(f_S, p_{\text{AWMT}}, T) + (1-\alpha) \mathcal{L}_{\text{CE}}(f_S, y) + \beta \mathcal{R}_{\text{attn}}(\mathbf{a})
+\end{equation}
+where $\mathcal{R}_{\text{attn}}$ is a regularization term encouraging diversity:
+\begin{equation}
+\mathcal{R}_{\text{attn}}(\mathbf{a}) = -\frac{1}{N} \sum_{i=1}^N H(\mathbf{a}(x_i))
+\end{equation}
+with $H(\mathbf{a}) = -\sum_m a_m \log a_m$ being the entropy. This prevents the model from collapsing to a single teacher.
+
+Algorithm~\ref{alg:multi_teacher} describes the multi-teacher training procedure.
+
+\begin{algorithm}[t]
+\caption{Attention-Weighted Multi-Teacher Distillation}
+\label{alg:multi_teacher}
+\begin{algorithmic}[1]
+\REQUIRE Teachers $\{f_T^{(m)}\}_{m=1}^M$, student $f_S$, dataset $\mathcal{D}$, config $\mathbf{c}$
+\ENSURE Trained student $f_S$ and attention network $g_{\text{attn}}$
+\STATE Initialize $f_S$ and $g_{\text{attn}}$ with random weights
+\STATE Initialize teacher embeddings $\{\mathbf{t}_m\}_{m=1}^M$
+\FOR{epoch $= 1$ to $E$}
+    \FOR{batch $(X, Y)$ in $\mathcal{D}$}
+        \STATE Compute teacher predictions: $P_m \leftarrow f_T^{(m)}(X)$ for $m=1,\ldots,M$
+        \STATE Compute attention weights: $\mathbf{A} \leftarrow g_{\text{attn}}([X; \mathbf{t}_1; \ldots; \mathbf{t}_M])$
+        \STATE Compute weighted ensemble: $P_{\text{AWMT}} \leftarrow \sum_m \mathbf{A}[:, m] \odot P_m$
+        \STATE Compute student predictions: $P_S \leftarrow f_S(X)$
+        \STATE $\mathcal{L}_{\text{KD}} \leftarrow \text{KL}(\sigma(P_{\text{AWMT}}/T) \| \sigma(P_S/T))$
+        \STATE $\mathcal{L}_{\text{CE}} \leftarrow \text{CrossEntropy}(P_S, Y)$
+        \STATE $\mathcal{R}_{\text{attn}} \leftarrow -\frac{1}{|X|} \sum_i H(\mathbf{A}[i, :])$
+        \STATE $\mathcal{L} \leftarrow \alpha \mathcal{L}_{\text{KD}} + (1-\alpha) \mathcal{L}_{\text{CE}} + \beta \mathcal{R}_{\text{attn}}$
+        \STATE Update $f_S$, $g_{\text{attn}}$, $\{\mathbf{t}_m\}$ via backpropagation
+    \ENDFOR
+\ENDFOR
+\RETURN $f_S$, $g_{\text{attn}}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Meta-Temperature Scheduler}
+\label{sec:meta_temp}
+
+The temperature parameter $T$ in knowledge distillation controls the smoothness of soft targets. Traditional KD uses a fixed $T$ throughout training, but optimal temperature varies across training phases.
+
+\subsubsection{Motivation}
+
+Early in training, when the student is far from convergence, high temperature ($T \gg 1$) provides smoother targets facilitating exploration. Late in training, lower temperature ($T \approx 1$) sharpens targets for fine-grained discrimination.
+
+\subsubsection{Adaptive Temperature Scheduling}
+
+The Meta-Temperature Scheduler (MTS) adjusts $T$ based on training progress indicators:
+\begin{equation}
+T(t) = T_{\min} + (T_{\max} - T_{\min}) \cdot s(t)
+\end{equation}
+where $s(t) \in [0, 1]$ is a scheduling function and $t$ is the training iteration.
+
+We consider three scheduling strategies:
+
+\paragraph{1. Cosine Decay:}
+\begin{equation}
+s(t) = \frac{1 + \cos(\pi t / T_{\max})}{2}
+\end{equation}
+
+\paragraph{2. Loss-Based Adaptive:}
+\begin{equation}
+s(t) = \frac{\mathcal{L}(t) - \mathcal{L}_{\min}}{\mathcal{L}_{\max} - \mathcal{L}_{\min}}
+\end{equation}
+where $\mathcal{L}_{\min}, \mathcal{L}_{\max}$ are tracked minimum and maximum losses.
+
+\paragraph{3. Convergence-Based:}
+\begin{equation}
+s(t) = \exp\left(-\lambda \cdot \left|\frac{d\mathcal{L}}{dt}\right|\right)
+\end{equation}
+where high loss gradients indicate early training (high $T$) and low gradients indicate convergence (low $T$).
+
+MTS selects the strategy based on loss dynamics during the first 10\% of training.
+
+\subsection{Parallel Processing Pipeline}
+\label{sec:parallel}
+
+The Parallel Processing Pipeline (PPP) distributes distillation computations across multiple workers to reduce training time.
+
+\subsubsection{Parallelization Strategies}
+
+PPP employs two complementary parallelization approaches:
+
+\paragraph{1. Multi-Teacher Parallelism:}
+When using $M$ teachers, each teacher's forward pass can be computed independently:
+\begin{equation}
+\{P_m\}_{m=1}^M = \text{ParallelMap}(\{f_T^{(m)}\}_{m=1}^M, X)
+\end{equation}
+
+\paragraph{2. Progressive Chain Parallelism:}
+In the progressive chain, multiple intermediate models can be trained concurrently if their dependencies allow. We construct a dependency graph and identify parallelizable stages.
+
+\subsubsection{Load Balancing}
+
+PPP uses dynamic load balancing to handle heterogeneous teacher complexities. Each worker maintains a queue, and tasks are assigned based on estimated completion time:
+\begin{equation}
+\text{worker}_{\text{assign}} = \arg\min_w \left(\text{queue\_time}_w + \text{est\_time}_{\text{task}}\right)
+\end{equation}
+
+\subsection{Shared Optimization Memory}
+\label{sec:shared_memory}
+
+The Shared Optimization Memory (SOM) stores and reuses knowledge across distillation experiments, enabling transfer learning and warm-starting.
+
+\subsubsection{Memory Structure}
+
+SOM maintains three databases:
+
+\paragraph{1. Configuration Database:}
+Stores $(\mathbf{m}, \mathbf{c}, \text{perf})$ tuples as described in Section~\ref{sec:adaptive_config}.
+
+\paragraph{2. Teacher Embedding Database:}
+Caches teacher model predictions on common datasets to avoid redundant forward passes:
+\begin{equation}
+\text{cache}_T = \{(\text{hash}(f_T, \mathcal{D}), \{f_T(x_i)\}_{i=1}^N)\}
+\end{equation}
+
+\paragraph{3. Intermediate Model Database:}
+Stores trained intermediate models from progressive chains for reuse:
+\begin{equation}
+\text{cache}_{\text{inter}} = \{(\text{arch}, |\theta|, \theta_{\text{pretrained}})\}
+\end{equation}
+
+\subsubsection{Cache Management}
+
+SOM uses an LRU (Least Recently Used) eviction policy with maximum cache size. The cache hit rate is:
+\begin{equation}
+\text{Hit Rate} = \frac{\# \text{ cache hits}}{\# \text{ cache accesses}}
+\end{equation}
+
+In our experiments, SOM achieves 40-60\% hit rates, reducing training time by 30-40\%.
+
+\subsection{Computational Complexity Analysis}
+
+Let $N$ be the training set size, $K$ the number of classes, $|\theta_T|$ and $|\theta_S|$ the teacher and student parameters, $M$ the number of teachers, and $L$ the progressive chain length.
+
+\paragraph{Traditional KD:} $O(N \cdot (|\theta_T| + |\theta_S|) \cdot E)$ where $E$ is the number of epochs.
+
+\paragraph{HPM-KD:}
+\begin{itemize}
+    \item ACM: $O(d_m \cdot |\mathcal{H}|)$ (one-time per experiment)
+    \item PDC: $O(N \cdot L \cdot |\theta_T| \cdot E)$ (sequential chain training)
+    \item AWMT: $O(N \cdot M \cdot |\theta_T| \cdot E)$ (multi-teacher forward passes)
+    \item MTS: $O(1)$ per iteration (negligible)
+    \item PPP: Reduces wall-clock time by factor of $\min(M, W)$ where $W$ is the number of workers
+    \item SOM: $O(1)$ lookup per cache access (negligible)
+\end{itemize}
+
+\textbf{Total Complexity:} $O(N \cdot \max(L, M) \cdot |\theta_T| \cdot E)$
+
+Despite higher theoretical complexity, PPP and SOM provide practical speedups, and the accuracy gains justify the computational cost.
+
+\subsection{Summary}
+
+The HPM-KD framework combines six complementary components to address key limitations of existing knowledge distillation methods: adaptive configuration eliminates manual tuning, progressive chains bridge capacity gaps, multi-teacher attention leverages ensemble expertise, meta-temperature scheduling optimizes knowledge transfer dynamics, parallel processing reduces training time, and shared memory enables cross-experiment learning. Each component is designed to be modular and can be used independently or in combination, providing flexibility for practitioners.

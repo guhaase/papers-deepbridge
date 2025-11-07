@@ -1,0 +1,107 @@
+%%
+%% Article 1: Are Historical Redlining Effects Immutable?
+%% Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
+%%
+%% Author: Gustavo Coelho Haase
+%% Advisor: Prof. Dr. Osvaldo Candido da Silva Filho
+%% Date: January 2025
+%%
+
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+%% Packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{threeparttable}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{setspace}
+
+%% Line numbering for review (comment out for final)
+% \usepackage{lineno}
+% \linenumbers
+
+%% Journal name
+\journal{Journal of Urban Economics}
+
+%% Document
+\begin{document}
+
+\begin{frontmatter}
+
+%% Title
+\title{Are Historical Redlining Effects Immutable? Evidence of Temporal Variation in Mortgage Credit Access 2018-2024}
+
+%% Authors
+\author[ucb]{Gustavo Coelho Haase\corref{cor1}}
+\ead{gustavohaase@example.com}
+
+\author[ucb]{Osvaldo Candido da Silva Filho}
+\ead{osvaldo@ucb.edu.br}
+
+%% Affiliations
+\affiliation[ucb]{
+    organization={Universidade Cat\'olica de Bras\'ilia},
+    addressline={Campus I - QS 07 Lote 01 EPCT},
+    city={Bras\'ilia},
+    postcode={71966-700},
+    state={DF},
+    country={Brazil}
+}
+
+%% Corresponding author
+\cortext[cor1]{Corresponding author}
+
+%% Abstract
+\begin{abstract}
+Historical redlining --- the systematic denial of mortgages in minority neighborhoods by federal agencies in the 1930s-1940s --- continues to affect mortgage credit access today. While extensive literature documents the persistence of these effects, all prior studies treat them as static and immutable. We provide the first systematic evidence that redlining effects vary temporally in response to economic and institutional changes. Using panel data covering 10,562 urban census tracts during 2018-2024, we find that areas historically classified as ``hazardous'' (Grade D) received 6-11\% fewer mortgage approvals during 2018-2021. However, this gap converged modestly by 4.5 percentage points after 2021 (p$<$0.001). A two-way fixed effects design with tract and year fixed effects, validated through placebo tests confirming parallel pre-trends, documents that 79\% of the original disparity remains. Our findings are robust to propensity score matching, alternative sample thresholds, and corrections for non-random sample selection. While multiple concurrent changes prevent causal identification of specific mechanisms, our descriptive evidence suggests that historical legacies, though persistent, may not be completely immutable. Results generalize to active urban mortgage markets (12.5\% of US census tracts), not to rural or sparse markets.
+\end{abstract}
+
+%% Keywords
+\begin{keyword}
+Historical Redlining \sep Mortgage Credit \sep Temporal Persistence \sep Panel Data \sep Fixed Effects \sep Urban Economics \sep Discrimination
+%% JEL codes
+\JEL{R21 \sep R23 \sep R31 \sep J15 \sep C23}
+\end{keyword}
+
+\end{frontmatter}
+
+%% Main Text
+
+%% 1. Introduction
+\input{sections/01-introduction}
+
+%% 2. Literature Review
+\input{sections/02-literature}
+
+%% 3. Data
+\input{sections/03-data}
+
+%% 4. Methodology
+\input{sections/04-methodology}
+
+%% 5. Results
+\input{sections/05-results}
+
+%% 6. Robustness
+\input{sections/06-robustness}
+
+%% 7. Discussion and Conclusion
+\input{sections/07-discussion}
+
+%% Acknowledgments (optional)
+\section*{Acknowledgments}
+We thank [names] for helpful comments and suggestions. All errors remain our own. This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+%% References
+\bibliographystyle{elsarticle-harv}
+\bibliography{bibliography/references}
+
+%% Appendices (if needed)
+% \appendix
+% \input{sections/appendix}
+
+\end{document}

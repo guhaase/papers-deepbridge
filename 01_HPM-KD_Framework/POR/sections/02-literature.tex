@@ -1,0 +1,97 @@
+%% Section 2: Related Work
+
+\section{Related Work}
+\label{sec:related}
+
+Our work builds upon and extends several research directions in knowledge distillation, model compression, and meta-learning. We organize the related work into five main categories and position our contributions relative to each.
+
+\subsection{Classical Knowledge Distillation}
+
+Knowledge distillation was first formalized by \citet{hinton2015distilling}, who demonstrated that training a small student network to mimic the soft probability distributions (``dark knowledge'') of a large teacher network yields better performance than training the student directly on hard labels. The key insight is that soft targets at temperature $T$ encode richer information about inter-class similarities, providing a smoother training signal.
+
+Mathematically, the distillation loss combines a cross-entropy term with soft targets and a term with hard labels:
+\begin{equation}
+\mathcal{L}_{KD} = \alpha \mathcal{L}_{soft}(p_T^s, p_T^t) + (1-\alpha) \mathcal{L}_{hard}(p^s, y)
+\end{equation}
+where $p_T^s$ and $p_T^t$ are the softened predictions of student and teacher at temperature $T$, $p^s$ is the student's prediction, $y$ is the ground truth, and $\alpha$ balances the two objectives.
+
+\citet{bucilua2006model} and \citet{ba2014deep} provided early evidence that shallow networks trained via distillation can match deep networks, while \citet{cho2019efficacy} and \citet{phuong2019towards} analyzed when and why distillation works from theoretical perspectives. Recent work by \citet{menon2021statistical} provides a statistical framework showing that distillation implicitly performs label smoothing and learns a better inductive bias.
+
+\textbf{Limitations:} Traditional KD requires manual tuning of temperature $T$, loss weight $\alpha$, and learning rates, which are highly dataset-dependent. Our Adaptive Configuration Manager and Meta-Temperature Scheduler address this by automating hyperparameter selection.
+
+\subsection{Multi-Teacher Knowledge Distillation}
+
+Ensemble distillation extends KD by transferring knowledge from multiple teacher networks. \citet{you2017learning} proposed aggregating predictions from multiple teachers using averaging or weighted combinations. \citet{fukuda2017efficient} showed that ensemble distillation can outperform single-teacher KD, particularly when teachers are diverse.
+
+\citet{park2019relational} introduced relational KD, which transfers structural relationships between data points rather than absolute predictions. \citet{zhang2018deep} proposed Deep Mutual Learning (DML), where multiple networks learn collaboratively in an online fashion, with each network serving as both teacher and student.
+
+\textbf{Limitations:} Existing multi-teacher methods use fixed weighting schemes (uniform or manually tuned) that do not adapt to input-specific teacher expertise. Our Attention-Weighted Multi-Teacher component learns dynamic, input-dependent attention weights, enabling selective knowledge transfer from the most relevant teachers.
+
+\subsection{Progressive and Multi-Step Distillation}
+
+Recognizing that the capacity gap between large teachers and small students can be too large for effective direct distillation, several works proposed progressive approaches. \citet{romero2014fitnets} introduced FitNets, using intermediate-layer hints to guide student training. \citet{mirzadeh2020improved} demonstrated the ``capacity gap'' problem and proposed Teacher Assistant Knowledge Distillation (TAKD), which introduces intermediate-sized models bridging teacher and student.
+
+\citet{luo2016face} applied progressive distillation to face recognition, showing that multi-step compression preserves accuracy better than single-step. However, these approaches require manual design of intermediate architectures and do not automatically determine the optimal number of steps.
+
+\textbf{Limitations:} Progressive methods lack automation in determining chain length and intermediate model sizes. Our Progressive Distillation Chain automatically constructs the hierarchy based on minimal improvement thresholds, preventing both under-distillation (too few steps) and over-distillation (redundant steps).
+
+\subsection{Meta-Learning for Model Compression}
+
+Meta-learning has recently been applied to automate neural architecture search~\citep{liu2019darts,elsken2019neural} and hyperparameter optimization~\citep{hospedales2021meta}. \citet{finn2017model} introduced MAML (Model-Agnostic Meta-Learning) for rapid adaptation across tasks.
+
+However, applications of meta-learning to knowledge distillation remain limited. Most KD methods still require extensive manual tuning for each new dataset or model family. Recent work has explored neural architecture search for student design~\citep{zoph2017neural}, but not for automatic configuration of the distillation process itself.
+
+\textbf{Our Contribution:} We are the first to apply meta-learning to automatic selection of distillation configurations (temperature, loss weights, optimization parameters) based on dataset and model meta-features. This eliminates the need for manual hyperparameter tuning and enables rapid deployment across diverse tasks.
+
+\subsection{Attention Mechanisms in Deep Learning}
+
+Attention mechanisms~\citep{vaswani2017attention} have revolutionized deep learning by enabling models to dynamically focus on relevant information. \citet{zagoruyko2016paying} applied attention transfer to KD, matching attention maps between teacher and student. \citet{woo2018cbam} proposed CBAM for channel and spatial attention in CNNs.
+
+In the context of ensemble learning, attention has been used to weight expert predictions~\citep{shazeer2017outrageously}, but not extensively in multi-teacher distillation. Most multi-teacher KD methods use fixed weights or simple averaging.
+
+\textbf{Our Contribution:} We introduce learned attention mechanisms that dynamically weight teacher contributions in multi-teacher distillation, allowing the student to selectively learn from the most relevant teacher for each input sample. This goes beyond prior work by conditioning attention on both input features and teacher-specific characteristics.
+
+\subsection{Model Compression: Complementary Approaches}
+
+Knowledge distillation is one of several model compression techniques. Pruning~\citep{han2016deep} removes redundant parameters, quantization reduces precision~\citep{jacob2018quantization}, and neural architecture search~\citep{liu2019darts} designs efficient architectures. Recent surveys~\citep{choudhary2020comprehensive,cheng2017survey} provide comprehensive overviews.
+
+These techniques are largely orthogonal to KD and can be combined. For instance, \citet{polino2018model} combines quantization with distillation. Our framework focuses on KD but can integrate with other compression methods.
+
+\subsection{Positioning of HPM-KD}
+
+Table~\ref{tab:related_comparison} summarizes how HPM-KD addresses limitations of prior work across six key dimensions. Unlike any single prior method, HPM-KD integrates:
+
+\begin{enumerate}
+    \item \textbf{Automated Configuration} via meta-learning (absent in all prior KD methods)
+    \item \textbf{Progressive Distillation} with automatic chain construction (extends TAKD~\citep{mirzadeh2020improved})
+    \item \textbf{Dynamic Multi-Teacher Weighting} via learned attention (extends DML~\citep{zhang2018deep})
+    \item \textbf{Adaptive Temperature Scheduling} (extends fixed-temperature KD~\citep{hinton2015distilling})
+    \item \textbf{Parallel Processing} for computational efficiency (novel)
+    \item \textbf{Cross-Experiment Memory} for transfer learning across distillation tasks (novel)
+\end{enumerate}
+
+This combination of components is unique and yields state-of-the-art compression results, as we demonstrate in Section~\ref{sec:results}.
+
+\begin{table}[t]
+\centering
+\caption{Comparison of HPM-KD with prior knowledge distillation methods across key capabilities.}
+\label{tab:related_comparison}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Method} & \textbf{Auto} & \textbf{Prog.} & \textbf{Multi-T} & \textbf{Adapt-T} & \textbf{Parallel} & \textbf{Memory} \\
+                & \textbf{Config} & \textbf{Chain} & \textbf{Attn} & \textbf{Temp} & \textbf{Proc.} & \textbf{Sharing} \\
+\midrule
+KD~\citep{hinton2015distilling} & \xmark & \xmark & \xmark & \xmark & \xmark & \xmark \\
+FitNets~\citep{romero2014fitnets} & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark \\
+DML~\citep{zhang2018deep} & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark \\
+TAKD~\citep{mirzadeh2020improved} & \xmark & \cmark & \xmark & \xmark & \xmark & \xmark \\
+Ensemble~\citep{you2017learning} & \xmark & \xmark & \cmark & \xmark & \xmark & \xmark \\
+\midrule
+\textbf{HPM-KD (Ours)} & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Summary}
+
+While extensive prior work has advanced individual aspects of knowledge distillation, no existing framework integrates automatic configuration, progressive refinement, adaptive multi-teacher coordination, dynamic temperature scheduling, parallel processing, and cross-experiment learning. HPM-KD fills this gap, providing a comprehensive and automated solution for efficient model compression across diverse applications.

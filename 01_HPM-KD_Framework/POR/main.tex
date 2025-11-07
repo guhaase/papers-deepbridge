@@ -1,0 +1,113 @@
+%%
+%% Paper 1: HPM-KD Framework
+%% HPM-KD: Hierarchical Progressive Multi-Teacher Knowledge Distillation
+%% for Efficient Model Compression
+%%
+%% Authors: Gustavo Coelho Haase, Paulo Dourado
+%% Date: November 2025
+%%
+
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+%% Packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{threeparttable}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{setspace}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{pifont} % For checkmark and xmark symbols
+
+%% Define checkmark and xmark commands
+\newcommand{\cmark}{\ding{51}} % Checkmark
+\newcommand{\xmark}{\ding{55}} % X mark
+
+%% Line numbering for review (comment out for final)
+% \usepackage{lineno}
+% \linenumbers
+
+%% Journal name (targeting top ML conferences/journals)
+\journal{arXiv preprint / NeurIPS / ICML}
+
+%% Document
+\begin{document}
+
+\begin{frontmatter}
+
+%% Title
+\title{HPM-KD: Hierarchical Progressive Multi-Teacher Knowledge Distillation for Efficient Model Compression}
+
+%% Authors
+\author[ucb]{Gustavo Coelho Haase\corref{cor1}}
+\ead{gustavohaase@ucb.edu.br}
+
+\author[ucb]{Paulo Dourado}
+\ead{paulo.dourado@ucb.edu.br}
+
+%% Affiliations
+\affiliation[ucb]{
+    organization={Universidade Cat\'olica de Bras\'ilia},
+    addressline={Campus I - QS 07 Lote 01 EPCT},
+    city={Bras\'ilia},
+    postcode={71966-700},
+    state={DF},
+    country={Brazil}
+}
+
+%% Corresponding author
+\cortext[cor1]{Corresponding author}
+
+%% Abstract
+\begin{abstract}
+Knowledge distillation has emerged as a powerful technique for model compression, enabling deployment of large models in resource-constrained environments. However, existing approaches face limitations in adaptability, progressiveness, and multi-teacher coordination. We propose HPM-KD (Hierarchical Progressive Multi-Teacher Knowledge Distillation), a novel framework that addresses these challenges through six integrated components: (1) Adaptive Configuration Manager for automatic hyperparameter selection via meta-learning, (2) Progressive Distillation Chain with incremental refinement tracking, (3) Attention-Weighted Multi-Teacher ensemble with learned attention weights, (4) Meta-Temperature Scheduler for adaptive knowledge transfer, (5) Parallel Processing Pipeline with intelligent caching, and (6) Shared Optimization Memory for cross-experiment learning. Extensive experiments on MNIST, Fashion-MNIST, CIFAR-10, CIFAR-100, and tabular datasets from UCI ML Repository demonstrate that HPM-KD achieves 10$\times$ to 15$\times$ compression ratios while retaining 95-98\% of teacher model accuracy, outperforming state-of-the-art baselines including traditional Knowledge Distillation, FitNets, Deep Mutual Learning, and TAKD by 3-7 percentage points in accuracy retention. Ablation studies confirm the contribution of each component, with the full HPM-KD system showing 12-18\% improvement over single-component approaches. Our framework is implemented in the open-source DeepBridge library and demonstrates practical applicability for production ML systems.
+\end{abstract}
+
+%% Keywords
+\begin{keyword}
+Knowledge Distillation \sep Model Compression \sep Multi-Teacher Learning \sep Progressive Training \sep Meta-Learning \sep Neural Network Compression \sep Edge AI
+%% No JEL codes for CS papers, but could add ACM CCS concepts
+\end{keyword}
+
+\end{frontmatter}
+
+%% Main Text
+
+%% 1. Introduction
+\input{sections/01-introduction}
+
+%% 2. Related Work
+\input{sections/02-literature}
+
+%% 3. Experimental Setup
+\input{sections/03-data}
+
+%% 4. HPM-KD Framework
+\input{sections/04-methodology}
+
+%% 5. Results
+\input{sections/05-results}
+
+%% 6. Ablation Studies
+\input{sections/06-robustness}
+
+%% 7. Discussion and Conclusion
+\input{sections/07-discussion}
+
+%% Acknowledgments
+\section*{Acknowledgments}
+We thank the DeepBridge development team for providing the implementation framework. This research was supported by the Universidade Católica de Brasília. All code and experiments are available at \url{https://github.com/DeepBridge-Validation/DeepBridge}.
+
+%% References
+\bibliographystyle{elsarticle-harv}
+\bibliography{references}
+
+%% Appendices
+\appendix
+\input{sections/appendix}
+
+\end{document}

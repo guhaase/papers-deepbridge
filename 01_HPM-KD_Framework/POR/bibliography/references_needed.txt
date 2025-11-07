@@ -1,0 +1,172 @@
+# Referências Necessárias para Paper HPM-KD
+
+## 1. Knowledge Distillation - Fundamentos (ESSENCIAIS)
+
+### Original KD
+- Hinton, G., Vinyals, O., & Dean, J. (2015). Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531.
+- Bucilua, C., Caruana, R., & Niculescu-Mizil, A. (2006). Model compression. KDD.
+- Ba, J., & Caruana, R. (2014). Do deep nets really need to be deep? NeurIPS.
+
+### KD Theory and Analysis
+- Cho, J. H., & Hariharan, B. (2019). On the efficacy of knowledge distillation. ICCV.
+- Menon, A. K., Rawat, A. S., Reddi, S. J., & Kumar, S. (2021). A statistical perspective on distillation. ICML.
+- Phuong, M., & Lampert, C. (2019). Towards understanding knowledge distillation. ICML.
+
+## 2. Multi-Teacher Distillation (ESSENCIAIS)
+
+- You, S., Xu, C., Xu, C., & Tao, D. (2017). Learning from multiple teacher networks. KDD.
+- Zhang, L., Song, J., Gao, A., Chen, J., Bao, C., & Ma, K. (2018). Be your own teacher: Improve the performance of convolutional neural networks via self distillation. ICCV.
+- Park, W., Kim, D., Lu, Y., & Cho, M. (2019). Relational knowledge distillation. CVPR.
+- Fukuda, T., Suzuki, M., Kurata, G., Thomas, S., Cui, J., & Ramabhadran, B. (2017). Efficient knowledge distillation from an ensemble of teachers. Interspeech.
+
+## 3. Progressive/Multi-Step Distillation (ESSENCIAIS)
+
+- Mirzadeh, S. I., Farajtabar, M., Li, A., Levine, N., Matsukawa, A., & Ghasemzadeh, H. (2020). Improved knowledge distillation via teacher assistant. AAAI.
+- Romero, A., Ballas, N., Kahou, S. E., Chassang, A., Gatta, C., & Bengio, Y. (2015). FitNets: Hints for thin deep nets. ICLR.
+- Luo, P., Zhu, Z., Liu, Z., Wang, X., & Tang, X. (2016). Face model compression by distilling knowledge from neurons. AAAI.
+
+## 4. Feature-Based and Relation-Based KD
+
+- Heo, B., Lee, M., Yun, S., & Choi, J. Y. (2019). Knowledge transfer via distillation of activation boundaries formed by hidden neurons. AAAI.
+- Tung, F., & Mori, G. (2019). Similarity-preserving knowledge distillation. ICCV.
+- Tian, Y., Krishnan, D., & Isola, P. (2020). Contrastive representation distillation. ICLR.
+
+## 5. Self-Distillation and Online Distillation
+
+- Zhang, L., Song, J., Gao, A., Chen, J., Bao, C., & Ma, K. (2019). Be your own teacher: Improve the performance of convolutional neural networks via self distillation. ICCV.
+- Anil, R., Pereyra, G., Passos, A., Ormándi, R., Dahl, G. E., & Hinton, G. E. (2018). Large scale distributed neural network training through online distillation. ICLR.
+- Xu, G., Liu, Z., Li, X., & Loy, C. C. (2020). Knowledge distillation meets self-supervision. ECCV.
+
+## 6. Meta-Learning for Hyperparameter Optimization
+
+- Hospedales, T., Antoniou, A., Micaelli, P., & Storkey, A. (2021). Meta-learning in neural networks: A survey. IEEE PAMI.
+- Finn, C., Abbeel, P., & Levine, S. (2017). Model-agnostic meta-learning for fast adaptation of deep networks. ICML.
+- Chen, Y., Wang, X., Liu, Z., Xu, H., & Darrell, T. (2020). A new meta-baseline for few-shot learning. arXiv preprint.
+
+## 7. Attention Mechanisms
+
+- Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., ... & Polosukhin, I. (2017). Attention is all you need. NeurIPS.
+- Woo, S., Park, J., Lee, J. Y., & Kweon, I. S. (2018). Cbam: Convolutional block attention module. ECCV.
+- Zagoruyko, S., & Komodakis, N. (2016). Paying more attention to attention: Improving the performance of convolutional neural networks via attention transfer. ICLR.
+
+## 8. Model Compression - Geral
+
+- Han, S., Mao, H., & Dally, W. J. (2016). Deep compression: Compressing deep neural networks with pruning, trained quantization and huffman coding. ICLR.
+- Choudhary, T., Mishra, V., Goswami, A., & Sarangapani, J. (2020). A comprehensive survey on model compression and acceleration. Artificial Intelligence Review.
+- Cheng, Y., Wang, D., Zhou, P., & Zhang, T. (2017). A survey of model compression and acceleration for deep neural networks. arXiv preprint.
+
+## 9. Neural Architecture Search (NAS)
+
+- Zoph, B., & Le, Q. V. (2017). Neural architecture search with reinforcement learning. ICLR.
+- Liu, H., Simonyan, K., & Yang, Y. (2019). DARTS: Differentiable architecture search. ICLR.
+- Elsken, T., Metzen, J. H., & Hutter, F. (2019). Neural architecture search: A survey. JMLR.
+
+## 10. Temperature Scheduling and Calibration
+
+- Guo, C., Pleiss, G., Sun, Y., & Weinberger, K. Q. (2017). On calibration of modern neural networks. ICML.
+- Mukhoti, J., Kulharia, V., Sanyal, A., Golodetz, S., Torr, P., & Dokania, P. (2020). Calibrating deep neural networks using focal loss. NeurIPS.
+- Müller, R., Kornblith, S., & Hinton, G. E. (2019). When does label smoothing help? NeurIPS.
+
+## 11. Deep Learning - Aplicações e Arquiteturas
+
+### Computer Vision
+- He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition. CVPR.
+- Krizhevsky, A., Sutskever, I., & Hinton, G. E. (2012). Imagenet classification with deep convolutional neural networks. NeurIPS.
+- Simonyan, K., & Zisserman, A. (2015). Very deep convolutional networks for large-scale image recognition. ICLR.
+
+### NLP
+- Devlin, J., Chang, M. W., Lee, K., & Toutanova, K. (2018). Bert: Pre-training of deep bidirectional transformers for language understanding. arXiv preprint.
+- Sanh, V., Debut, L., Chaumond, J., & Wolf, T. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. arXiv preprint.
+
+## 12. Ensemble Learning
+
+- Zhou, Z. H. (2012). Ensemble methods: foundations and algorithms. CRC press.
+- Dietterich, T. G. (2000). Ensemble methods in machine learning. International workshop on multiple classifier systems.
+- Breiman, L. (1996). Bagging predictors. Machine learning.
+
+## 13. Transfer Learning
+
+- Pan, S. J., & Yang, Q. (2009). A survey on transfer learning. IEEE TKDE.
+- Zhuang, F., Qi, Z., Duan, K., Xi, D., Zhu, Y., Zhu, H., ... & He, Q. (2020). A comprehensive survey on transfer learning. Proceedings of the IEEE.
+
+## 14. Optimization and Training Techniques
+
+- Kingma, D. P., & Ba, J. (2014). Adam: A method for stochastic optimization. ICLR.
+- Loshchilov, I., & Hutter, F. (2017). Decoupled weight decay regularization. ICLR.
+- Smith, L. N. (2017). Cyclical learning rates for training neural networks. WACV.
+
+## 15. Datasets e Benchmarks
+
+- LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning applied to document recognition. Proceedings of the IEEE.
+- Krizhevsky, A., & Hinton, G. (2009). Learning multiple layers of features from tiny images. Tech Report.
+- Dua, D., & Graff, C. (2017). UCI machine learning repository. University of California, Irvine.
+- Vanschoren, J., van Rijn, J. N., Bischl, B., & Torgo, L. (2014). OpenML: networked science in machine learning. ACM SIGKDD Explorations.
+
+## 16. Edge Computing e Mobile AI
+
+- Howard, A. G., Zhu, M., Chen, B., Kalenichenko, D., Wang, W., Weyand, T., ... & Adam, H. (2017). Mobilenets: Efficient convolutional neural networks for mobile vision applications. arXiv preprint.
+- Sandler, M., Howard, A., Zhu, M., Zhmoginov, A., & Chen, L. C. (2018). Mobilenetv2: Inverted residuals and linear bottlenecks. CVPR.
+- Ma, N., Zhang, X., Zheng, H. T., & Sun, J. (2018). Shufflenet v2: Practical guidelines for efficient cnn architecture design. ECCV.
+
+## 17. Parallel and Distributed Training
+
+- Dean, J., Corrado, G., Monga, R., Chen, K., Devin, M., Mao, M., ... & Ng, A. Y. (2012). Large scale distributed deep networks. NeurIPS.
+- Goyal, P., Dollár, P., Girshick, R., Noordhuis, P., Wesolowski, L., Kyrola, A., ... & He, K. (2017). Accurate, large minibatch sgd: Training imagenet in 1 hour. arXiv preprint.
+
+## 18. Interpretability and Explainability
+
+- Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). "Why should I trust you?" Explaining the predictions of any classifier. KDD.
+- Lundberg, S. M., & Lee, S. I. (2017). A unified approach to interpreting model predictions. NeurIPS.
+
+## 19. Regularization Techniques
+
+- Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., & Salakhutdinov, R. (2014). Dropout: a simple way to prevent neural networks from overfitting. JMLR.
+- Ioffe, S., & Szegedy, C. (2015). Batch normalization: Accelerating deep network training by reducing internal covariate shift. ICML.
+
+## 20. Related Work em Destilação Específica para Tabular Data
+
+- Grinsztajn, L., Oyallon, E., & Varoquaux, G. (2022). Why do tree-based models still outperform deep learning on typical tabular data? NeurIPS.
+- Huang, X., Khetan, A., Cvitkovic, M., & Karnin, Z. (2020). TabTransformer: Tabular data modeling using contextual embeddings. arXiv preprint.
+
+---
+
+## Notas Importantes:
+
+### Prioridade 1 (CRÍTICAS - para citação na introdução e related work):
+1. Hinton et al. (2015) - KD original
+2. Mirzadeh et al. (2020) - TAKD/progressive
+3. Romero et al. (2015) - FitNets
+4. Zhang et al. (2018) - Deep Mutual Learning
+5. You et al. (2017) - Multi-teacher
+6. He et al. (2016) - ResNet
+7. Devlin et al. (2018) - BERT
+8. Han et al. (2016) - Deep compression
+9. Choudhary et al. (2020) - Survey compression
+
+### Prioridade 2 (IMPORTANTES - para related work detalhado):
+10-25. Demais referências de KD variants, meta-learning, attention
+
+### Prioridade 3 (COMPLEMENTARES - para citações pontuais):
+26-40. Datasets, optimization, regularization, etc.
+
+---
+
+## BibTeX Entries a Criar:
+
+Criar entradas BibTeX para todas as referências acima no arquivo `references.bib`.
+Seguir formato consistente (author-year style).
+
+---
+
+**Total de Referências Necessárias**: ~40-50
+**Já Citadas na Introdução**: ~12
+**Ainda a Citar**: ~35
+
+---
+
+## TODO:
+- [ ] Buscar PDFs das referências principais
+- [ ] Criar entradas BibTeX completas
+- [ ] Verificar formatação (autor, ano, título, venue)
+- [ ] Adicionar DOI/arXiv quando disponível
+- [ ] Organizar por categoria no BibTeX

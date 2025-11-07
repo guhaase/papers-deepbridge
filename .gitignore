@@ -1,0 +1,234 @@
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyo
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+virtualenv/
+.conda/
+*.venv
+
+# ============================================================================
+# Machine Learning / Deep Learning
+# ============================================================================
+
+# PyTorch models (CRÍTICO - 2.4 GB+)
+*.pth
+*.pt
+*.ckpt
+
+# TensorFlow models
+*.h5
+*.hdf5
+*.pb
+
+# Model directories
+models/
+checkpoints/
+saved_models/
+
+# Pickle files
+*.pkl
+*.pickle
+
+# ============================================================================
+# LaTeX Build Artifacts
+# ============================================================================
+
+# Build directory
+build/
+
+# LaTeX temporary files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+.*.lb
+
+# Bibliography
+*.bbl
+*.bcf
+*.blg
+*-blx.aux
+*-blx.bib
+*.run.xml
+
+# Build Tool auxiliary files
+*.fdb_latexmk
+*.synctex
+*.synctex(busy)
+*.synctex.gz
+*.synctex.gz(busy)
+*.pdfsync
+
+# Other LaTeX files
+*.dvi
+*.ps
+*.eps
+*.spl
+*.nav
+*.snm
+*.vrb
+
+# ============================================================================
+# Experiment Results & Outputs
+# ============================================================================
+
+# Results directories
+results/
+*/experiments/results/
+*/POR/experiments/results/
+*/ENG/experiments/results/
+outputs/
+output/
+
+# Figures generated (uncomment if you want to ignore)
+# figures/
+# */figures/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# ============================================================================
+# Jupyter Notebooks
+# ============================================================================
+
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ============================================================================
+# Data Files (descomente se necessário)
+# ============================================================================
+
+# Uncomment if you don't want to track data files
+# *.csv
+# *.tsv
+# *.xlsx
+# *.xls
+# data/
+# datasets/
+
+# ============================================================================
+# IDE & Editor Files
+# ============================================================================
+
+# Claude Code
+.claude/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# Operating System Files
+# ============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Environment & Secrets
+# ============================================================================
+
+.env
+.env.local
+.env.*.local
+*.envrc
+secrets/
+credentials/
+
+# ============================================================================
+# Temporary & Cache Files
+# ============================================================================
+
+*.tmp
+*.temp
+*.cache
+.cache/
+tmp/
+temp/
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+
+# Uncomment if needed for your specific use case
+# *.pdf  # Uncomment if you want to generate PDFs locally only
