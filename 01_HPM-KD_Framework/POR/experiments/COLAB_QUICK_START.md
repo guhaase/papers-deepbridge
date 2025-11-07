@@ -6,6 +6,23 @@
 
 ---
 
+## ⚠️ ATENÇÃO - Mudanças nas Importações
+
+**Data:** 2025-11-07
+**DeepBridge versão:** 0.1.54+
+
+As importações do DeepBridge foram atualizadas. Se você vir erros como:
+- `No module named 'deepbridge.data'`
+- `No module named 'deepbridge.core.knowledge_distillation'`
+
+**Solução:** Consulte o **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** para as importações corretas.
+
+**Notebooks atualizados:**
+- ✅ `00_setup_colab_UPDATED.ipynb` (use este)
+- ⚠️ Outros notebooks precisam ser migrados (veja MIGRATION_GUIDE.md)
+
+---
+
 ## ⚡ Início Rápido (5 minutos)
 
 ### 1. Abrir Google Colab
