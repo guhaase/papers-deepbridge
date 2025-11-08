@@ -1119,13 +1119,13 @@ def main():
                         help='Dataset to use')
     parser.add_argument('--gpu', type=int, default=0,
                         help='GPU device ID')
-    parser.add_argument('--output-dir', type=str, default='./results/exp04_efficiency',
+    parser.add_argument('--output', type=str, default='./results/exp04_efficiency',
                         help='Output directory for results')
 
     args = parser.parse_args()
 
     # Create output directories
-    output_dir = Path(args.output_dir)
+    output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / 'models').mkdir(exist_ok=True)
     (output_dir / 'figures').mkdir(exist_ok=True)

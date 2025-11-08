@@ -980,12 +980,12 @@ def main():
     parser.add_argument('--datasets', nargs='+', default=['MNIST'],
                        choices=['MNIST', 'FashionMNIST', 'CIFAR10', 'CIFAR100'])
     parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--output-dir', type=str, default='./results/exp01_compression')
+    parser.add_argument('--output', type=str, default='./results/exp01_compression')
 
     args = parser.parse_args()
 
     # Create output directories
-    output_dir = Path(args.output_dir)
+    output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / 'models').mkdir(exist_ok=True)
     (output_dir / 'figures').mkdir(exist_ok=True)
