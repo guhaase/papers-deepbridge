@@ -411,10 +411,10 @@ def train_with_kd_profiled(student: nn.Module, teacher: nn.Module,
         X_train = torch.cat(all_data, dim=0)
         y_train = torch.cat(all_labels, dim=0)
 
+        # Criar DBDataset (compatível com DeepBridge API)
         db_dataset = DBDataset(
-            X=X_train.cpu().numpy(),
-            y=y_train.cpu().numpy(),
-            task='classification'
+            data=X_train.cpu().numpy(),
+            target=y_train.cpu().numpy()
         )
 
         # Configurar AutoDistiller com TODOS os componentes do HPM-KD

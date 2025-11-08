@@ -526,11 +526,10 @@ def train_hpmkd_deepbridge(student: nn.Module, teacher: nn.Module,
     X_train = torch.cat(all_data, dim=0)
     y_train = torch.cat(all_labels, dim=0)
 
-    # Criar DBDataset
+    # Criar DBDataset (compatível com DeepBridge API)
     db_dataset = DBDataset(
-        X=X_train.cpu().numpy(),
-        y=y_train.cpu().numpy(),
-        task='classification'
+        data=X_train.cpu().numpy(),
+        target=y_train.cpu().numpy()
     )
 
     logger.info(f"DBDataset created: {len(db_dataset)} samples")
@@ -640,7 +639,7 @@ def experiment_baseline_comparison(datasets: List[str], config: Dict,
             baseline_times = []
 
             for run in range(config['n_runs']):
-                logger.info(f"    Run {run+1}/{config['n_runs']}... ", end='')
+                logger.info(f"    Run {run+1}/{config['n_runs']}...")
 
                 student = LeNet5Student(num_classes, input_channels)
 
