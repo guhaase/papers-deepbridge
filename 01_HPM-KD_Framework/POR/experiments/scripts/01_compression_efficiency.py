@@ -362,7 +362,29 @@ def train_fitnets(student: nn.Module, teacher: nn.Module,
     criterion_kd = nn.KLDivLoss(reduction='batchmean')
     criterion_hint = nn.MSELoss()
 
-    optimizer = optim.Adam(student.parameters(), lr=0.001)
+    # Create regressors to match student and teacher feature dimensions
+    # This is essential for FitNets when student and teacher have different channel dimensions
+    regressors = nn.ModuleList()
+
+    # Get a sample to determine feature dimensions
+    with torch.no_grad():
+        sample_data = next(iter(train_loader))[0][:1].to(device)
+        _, student_feats_sample = student.get_features(sample_data)
+        _, teacher_feats_sample = teacher.get_features(sample_data)
+
+        for s_feat, t_feat in zip(student_feats_sample, teacher_feats_sample):
+            if s_feat.shape[1] != t_feat.shape[1]:  # Different channel dimensions
+                # 1x1 convolution to project student features to teacher feature space
+                regressor = nn.Conv2d(s_feat.shape[1], t_feat.shape[1], kernel_size=1, stride=1, padding=0)
+                regressors.append(regressor)
+            else:
+                regressors.append(None)  # No projection needed
+
+    regressors = regressors.to(device)
+
+    # Optimizer includes both student and regressor parameters
+    params_to_optimize = list(student.parameters()) + list(regressors.parameters())
+    optimizer = optim.Adam(params_to_optimize, lr=0.001)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 
     best_acc = 0.0
@@ -373,6 +395,7 @@ def train_fitnets(student: nn.Module, teacher: nn.Module,
 
     for epoch in range(epochs):
         student.train()
+        regressors.train()
 
         for data, target in train_loader:
             data, target = data.to(device), target.to(device)
@@ -390,12 +413,17 @@ def train_fitnets(student: nn.Module, teacher: nn.Module,
             soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
             loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
 
-            # Hint loss (match intermediate features)
+            # Hint loss (match intermediate features with regressor projection)
             loss_hint = 0
-            for s_feat, t_feat in zip(student_feats, teacher_feats):
-                # Adaptive pooling to match dimensions
-                if s_feat.shape != t_feat.shape:
+            for idx, (s_feat, t_feat) in enumerate(zip(student_feats, teacher_feats)):
+                # Apply regressor if needed to match channel dimensions
+                if regressors[idx] is not None:
+                    s_feat = regressors[idx](s_feat)
+
+                # Adaptive pooling to match spatial dimensions
+                if s_feat.shape[2:] != t_feat.shape[2:]:
                     s_feat = nn.functional.adaptive_avg_pool2d(s_feat, t_feat.shape[2:])
+
                 loss_hint += criterion_hint(s_feat, t_feat)
 
             loss = alpha * loss_kd + (1 - alpha) * loss_ce + beta * loss_hint
@@ -526,10 +554,10 @@ def train_hpmkd_deepbridge(student: nn.Module, teacher: nn.Module,
     X_train = torch.cat(all_data, dim=0)
     y_train = torch.cat(all_labels, dim=0)
 
-    # Criar DBDataset (compatível com DeepBridge API)
+    # Criar DBDataset (DBDataset aceita arrays numpy diretamente)
     db_dataset = DBDataset(
-        data=X_train.cpu().numpy(),
-        target=y_train.cpu().numpy()
+        X_train.cpu().numpy(),
+        y_train.cpu().numpy()
     )
 
     logger.info(f"DBDataset created: {len(db_dataset)} samples")
