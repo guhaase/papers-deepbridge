@@ -12,7 +12,7 @@ Experimentos incluídos:
     4. Progressive Chain Length (Exp 8) - Número ótimo de passos intermediários
     5. Number of Teachers (Exp 9) - Saturação com múltiplos teachers
 
-Componentes HPM-KD:
+Componentes HPM-KD (DeepBridge Library - FULL IMPLEMENTATION):
     - ProgChain: Progressive chaining de modelos intermediários
     - AdaptConf: Adaptive confidence weighting
     - MultiTeach: Multi-teacher ensemble
@@ -23,6 +23,9 @@ Componentes HPM-KD:
 Tempo estimado:
     - Quick Mode: 1 hora
     - Full Mode: 2 horas
+
+Requerimentos:
+    - DeepBridge library instalada (pip install deepbridge)
 
 Uso:
     python 02_ablation_studies.py --mode quick --dataset MNIST
@@ -51,6 +54,21 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 from tqdm import tqdm
+
+# DeepBridge imports - REQUIRED (no fallback)
+try:
+    from deepbridge.distillation.techniques.knowledge_distillation import KnowledgeDistillation
+    from deepbridge.core.db_data import DBDataset
+    from deepbridge.distillation.auto_distiller import AutoDistiller
+except ImportError as e:
+    print(f"\n❌ ERRO FATAL: DeepBridge library não está disponível!")
+    print(f"   Detalhes: {e}")
+    print(f"\n   Para instalar DeepBridge:")
+    print(f"   pip install deepbridge")
+    print(f"\n   Ou clone o repositório:")
+    print(f"   git clone https://github.com/seu-usuario/deepbridge.git")
+    print(f"   cd deepbridge && pip install -e .\n")
+    raise SystemExit(1)
 
 warnings.filterwarnings('ignore')
 
@@ -267,10 +285,10 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
                 disable_components: Optional[List[str]] = None,
                 temperature: float = 4.0, alpha: float = 0.5,
                 chain_length: int = 0, n_teachers: int = 1) -> Tuple[nn.Module, float]:
-    """Train student with HPM-KD (with optional component ablation)
+    """Train student with HPM-KD using DeepBridge (with optional component ablation)
 
     Args:
-        disable_components: List of components to disable
+        disable_components: List of components to disable (ProgChain, AdaptConf, MultiTeach, MetaTemp, Parallel, Memory)
         temperature: Distillation temperature
         alpha: Balance between KD and CE loss
         chain_length: Number of intermediate models in progressive chain
@@ -281,74 +299,88 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
 
     student = student.to(device)
     teacher = teacher.to(device)
-    teacher.eval()
 
-    criterion_ce = nn.CrossEntropyLoss()
-    criterion_kd = nn.KLDivLoss(reduction='batchmean')
-    optimizer = optim.Adam(student.parameters(), lr=0.001)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
+    # Converter DataLoader para DBDataset
+    all_data = []
+    all_labels = []
+    for data, labels in train_loader:
+        all_data.append(data)
+        all_labels.append(labels)
 
-    best_acc = 0.0
+    X_train = torch.cat(all_data, dim=0)
+    y_train = torch.cat(all_labels, dim=0)
 
-    # Component flags
-    use_progchain = 'ProgChain' not in disable_components and chain_length > 0
+    db_dataset = DBDataset(
+        X=X_train.cpu().numpy(),
+        y=y_train.cpu().numpy(),
+        task='classification'
+    )
+
+    # Configurar AutoDistiller
+    distiller = AutoDistiller(
+        teacher_model=teacher,
+        student_model=student,
+        technique='knowledge_distillation',
+        device=device
+    )
+
+    # Component flags (enable unless disabled)
+    use_progchain = 'ProgChain' not in disable_components
     use_adaptconf = 'AdaptConf' not in disable_components
-    use_multiteach = 'MultiTeach' not in disable_components and n_teachers > 1
+    use_multiteach = 'MultiTeach' not in disable_components
     use_metatemp = 'MetaTemp' not in disable_components
     use_parallel = 'Parallel' not in disable_components
     use_memory = 'Memory' not in disable_components
 
-    for epoch in range(epochs):
-        student.train()
+    # Configurar HPM-KD com ablation
+    hpmkd_config = {
+        # Progressive chaining
+        'progressive_chain': use_progchain,
+        'n_intermediate_models': max(chain_length, 2) if use_progchain else 0,
 
-        for data, target in train_loader:
-            data, target = data.to(device), target.to(device)
+        # Multi-teacher
+        'multi_teacher': use_multiteach,
+        'n_teachers': n_teachers if use_multiteach else 1,
 
-            optimizer.zero_grad()
+        # Adaptive confidence
+        'adaptive_confidence': use_adaptconf,
+        'confidence_threshold': 0.7,
 
-            # Student forward
-            student_output = student(data)
+        # Meta-learned temperature
+        'meta_temperature': use_metatemp,
+        'initial_temperature': temperature,
+        'temperature_schedule': 'adaptive' if use_metatemp else 'fixed',
 
-            # Teacher forward
-            with torch.no_grad():
-                teacher_output = teacher(data)
+        # Memory augmentation
+        'memory_augmented': use_memory,
+        'memory_size': 1000 if use_memory else 0,
 
-            # Base losses
-            loss_ce = criterion_ce(student_output, target)
+        # Parallel paths
+        'parallel_paths': use_parallel,
 
-            # Adaptive temperature (MetaTemp)
-            temp = temperature
-            if use_metatemp:
-                temp = temperature * (1.0 + 0.1 * (epoch / epochs))
+        # Training config
+        'epochs': epochs,
+        'batch_size': train_loader.batch_size,
+        'learning_rate': 0.001,
+        'optimizer': 'adam',
+        'alpha': alpha,  # KD vs CE balance
+    }
 
-            # Soft targets
-            soft_student = nn.functional.log_softmax(student_output / temp, dim=1)
-            soft_teacher = nn.functional.softmax(teacher_output / temp, dim=1)
-            loss_kd = criterion_kd(soft_student, soft_teacher) * (temp ** 2)
+    # Log configuration
+    disabled_str = ', '.join(disable_components) if disable_components else 'None'
+    logger.debug(f"HPM-KD Config: T={temperature}, α={alpha}, chain={chain_length}, teachers={n_teachers}, disabled=[{disabled_str}]")
 
-            # Adaptive confidence weighting (AdaptConf)
-            if use_adaptconf:
-                teacher_probs = nn.functional.softmax(teacher_output, dim=1)
-                teacher_conf = teacher_probs.max(dim=1)[0].mean()
-                adaptive_alpha = alpha * teacher_conf
-            else:
-                adaptive_alpha = alpha
+    # Treinar com HPM-KD
+    distiller.fit(
+        db_dataset,
+        epochs=epochs,
+        **hpmkd_config
+    )
 
-            # Combined loss
-            loss = adaptive_alpha * loss_kd + (1 - adaptive_alpha) * loss_ce
+    # Avaliar
+    accuracy = evaluate_model(student, val_loader, device)
 
-            loss.backward()
-            optimizer.step()
-
-        scheduler.step()
-
-        # Validation
-        if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
-            val_acc = evaluate_model(student, val_loader, device)
-            if val_acc > best_acc:
-                best_acc = val_acc
-
-    return student, best_acc
+    return student, accuracy
 
 
 # ============================================================================

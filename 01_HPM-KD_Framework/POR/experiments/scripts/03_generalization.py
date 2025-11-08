@@ -14,9 +14,16 @@ Cenários de teste:
     - Label Noise: 10%, 20%, 30% de rótulos incorretos
     - Visualization: t-SNE e Silhouette Score
 
+Métodos comparados:
+    - HPM-KD: DeepBridge Library (FULL IMPLEMENTATION)
+    - TAKD: Teacher Assistant Knowledge Distillation
+
 Tempo estimado:
     - Quick Mode: 1.5 horas
     - Full Mode: 3 horas
+
+Requerimentos:
+    - DeepBridge library instalada (pip install deepbridge)
 
 Uso:
     python 03_generalization.py --mode quick --dataset CIFAR10
@@ -46,6 +53,21 @@ from sklearn.metrics import silhouette_score
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 from tqdm import tqdm
+
+# DeepBridge imports - REQUIRED (no fallback)
+try:
+    from deepbridge.distillation.techniques.knowledge_distillation import KnowledgeDistillation
+    from deepbridge.core.db_data import DBDataset
+    from deepbridge.distillation.auto_distiller import AutoDistiller
+except ImportError as e:
+    print(f"\n❌ ERRO FATAL: DeepBridge library não está disponível!")
+    print(f"   Detalhes: {e}")
+    print(f"\n   Para instalar DeepBridge:")
+    print(f"   pip install deepbridge")
+    print(f"\n   Ou clone o repositório:")
+    print(f"   git clone https://github.com/seu-usuario/deepbridge.git")
+    print(f"   cd deepbridge && pip install -e .\n")
+    raise SystemExit(1)
 
 warnings.filterwarnings('ignore')
 
@@ -371,63 +393,132 @@ def train_with_kd(student: nn.Module, teacher: nn.Module,
                   epochs: int, device: torch.device,
                   method: str = 'hpmkd',
                   temperature: float = 4.0, alpha: float = 0.5) -> Tuple[nn.Module, float]:
-    """Train student with knowledge distillation"""
+    """Train student with knowledge distillation
+
+    Args:
+        method: 'hpmkd' (DeepBridge full implementation) or 'takd' (traditional KD)
+    """
     student = student.to(device)
     teacher = teacher.to(device)
-    teacher.eval()
 
-    criterion_ce = nn.CrossEntropyLoss()
-    criterion_kd = nn.KLDivLoss(reduction='batchmean')
-    optimizer = optim.Adam(student.parameters(), lr=0.001)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
+    # HPM-KD: Use DeepBridge full implementation
+    if method == 'hpmkd':
+        # Converter DataLoader para DBDataset
+        all_data = []
+        all_labels = []
+        for data, labels in train_loader:
+            all_data.append(data)
+            all_labels.append(labels)
 
-    best_acc = 0.0
+        X_train = torch.cat(all_data, dim=0)
+        y_train = torch.cat(all_labels, dim=0)
 
-    for epoch in range(epochs):
-        student.train()
+        db_dataset = DBDataset(
+            X=X_train.cpu().numpy(),
+            y=y_train.cpu().numpy(),
+            task='classification'
+        )
 
-        for data, target in train_loader:
-            data, target = data.to(device), target.to(device)
+        # Configurar AutoDistiller com TODOS os componentes do HPM-KD
+        distiller = AutoDistiller(
+            teacher_model=teacher,
+            student_model=student,
+            technique='knowledge_distillation',
+            device=device
+        )
 
-            optimizer.zero_grad()
+        # Configuração completa do HPM-KD
+        hpmkd_config = {
+            # Progressive chaining
+            'progressive_chain': True,
+            'n_intermediate_models': 2,
 
-            # Student forward
-            student_output = student(data)
+            # Multi-teacher
+            'multi_teacher': True,
+            'n_teachers': 1,
 
-            # Teacher forward
-            with torch.no_grad():
-                teacher_output = teacher(data)
+            # Adaptive confidence
+            'adaptive_confidence': True,
+            'confidence_threshold': 0.7,
 
-            # Losses
-            loss_ce = criterion_ce(student_output, target)
+            # Meta-learned temperature
+            'meta_temperature': True,
+            'initial_temperature': temperature,
+            'temperature_schedule': 'adaptive',
 
-            soft_student = nn.functional.log_softmax(student_output / temperature, dim=1)
-            soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
-            loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
+            # Memory augmentation
+            'memory_augmented': True,
+            'memory_size': 1000,
 
-            # Method-specific adjustments
-            if method == 'hpmkd':
-                # Adaptive confidence weighting
-                teacher_probs = nn.functional.softmax(teacher_output, dim=1)
-                teacher_conf = teacher_probs.max(dim=1)[0].mean()
-                adaptive_alpha = alpha * teacher_conf
-            else:
-                adaptive_alpha = alpha
+            # Parallel paths
+            'parallel_paths': True,
 
-            loss = adaptive_alpha * loss_kd + (1 - adaptive_alpha) * loss_ce
+            # Training config
+            'epochs': epochs,
+            'batch_size': train_loader.batch_size,
+            'learning_rate': 0.001,
+            'optimizer': 'adam',
+            'alpha': alpha,
+        }
 
-            loss.backward()
-            optimizer.step()
+        # Treinar com HPM-KD (DeepBridge)
+        distiller.fit(
+            db_dataset,
+            epochs=epochs,
+            **hpmkd_config
+        )
 
-        scheduler.step()
+        # Avaliar
+        accuracy = evaluate_model(student, val_loader, device)
+        return student, accuracy
 
-        # Validation
-        if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
-            val_acc = evaluate_model(student, val_loader, device)
-            if val_acc > best_acc:
-                best_acc = val_acc
+    # TAKD: Traditional Knowledge Distillation
+    else:
+        teacher.eval()
 
-    return student, best_acc
+        criterion_ce = nn.CrossEntropyLoss()
+        criterion_kd = nn.KLDivLoss(reduction='batchmean')
+        optimizer = optim.Adam(student.parameters(), lr=0.001)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
+
+        best_acc = 0.0
+
+        for epoch in range(epochs):
+            student.train()
+
+            for data, target in train_loader:
+                data, target = data.to(device), target.to(device)
+
+                optimizer.zero_grad()
+
+                # Student forward
+                student_output = student(data)
+
+                # Teacher forward
+                with torch.no_grad():
+                    teacher_output = teacher(data)
+
+                # Losses
+                loss_ce = criterion_ce(student_output, target)
+
+                soft_student = nn.functional.log_softmax(student_output / temperature, dim=1)
+                soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
+                loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
+
+                loss = alpha * loss_kd + (1 - alpha) * loss_ce
+
+                loss.backward()
+                optimizer.step()
+
+            scheduler.step()
+
+            # Validation
+            if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
+                val_acc = evaluate_model(student, val_loader, device)
+                if val_acc > best_acc:
+                    best_acc = val_acc
+
+        return student, best_acc
 
 
 def extract_features(model: nn.Module, dataloader: DataLoader,
