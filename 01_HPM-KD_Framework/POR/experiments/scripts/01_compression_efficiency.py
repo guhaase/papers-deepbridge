@@ -373,12 +373,24 @@ def train_fitnets(student: nn.Module, teacher: nn.Module,
         _, teacher_feats_sample = teacher.get_features(sample_data)
 
         for s_feat, t_feat in zip(student_feats_sample, teacher_feats_sample):
-            if s_feat.shape[1] != t_feat.shape[1]:  # Different channel dimensions
-                # 1x1 convolution to project student features to teacher feature space
-                regressor = nn.Conv2d(s_feat.shape[1], t_feat.shape[1], kernel_size=1, stride=1, padding=0)
-                regressors.append(regressor)
+            # Check if features are spatial (conv) or flattened (fc)
+            if len(s_feat.shape) == 4:  # Spatial features (conv layers)
+                if s_feat.shape[1] != t_feat.shape[1]:  # Different channel dimensions
+                    # 1x1 convolution to project student features to teacher feature space
+                    regressor = nn.Conv2d(s_feat.shape[1], t_feat.shape[1], kernel_size=1, stride=1, padding=0)
+                    regressors.append(regressor)
+                else:
+                    regressors.append(None)  # No projection needed
+            elif len(s_feat.shape) == 2:  # Flattened features (fc layers)
+                if s_feat.shape[1] != t_feat.shape[1]:  # Different feature dimensions
+                    # Linear projection for fully connected features
+                    regressor = nn.Linear(s_feat.shape[1], t_feat.shape[1])
+                    regressors.append(regressor)
+                else:
+                    regressors.append(None)  # No projection needed
             else:
-                regressors.append(None)  # No projection needed
+                # Skip features with unexpected dimensions
+                regressors.append(None)
 
     regressors = regressors.to(device)
 
@@ -416,13 +428,14 @@ def train_fitnets(student: nn.Module, teacher: nn.Module,
             # Hint loss (match intermediate features with regressor projection)
             loss_hint = 0
             for idx, (s_feat, t_feat) in enumerate(zip(student_feats, teacher_feats)):
-                # Apply regressor if needed to match channel dimensions
+                # Apply regressor if needed to match channel/feature dimensions
                 if regressors[idx] is not None:
                     s_feat = regressors[idx](s_feat)
 
-                # Adaptive pooling to match spatial dimensions
-                if s_feat.shape[2:] != t_feat.shape[2:]:
-                    s_feat = nn.functional.adaptive_avg_pool2d(s_feat, t_feat.shape[2:])
+                # Adaptive pooling to match spatial dimensions (only for conv features)
+                if len(s_feat.shape) == 4 and len(t_feat.shape) == 4:
+                    if s_feat.shape[2:] != t_feat.shape[2:]:
+                        s_feat = nn.functional.adaptive_avg_pool2d(s_feat, t_feat.shape[2:])
 
                 loss_hint += criterion_hint(s_feat, t_feat)
 

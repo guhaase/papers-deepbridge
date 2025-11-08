@@ -312,8 +312,8 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
 
     # Criar DBDataset (DBDataset aceita arrays numpy diretamente)
     db_dataset = DBDataset(
-        X_train.cpu().numpy(),
-        y_train.cpu().numpy()
+        data=X_train.cpu().numpy(),
+        target_column=y_train.cpu().numpy()
     )
 
     # Configurar AutoDistiller
