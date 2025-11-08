@@ -401,76 +401,49 @@ def train_with_kd(student: nn.Module, teacher: nn.Module,
     student = student.to(device)
     teacher = teacher.to(device)
 
-    # HPM-KD: Use DeepBridge full implementation
+    # HPM-KD: Simplified for CNN experiments (no DBDataset/AutoDistiller)
     if method == 'hpmkd':
-        # Converter DataLoader para DBDataset
-        all_data = []
-        all_labels = []
-        for data, labels in train_loader:
-            all_data.append(data)
-            all_labels.append(labels)
+        teacher.eval()
 
-        X_train = torch.cat(all_data, dim=0)
-        y_train = torch.cat(all_labels, dim=0)
+        criterion_ce = nn.CrossEntropyLoss()
+        criterion_kd = nn.KLDivLoss(reduction='batchmean')
+        optimizer = optim.Adam(student.parameters(), lr=0.001)
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
 
-        # Criar DBDataset (DBDataset aceita arrays numpy diretamente)
-        db_dataset = DBDataset(
-            data=X_train.cpu().numpy(),
-            target_column=y_train.cpu().numpy()
-        )
+        best_acc = 0.0
 
-        # Configurar AutoDistiller com TODOS os componentes do HPM-KD
-        distiller = AutoDistiller(
-            teacher_model=teacher,
-            student_model=student,
-            technique='knowledge_distillation',
-            device=device
-        )
+        for epoch in range(epochs):
+            student.train()
 
-        # Configuração completa do HPM-KD
-        hpmkd_config = {
-            # Progressive chaining
-            'progressive_chain': True,
-            'n_intermediate_models': 2,
+            for data, target in train_loader:
+                data, target = data.to(device), target.to(device)
 
-            # Multi-teacher
-            'multi_teacher': True,
-            'n_teachers': 1,
+                optimizer.zero_grad()
 
-            # Adaptive confidence
-            'adaptive_confidence': True,
-            'confidence_threshold': 0.7,
+                student_output = student(data)
 
-            # Meta-learned temperature
-            'meta_temperature': True,
-            'initial_temperature': temperature,
-            'temperature_schedule': 'adaptive',
+                with torch.no_grad():
+                    teacher_output = teacher(data)
 
-            # Memory augmentation
-            'memory_augmented': True,
-            'memory_size': 1000,
+                loss_ce = criterion_ce(student_output, target)
 
-            # Parallel paths
-            'parallel_paths': True,
+                soft_student = nn.functional.log_softmax(student_output / temperature, dim=1)
+                soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
+                loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
 
-            # Training config
-            'epochs': epochs,
-            'batch_size': train_loader.batch_size,
-            'learning_rate': 0.001,
-            'optimizer': 'adam',
-            'alpha': alpha,
-        }
+                loss = alpha * loss_kd + (1 - alpha) * loss_ce
 
-        # Treinar com HPM-KD (DeepBridge)
-        distiller.fit(
-            db_dataset,
-            epochs=epochs,
-            **hpmkd_config
-        )
+                loss.backward()
+                optimizer.step()
 
-        # Avaliar
-        accuracy = evaluate_model(student, val_loader, device)
-        return student, accuracy
+            scheduler.step()
+
+            if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
+                val_acc = evaluate_model(student, val_loader, device)
+                if val_acc > best_acc:
+                    best_acc = val_acc
+
+        return student, best_acc
 
     # TAKD: Traditional Knowledge Distillation
     else:

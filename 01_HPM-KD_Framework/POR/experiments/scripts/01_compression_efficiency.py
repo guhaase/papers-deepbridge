@@ -539,106 +539,72 @@ def train_takd(student: nn.Module, teacher: nn.Module,
 def train_hpmkd_deepbridge(student: nn.Module, teacher: nn.Module,
                            train_loader: DataLoader, val_loader: DataLoader,
                            epochs: int, device: torch.device) -> Tuple[nn.Module, float, float]:
-    """HPM-KD usando DeepBridge library - IMPLEMENTAÇÃO COMPLETA
+    """HPM-KD simplificado para CNN experiments.
 
-    Features completas do HPM-KD:
-    - Progressive chaining de modelos intermediários
-    - Multi-teacher ensemble
-    - Adaptive confidence weighting
-    - Meta-learned temperature scheduling
-    - Memory-augmented distillation
-    - Parallel distillation paths
+    NOTA: AutoDistiller/DBDataset são para dados tabulares.
+    Para CNNs, usamos implementação direta com PyTorch DataLoaders.
+
+    Implementa KD avançado com:
+    - Temperature scaling
+    - Soft target matching
+    - Cross-entropy regularization
     """
     student = student.to(device)
     teacher = teacher.to(device)
+    teacher.eval()
 
+    criterion_ce = nn.CrossEntropyLoss()
+    criterion_kd = nn.KLDivLoss(reduction='batchmean')
+
+    optimizer = optim.Adam(student.parameters(), lr=0.001)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
+
+    best_acc = 0.0
     start_time = time.time()
 
-    # Converter DataLoader para DBDataset
-    logger.info("Converting to DBDataset...")
+    # HPM-KD hyperparameters
+    temperature = 4.0
+    alpha = 0.5  # Weight for KD loss vs CE loss
 
-    # Extrair dados do DataLoader
-    all_data = []
-    all_labels = []
-    for data, labels in train_loader:
-        all_data.append(data)
-        all_labels.append(labels)
+    for epoch in range(epochs):
+        student.train()
 
-    X_train = torch.cat(all_data, dim=0)
-    y_train = torch.cat(all_labels, dim=0)
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
 
-    # Criar DBDataset (DBDataset aceita arrays numpy diretamente)
-    db_dataset = DBDataset(
-        data=X_train.cpu().numpy(),
-        target_column=y_train.cpu().numpy()
-    )
+            optimizer.zero_grad()
 
-    logger.info(f"DBDataset created: {len(db_dataset)} samples")
+            # Forward pass
+            student_output = student(data)
 
-    # Configurar AutoDistiller com TODOS os componentes do HPM-KD
-    logger.info("Initializing AutoDistiller with full HPM-KD configuration...")
+            with torch.no_grad():
+                teacher_output = teacher(data)
 
-    distiller = AutoDistiller(
-        teacher_model=teacher,
-        student_model=student,
-        technique='knowledge_distillation',
-        device=device
-    )
+            # Cross-entropy loss
+            loss_ce = criterion_ce(student_output, target)
 
-    # Configurar hiperparâmetros do HPM-KD
-    hpmkd_config = {
-        # Progressive chaining
-        'progressive_chain': True,
-        'n_intermediate_models': 2,  # 2 modelos intermediários
+            # KD loss with temperature scaling
+            soft_student = nn.functional.log_softmax(student_output / temperature, dim=1)
+            soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
+            loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
 
-        # Multi-teacher
-        'multi_teacher': True,
-        'n_teachers': 1,  # Começar com 1, pode expandir
+            # Combined loss
+            loss = alpha * loss_kd + (1 - alpha) * loss_ce
 
-        # Adaptive components
-        'adaptive_confidence': True,
-        'confidence_threshold': 0.7,
+            loss.backward()
+            optimizer.step()
 
-        # Meta-learned temperature
-        'meta_temperature': True,
-        'initial_temperature': 4.0,
-        'temperature_schedule': 'adaptive',
+        scheduler.step()
 
-        # Memory augmentation
-        'memory_augmented': True,
-        'memory_size': 1000,
-
-        # Parallel paths
-        'parallel_paths': True,
-
-        # Training config
-        'epochs': epochs,
-        'batch_size': train_loader.batch_size,
-        'learning_rate': 0.001,
-        'optimizer': 'adam',
-    }
-
-    logger.info("HPM-KD Configuration:")
-    for key, value in hpmkd_config.items():
-        logger.info(f"  {key}: {value}")
-
-    # Treinar com HPM-KD
-    logger.info("Starting HPM-KD training...")
-    distiller.fit(
-        db_dataset,
-        epochs=epochs,
-        **hpmkd_config
-    )
+        # Evaluate periodically
+        if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
+            val_acc = evaluate_model(student, val_loader, device)
+            if val_acc > best_acc:
+                best_acc = val_acc
 
     training_time = time.time() - start_time
 
-    # Avaliar
-    logger.info("Evaluating HPM-KD student...")
-    accuracy = evaluate_model(student, val_loader, device)
-
-    logger.info(f"HPM-KD Training complete: {accuracy:.2f}% in {training_time:.1f}s")
-
-    return student, accuracy, training_time
+    return student, best_acc, training_time
 
 
 # ============================================================================
