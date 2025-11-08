@@ -1,8 +1,22 @@
 ╔═══════════════════════════════════════════════════════════════════════════╗
 ║                                                                           ║
 ║          🚀 COMO EXECUTAR TODOS OS EXPERIMENTOS NO GOOGLE COLAB 🚀       ║
+║                     ✅ RESULTADOS SALVOS NO GOOGLE DRIVE!                ║
 ║                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ ⚡ EXECUÇÃO SUPER SIMPLES - 1 COMANDO ÚNICO!                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+!python RUN_COLAB.py
+
+✅ O script irá AUTOMATICAMENTE:
+   1. Montar o Google Drive
+   2. Executar os 4 experimentos
+   3. Salvar TUDO no Google Drive (persistente!)
+   4. Gerar relatório consolidado
+
 
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ PASSO 1: FAZER UPLOAD DOS SCRIPTS                                        │
@@ -35,7 +49,11 @@ OPÇÃO MAIS SIMPLES (RECOMENDADA):
 
 !python RUN_COLAB.py
 
-Isso executa TODOS os 4 experimentos em modo rápido (~3-4 horas)
+📁 Isso irá:
+✅ Montar o Google Drive automaticamente (você precisará autorizar)
+✅ Executar TODOS os 4 experimentos em modo rápido (~3-4 horas)
+✅ Salvar TUDO em: /content/drive/MyDrive/HPM-KD_Results/
+✅ Resultados PERSISTENTES - não serão perdidos ao fechar o Colab!
 
 
 OPÇÕES CUSTOMIZADAS:
@@ -55,37 +73,86 @@ OPÇÕES AVANÇADAS:
 ━━━━━━━━━━━━━━━━
 
 # Executar apenas experimentos específicos
-!python run_all_experiments.py --mode quick --only 1 2 --dataset MNIST
+!python run_all_experiments.py --mode quick --only 1 2 --dataset MNIST --output /content/drive/MyDrive/HPM-KD_Results/my_results
 
 # Pular experimentos
-!python run_all_experiments.py --mode quick --skip 4 --dataset MNIST
-
-# Forçar GPU específica
-!python run_all_experiments.py --mode quick --dataset MNIST --gpu 0
+!python run_all_experiments.py --mode quick --skip 4 --dataset MNIST --output /content/drive/MyDrive/HPM-KD_Results/my_results
 
 
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ PASSO 4: VERIFICAR RESULTADOS                                            │
+│ 💾 ONDE OS RESULTADOS SÃO SALVOS?                                        │
 └───────────────────────────────────────────────────────────────────────────┘
 
-Após a execução, você terá uma pasta:
+✅ GOOGLE DRIVE (PERSISTENTE - RECOMENDADO):
 
-results_quick_YYYYMMDD_HHMMSS/
-├── RELATORIO_FINAL.md          ← LEIA ESTE PRIMEIRO!
-├── results.json
-├── run_all_experiments.log
-├── exp_01_compression_efficiency/
-├── exp_02_ablation_studies/
-├── exp_03_generalization/
-└── exp_04_computational_efficiency/
+Pasta no Drive:
+  /content/drive/MyDrive/HPM-KD_Results/results_YYYYMMDD_HHMMSS/
+
+Estrutura:
+  HPM-KD_Results/
+  └── results_quick_20251108_095037/
+      ├── RELATORIO_FINAL.md          ← LEIA ESTE PRIMEIRO!
+      ├── results.json
+      ├── run_all_experiments.log
+      ├── exp_01_compression_efficiency/
+      │   ├── results/ (CSVs)
+      │   ├── figures/ (PNGs)
+      │   ├── models/ (.pth)
+      │   └── report.md
+      ├── exp_02_ablation_studies/
+      ├── exp_03_generalization/
+      └── exp_04_computational_efficiency/
+
+💡 Acesse depois pelo seu Google Drive normalmente!
+   Navegue até: Meu Drive > HPM-KD_Results
 
 
-Para baixar os resultados:
+┌───────────────────────────────────────────────────────────────────────────┐
+│ PASSO 4: ACOMPANHAR PROGRESSO                                            │
+└───────────────────────────────────────────────────────────────────────────┘
 
-# No Colab, use:
-from google.colab import files
-!zip -r results.zip results_quick_*/
-files.download('results.zip')
+O script mostra progresso em tempo real:
+
+  ================================================================================
+                      EXECUÇÃO DE TODOS OS EXPERIMENTOS HPM-KD
+  ================================================================================
+
+  ⏱️  Tempo estimado total: 240 minutos (~4.0 horas)
+  📅 Previsão de término: 14:30:00
+
+  ================================================================================
+  PROGRESSO: 1/4
+  ================================================================================
+
+  Experimento 1: Compression Efficiency (RQ1)
+  [Logs em tempo real...]
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ PASSO 5: ACESSAR RESULTADOS                                              │
+└───────────────────────────────────────────────────────────────────────────┘
+
+Após a execução:
+
+1. PELO GOOGLE DRIVE WEB:
+   - Abra drive.google.com
+   - Navegue até: Meu Drive > HPM-KD_Results
+   - Baixe a pasta completa ou arquivos individuais
+
+2. PELO COLAB:
+   # Navegar até a pasta
+   %cd /content/drive/MyDrive/HPM-KD_Results/
+
+   # Listar resultados
+   !ls -lh
+
+   # Ver relatório final
+   !cat results_quick_*/RELATORIO_FINAL.md
+
+3. BAIXAR TUDO (OPCIONAL):
+   !zip -r hpmkd_results.zip /content/drive/MyDrive/HPM-KD_Results/
+   from google.colab import files
+   files.download('hpmkd_results.zip')
 
 
 ┌───────────────────────────────────────────────────────────────────────────┐
@@ -119,6 +186,22 @@ Para resultados do paper:
 
 
 ┌───────────────────────────────────────────────────────────────────────────┐
+│ ⚠️ IMPORTANTE: GOOGLE DRIVE                                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+✅ VANTAGENS de salvar no Drive:
+   - Resultados PERSISTENTES (não perdem ao fechar Colab)
+   - Acesso de qualquer lugar
+   - Backup automático
+   - Sem limite de tempo de sessão
+
+❌ Se NÃO usar Drive:
+   - Resultados salvos em /content/ (TEMPORÁRIO)
+   - PERDIDOS ao fechar o Colab
+   - Precisa baixar manualmente antes de fechar
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
 │ TROUBLESHOOTING                                                           │
 └───────────────────────────────────────────────────────────────────────────┘
 
@@ -134,6 +217,14 @@ Para resultados do paper:
 ❌ Scripts muito lentos
    → Solução: Verifique se GPU está ativa (Runtime > Change runtime type > GPU)
 
+❌ "Permission denied" no Drive
+   → Solução: Autorize o acesso quando solicitado
+   → Ou monte manualmente: from google.colab import drive; drive.mount('/content/drive')
+
+❌ Espaço insuficiente no Drive
+   → Solução: Libere espaço (cada experimento usa ~500MB-2GB)
+   → Ou salve localmente e baixe: !python RUN_COLAB.py (sem montar Drive)
+
 
 ┌───────────────────────────────────────────────────────────────────────────┐
 │ EXEMPLO COMPLETO NO COLAB                                                 │
@@ -145,13 +236,26 @@ Para resultados do paper:
 # Célula 2: Upload scripts ou clone repo
 # (faça upload manual dos arquivos .py)
 
-# Célula 3: Executar
+# Célula 3: Executar (Drive será montado automaticamente)
 !python RUN_COLAB.py
 
-# Célula 4: Download resultados
-!zip -r results.zip results_quick_*/
-from google.colab import files
-files.download('results.zip')
+# Célula 4: Verificar resultados
+%cd /content/drive/MyDrive/HPM-KD_Results/
+!ls -lh
+
+# Célula 5: Ler relatório final
+!cat results_*/RELATORIO_FINAL.md
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 💡 DICAS PRO                                                               │
+└───────────────────────────────────────────────────────────────────────────┘
+
+1. Use Colab Pro para execuções longas (evita timeouts)
+2. Salve sempre no Drive para não perder resultados
+3. Execute em modo quick primeiro para testar
+4. Use GPU sempre que possível (muito mais rápido)
+5. Monitore o espaço no Drive (cada execução usa ~2GB)
 
 
 ┌───────────────────────────────────────────────────────────────────────────┐
@@ -159,5 +263,6 @@ files.download('results.zip')
 └───────────────────────────────────────────────────────────────────────────┘
 
 Leia: README_EXECUCAO.md (documentação completa)
+Ou: CORRECOES_APLICADAS.md (últimas correções)
 
 Boa sorte! 🚀
