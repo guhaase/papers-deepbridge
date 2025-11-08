@@ -133,7 +133,7 @@ def main():
 
     # Set output directory
     output_dir = get_output_dir(mode, use_drive)
-    cmd.extend(['--output', output_dir])
+    cmd.extend(['--output-dir', output_dir])
     print()
 
     # Check for GPU (Colab usually has GPU)
