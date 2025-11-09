@@ -209,10 +209,11 @@ def run_experiment(exp: Dict, args: argparse.Namespace,
 
         # Stream output
         log_file = exp_output / f"{exp['script'].replace('.py', '')}.log"
-        with open(log_file, 'w') as f:
+        with open(log_file, 'w', buffering=1) as f:  # Line buffered
             for line in process.stdout:
                 print(line, end='')
                 f.write(line)
+                f.flush()  # Force write to disk immediately
 
         process.wait()
 
