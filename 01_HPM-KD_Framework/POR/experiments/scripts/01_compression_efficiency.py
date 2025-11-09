@@ -235,8 +235,9 @@ def load_dataset(name: str, n_samples: Optional[int] = None,
         indices = list(torch.randperm(len(train_dataset))[:n_samples].numpy())
         train_dataset = Subset(train_dataset, indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    # Use num_workers=0 for Google Colab to avoid deadlocks when running as subprocess
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, test_loader, num_classes, input_channels
 

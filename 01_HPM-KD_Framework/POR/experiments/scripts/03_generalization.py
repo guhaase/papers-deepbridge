@@ -536,9 +536,9 @@ def experiment_10_class_imbalance(teacher: nn.Module, train_dataset: Dataset,
     # Baseline (balanced)
     logger.info("\nBaseline: Balanced dataset")
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
-                              shuffle=True, num_workers=2)
+                              shuffle=True, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=config['batch_size'],
-                            shuffle=False, num_workers=2)
+                            shuffle=False, num_workers=0)
 
     baseline_accs = []
     for run in range(config['n_runs']):
@@ -569,7 +569,7 @@ def experiment_10_class_imbalance(teacher: nn.Module, train_dataset: Dataset,
         # Create imbalanced dataset
         imbalanced_train = ImbalancedDataset(train_dataset, imbalance_ratio=ratio)
         train_loader = DataLoader(imbalanced_train, batch_size=config['batch_size'],
-                                  shuffle=True, num_workers=2)
+                                  shuffle=True, num_workers=0)
 
         # Test HPM-KD
         logger.info("  Testing HPM-KD...")
@@ -638,12 +638,12 @@ def experiment_11_label_noise(teacher: nn.Module, train_dataset: Dataset,
     results = []
 
     test_loader = DataLoader(test_dataset, batch_size=config['batch_size'],
-                            shuffle=False, num_workers=2)
+                            shuffle=False, num_workers=0)
 
     # Baseline (no noise)
     logger.info("\nBaseline: No noise")
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
-                              shuffle=True, num_workers=2)
+                              shuffle=True, num_workers=0)
 
     baseline_accs = []
     for run in range(config['n_runs']):
@@ -675,7 +675,7 @@ def experiment_11_label_noise(teacher: nn.Module, train_dataset: Dataset,
         noisy_train = NoisyLabelDataset(train_dataset, noise_rate=noise_rate,
                                        num_classes=num_classes)
         train_loader = DataLoader(noisy_train, batch_size=config['batch_size'],
-                                  shuffle=True, num_workers=2)
+                                  shuffle=True, num_workers=0)
 
         # Test HPM-KD
         logger.info("  Testing HPM-KD...")
@@ -743,7 +743,7 @@ def experiment_13_representation_visualization(teacher: nn.Module,
     logger.info("="*60)
 
     test_loader = DataLoader(test_dataset, batch_size=config['batch_size'],
-                            shuffle=False, num_workers=2)
+                            shuffle=False, num_workers=0)
 
     results = {}
 
@@ -1141,9 +1141,9 @@ def main():
 
     logger.info("\nTraining Teacher...")
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
-                             shuffle=True, num_workers=2)
+                             shuffle=True, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=config['batch_size'],
-                            shuffle=False, num_workers=2)
+                            shuffle=False, num_workers=0)
 
     teacher, teacher_acc = train_teacher(teacher, train_loader, test_loader,
                                         config['epochs_teacher'], device)

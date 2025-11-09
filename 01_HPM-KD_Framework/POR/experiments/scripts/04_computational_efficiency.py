@@ -303,8 +303,9 @@ def load_dataset(name: str, n_samples: Optional[int] = None,
         indices = torch.randperm(len(train_dataset))[:n_samples]
         train_dataset = Subset(train_dataset, indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    # Use num_workers=0 for Google Colab to avoid deadlocks when running as subprocess
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, test_loader, num_classes, input_channels
 
@@ -1150,7 +1151,7 @@ def main():
             'epochs_student_parallel': 2,
             'batch_size': 128,
             'latency_batch_sizes': [1, 32, 128],
-            'parallel_workers': [1, 2, 4],
+            'parallel_workers': [0],  # Use 0 for Colab to avoid subprocess deadlocks
             'device': str(device)
         }
     else:
@@ -1164,7 +1165,7 @@ def main():
             'epochs_student_parallel': 10,
             'batch_size': 256,
             'latency_batch_sizes': [1, 8, 32, 64, 128],
-            'parallel_workers': [1, 2, 4, 8],
+            'parallel_workers': [0],  # Use 0 for Colab to avoid subprocess deadlocks
             'device': str(device)
         }
 

@@ -220,8 +220,9 @@ def load_dataset(name: str, n_samples: Optional[int] = None,
         indices = torch.randperm(len(train_dataset))[:n_samples]
         train_dataset = Subset(train_dataset, indices)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
+    # Use num_workers=0 for Google Colab to avoid deadlocks when running as subprocess
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, test_loader, num_classes, input_channels
 
@@ -253,7 +254,10 @@ def train_teacher(model: nn.Module, train_loader: DataLoader, val_loader: DataLo
 
     best_acc = 0.0
 
-    for epoch in tqdm(range(epochs), desc="Training Teacher"):
+    # Disable tqdm when running in subprocess (e.g., via run_all_experiments.py)
+    disable_tqdm = not sys.stdout.isatty()
+
+    for epoch in tqdm(range(epochs), desc="Training Teacher", disable=disable_tqdm):
         model.train()
         train_loss = 0.0
 
@@ -275,6 +279,8 @@ def train_teacher(model: nn.Module, train_loader: DataLoader, val_loader: DataLo
             val_acc = evaluate_model(model, val_loader, device)
             if val_acc > best_acc:
                 best_acc = val_acc
+            if not disable_tqdm:
+                logger.info(f"Epoch {epoch+1}/{epochs}: Val Acc = {val_acc:.2f}%")
 
     return model, best_acc
 
