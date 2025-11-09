@@ -54,20 +54,9 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-# DeepBridge imports - REQUIRED (no fallback)
-try:
-    from deepbridge.distillation.techniques.knowledge_distillation import KnowledgeDistillation
-    from deepbridge.core.db_data import DBDataset
-    from deepbridge.distillation.auto_distiller import AutoDistiller
-except ImportError as e:
-    print(f"\n❌ ERRO FATAL: DeepBridge library não está disponível!")
-    print(f"   Detalhes: {e}")
-    print(f"\n   Para instalar DeepBridge:")
-    print(f"   pip install deepbridge")
-    print(f"\n   Ou clone o repositório:")
-    print(f"   git clone https://github.com/seu-usuario/deepbridge.git")
-    print(f"   cd deepbridge && pip install -e .\n")
-    raise SystemExit(1)
+# NOTE: DeepBridge imports removed - not needed for CNN experiments
+# This script uses pure PyTorch implementation for CNNs
+# (DBDataset/AutoDistiller are for tabular data only)
 
 warnings.filterwarnings('ignore')
 
