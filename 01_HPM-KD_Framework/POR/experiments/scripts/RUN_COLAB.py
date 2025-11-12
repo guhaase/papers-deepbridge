@@ -20,6 +20,18 @@ USO RÁPIDO NO COLAB:
 # Múltiplos datasets (apenas Exp 1)
 !python RUN_COLAB.py --datasets MNIST CIFAR10
 
+🔄 RETOMAR EXECUÇÃO (SE O COLAB DESCONECTAR):
+---------------------------------------------
+
+# Retomar automaticamente de onde parou
+!python RUN_COLAB.py --resume --output /content/drive/MyDrive/HPM-KD_Results/results_quick_YYYYMMDD_HHMMSS
+
+# Começar de um experimento específico (ex: experimento 3)
+!python RUN_COLAB.py --start-from 3 --output /content/drive/MyDrive/HPM-KD_Results/results_quick_YYYYMMDD_HHMMSS
+
+# Executar apenas experimentos específicos
+!python RUN_COLAB.py --only 2 3 4
+
 DATASETS DISPONÍVEIS:
 - MNIST (padrão, rápido)
 - FashionMNIST
@@ -31,6 +43,8 @@ O QUE FAZ:
 - ✅ Usa DeepBridge HPM-KD completo
 - ✅ Monta Google Drive automaticamente
 - ✅ Salva resultados NO GOOGLE DRIVE (persistente!)
+- ✅ Sistema de checkpoint automático após cada experimento
+- ✅ Retoma de onde parou se o Colab desconectar
 - ✅ Gera relatório final consolidado
 - ✅ Mostra progresso em tempo real
 
@@ -38,6 +52,7 @@ RESULTADOS SALVOS NO DRIVE:
 - Pasta: /content/drive/MyDrive/HPM-KD_Results/results_YYYYMMDD_HHMMSS/
 - Relatório: RELATORIO_FINAL.md
 - Logs: run_all_experiments.log
+- Checkpoint: checkpoint.json (para retomar)
 - Modelos, figuras e dados salvos permanentemente!
 """
 
@@ -74,8 +89,40 @@ def mount_google_drive():
         return False
 
 
-def get_output_dir(mode: str, use_drive: bool) -> str:
+def find_latest_checkpoint(use_drive: bool) -> tuple:
+    """Find the latest checkpoint directory"""
+    if use_drive:
+        base_path = Path('/content/drive/MyDrive/HPM-KD_Results')
+    else:
+        base_path = Path('/content')
+
+    if not base_path.exists():
+        return None, None
+
+    # Find all result directories
+    result_dirs = sorted(base_path.glob('results_*'), key=lambda p: p.stat().st_mtime, reverse=True)
+
+    for result_dir in result_dirs:
+        checkpoint_file = result_dir / 'checkpoint.json'
+        if checkpoint_file.exists():
+            return result_dir, checkpoint_file
+
+    return None, None
+
+
+def get_output_dir(mode: str, use_drive: bool, resume: bool = False) -> str:
     """Define o diretório de saída"""
+
+    # Check for existing checkpoint
+    latest_dir, checkpoint_file = find_latest_checkpoint(use_drive)
+
+    if resume and latest_dir:
+        print(f"♻️  RETOMANDO EXECUÇÃO ANTERIOR:")
+        print(f"   {latest_dir}")
+        print(f"   Checkpoint: {checkpoint_file}")
+        return str(latest_dir)
+
+    # Create new directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dirname = f"results_{mode}_{timestamp}"
 
@@ -100,6 +147,16 @@ def get_output_dir(mode: str, use_drive: bool) -> str:
     return str(output_dir)
 
 
+def load_checkpoint_info(checkpoint_path):
+    """Load checkpoint info"""
+    import json
+    try:
+        with open(checkpoint_path, 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+
 def main():
     # Parse simple arguments
     args = sys.argv[1:]
@@ -113,28 +170,81 @@ def main():
     # Default mode: quick
     mode = 'quick'
 
+    # Check for resume flag
+    resume = '--resume' in args
+    if resume:
+        args.remove('--resume')
+
     # Parse arguments
     if '--full' in args:
         mode = 'full'
         args.remove('--full')
 
-    cmd.extend(['--mode', mode])
-
-    # Print banner
-    print("="*80)
-    print("🚀 EXECUTANDO TODOS OS EXPERIMENTOS HPM-KD".center(80))
-    print("="*80)
-    print(f"\nModo: {mode.upper()}")
-    print()
-
-    # Mount Google Drive
+    # Mount Google Drive first (needed to check checkpoints)
     use_drive = mount_google_drive()
     print()
 
+    # Check for existing checkpoint
+    checkpoint_info = None
+    if resume or ('--output' not in ' '.join(args)):
+        latest_dir, checkpoint_file = find_latest_checkpoint(use_drive)
+        if checkpoint_file:
+            checkpoint_info = load_checkpoint_info(checkpoint_file)
+
+    # If resuming, restore mode from checkpoint
+    if resume and checkpoint_info:
+        if 'mode' in checkpoint_info and checkpoint_info['mode']:
+            mode = checkpoint_info['mode']
+            print(f"♻️  Modo restaurado do checkpoint: {mode.upper()}")
+
+    # Only add --mode if NOT resuming (let run_all_experiments.py restore it)
+    if not resume:
+        cmd.extend(['--mode', mode])
+
+    # Print banner
+    print("="*80)
+    if resume:
+        print("♻️  RETOMANDO EXPERIMENTOS HPM-KD".center(80))
+    else:
+        print("🚀 EXECUTANDO TODOS OS EXPERIMENTOS HPM-KD".center(80))
+    print("="*80)
+    print(f"\nModo: {mode.upper()}")
+    if resume:
+        print("Retomando: SIM ♻️")
+        if checkpoint_info:
+            if 'datasets' in checkpoint_info:
+                print(f"Datasets: {', '.join(checkpoint_info.get('datasets', []))}")
+            if 'completed_experiments' in checkpoint_info:
+                print(f"Experimentos concluídos: {checkpoint_info['completed_experiments']}")
+    print()
+
+    # Check for existing checkpoint and suggest resume
+    if not resume and '--output' not in ' '.join(args):
+        latest_dir, checkpoint_file = find_latest_checkpoint(use_drive)
+        if latest_dir:
+            print("="*80)
+            print("💡 CHECKPOINT DETECTADO!")
+            print("="*80)
+            print(f"\nEncontrado checkpoint de execução anterior em:")
+            print(f"   {latest_dir}")
+            if checkpoint_info:
+                print(f"   Modo: {checkpoint_info.get('mode', 'unknown').upper()}")
+                print(f"   Concluídos: {checkpoint_info.get('completed_experiments', [])}")
+            print()
+            print("Para RETOMAR de onde parou, execute:")
+            print(f"   !python RUN_COLAB.py --resume")
+            print()
+            print("="*80)
+            print()
+
     # Set output directory
-    output_dir = get_output_dir(mode, use_drive)
+    output_dir = get_output_dir(mode, use_drive, resume)
     cmd.extend(['--output', output_dir])
     print()
+
+    # Add resume flag if needed
+    if resume:
+        cmd.append('--resume')
 
     # Check for GPU (Colab usually has GPU)
     try:

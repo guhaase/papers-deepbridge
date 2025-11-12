@@ -76,6 +76,65 @@ if torch.cuda.is_available():
 
 
 # ============================================================================
+# Checkpoint Utilities for Granular Resume
+# ============================================================================
+
+def get_model_checkpoint_path(output_dir: Path, dataset: str, model_type: str,
+                               experiment: str = None, config_id: str = None) -> Path:
+    """Generate checkpoint path for a model."""
+    models_dir = output_dir / 'models'
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    if model_type == 'teacher':
+        return models_dir / f"teacher_{dataset}.pt"
+    else:
+        return models_dir / f"student_{dataset}_{experiment}_{config_id}.pt"
+
+
+def save_model_checkpoint(model: nn.Module, checkpoint_path: Path,
+                          accuracy: float, train_time: float, metadata: Dict = None):
+    """Save model checkpoint with metadata."""
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'accuracy': accuracy,
+        'train_time': train_time,
+        'timestamp': datetime.now().isoformat(),
+        'metadata': metadata or {}
+    }
+
+    temp_path = checkpoint_path.with_suffix('.tmp')
+    torch.save(checkpoint, temp_path)
+    temp_path.replace(checkpoint_path)
+
+    logger.info(f"💾 Checkpoint saved: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+
+def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> Tuple[nn.Module, float, float]:
+    """Load model from checkpoint."""
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    accuracy = checkpoint['accuracy']
+    train_time = checkpoint['train_time']
+
+    logger.info(f"✅ Loaded checkpoint: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+    return model, accuracy, train_time
+
+
+def model_checkpoint_exists(checkpoint_path: Path) -> bool:
+    """Check if model checkpoint exists and is valid."""
+    if not checkpoint_path.exists():
+        return False
+
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        return 'model_state_dict' in checkpoint and 'accuracy' in checkpoint
+    except Exception as e:
+        logger.warning(f"⚠️ Checkpoint corrupted: {checkpoint_path.name} - {e}")
+        return False
+
+
+# ============================================================================
 # Model Architectures
 # ============================================================================
 

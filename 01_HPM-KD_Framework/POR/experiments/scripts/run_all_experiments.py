@@ -349,6 +349,73 @@ def save_results_json(results: List[Dict], output_dir: Path):
     return json_path
 
 
+def save_checkpoint(results: List[Dict], output_dir: Path, current_exp_id: int,
+                    mode: str = None, datasets: List[str] = None, gpu: int = None):
+    """Save checkpoint after each experiment"""
+    checkpoint_path = output_dir / 'checkpoint.json'
+
+    checkpoint_data = {
+        'timestamp': datetime.now().isoformat(),
+        'last_completed_experiment': current_exp_id,
+        'completed_experiments': [r['experiment_id'] for r in results if r['status'] == 'success'],
+        'failed_experiments': [r['experiment_id'] for r in results if r['status'] != 'success'],
+        'results': results,
+        # Save execution parameters
+        'mode': mode,
+        'datasets': datasets,
+        'gpu': gpu,
+    }
+
+    # Atomic write (write to temp file then rename)
+    temp_path = checkpoint_path.with_suffix('.tmp')
+    with open(temp_path, 'w') as f:
+        json.dump(checkpoint_data, f, indent=2)
+
+    temp_path.replace(checkpoint_path)
+
+    return checkpoint_path
+
+
+def load_checkpoint(output_dir: Path) -> Optional[Dict]:
+    """Load checkpoint if exists"""
+    checkpoint_path = output_dir / 'checkpoint.json'
+
+    if not checkpoint_path.exists():
+        return None
+
+    try:
+        with open(checkpoint_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"⚠️  Erro ao carregar checkpoint: {e}")
+        return None
+
+
+def is_experiment_completed(exp_id: int, output_dir: Path) -> bool:
+    """Check if an experiment was already completed successfully"""
+
+    # Check checkpoint first
+    checkpoint = load_checkpoint(output_dir)
+    if checkpoint:
+        if exp_id in checkpoint.get('completed_experiments', []):
+            return True
+
+    # Also check if output directory has results
+    exp_dirs = list(output_dir.glob(f"exp_{exp_id:02d}_*"))
+    if not exp_dirs:
+        return False
+
+    exp_dir = exp_dirs[0]
+
+    # Check for result files that indicate completion
+    indicators = [
+        exp_dir / 'results' / 'summary.json',
+        exp_dir / 'report.md',
+    ]
+
+    return any(indicator.exists() for indicator in indicators)
+
+
 # ============================================================================
 # Main Function
 # ============================================================================
@@ -381,6 +448,12 @@ def main():
 
     parser.add_argument('--only', type=int, nargs='+', default=[],
                         help='Executar apenas experimentos específicos (ex: --only 1 2)')
+
+    parser.add_argument('--resume', action='store_true',
+                        help='Retomar execução anterior do mesmo diretório de saída')
+
+    parser.add_argument('--start-from', type=int, default=None,
+                        help='Começar a partir do experimento N (ex: --start-from 3)')
 
     args = parser.parse_args()
 
@@ -433,10 +506,58 @@ def main():
         experiments_to_run = [exp for exp in experiments_to_run if exp['id'] not in args.skip]
         logger.info(f"Pulando experimentos: {args.skip}")
 
+    # Load checkpoint if resuming
+    checkpoint = None
+    if args.resume:
+        checkpoint = load_checkpoint(output_dir)
+        if checkpoint:
+            logger.info(f"✅ Checkpoint encontrado!")
+            logger.info(f"   Última execução: {checkpoint['timestamp']}")
+            logger.info(f"   Experimentos concluídos: {checkpoint['completed_experiments']}")
+            if checkpoint['failed_experiments']:
+                logger.info(f"   Experimentos falhados: {checkpoint['failed_experiments']}")
+
+            # Restore execution parameters from checkpoint
+            if 'mode' in checkpoint and checkpoint['mode']:
+                args.mode = checkpoint['mode']
+                logger.info(f"   Modo restaurado: {args.mode}")
+
+            if 'datasets' in checkpoint and checkpoint['datasets']:
+                args.datasets = checkpoint['datasets']
+                logger.info(f"   Datasets restaurados: {', '.join(args.datasets)}")
+
+            if 'gpu' in checkpoint and checkpoint['gpu'] is not None:
+                args.gpu = checkpoint['gpu']
+                logger.info(f"   GPU restaurada: {args.gpu}")
+        else:
+            logger.warning("⚠️  --resume especificado mas nenhum checkpoint encontrado")
+
+    # Filter experiments based on checkpoint and start-from
+    if checkpoint and args.resume:
+        # Skip already completed experiments
+        completed = set(checkpoint.get('completed_experiments', []))
+        experiments_to_run = [exp for exp in experiments_to_run if exp['id'] not in completed]
+
+        if not experiments_to_run:
+            logger.info("\n✅ Todos os experimentos já foram concluídos!")
+            logger.info(f"📊 Veja o relatório em: {output_dir / 'RELATORIO_FINAL.md'}")
+            sys.exit(0)
+
+        logger.info(f"\n♻️  Retomando execução - {len(experiments_to_run)} experimentos restantes")
+
+    if args.start_from:
+        experiments_to_run = [exp for exp in experiments_to_run if exp['id'] >= args.start_from]
+        logger.info(f"▶️  Começando a partir do experimento {args.start_from}")
+
     logger.info(f"\nTotal de experimentos a executar: {len(experiments_to_run)}\n")
 
-    # Run experiments
+    # Load previous results if resuming
     results = []
+    if checkpoint and args.resume:
+        results = checkpoint.get('results', [])
+        logger.info(f"📋 Carregados {len(results)} resultados anteriores\n")
+
+    # Run experiments
     overall_start = time.time()
 
     for i, exp in enumerate(experiments_to_run, 1):
@@ -444,8 +565,24 @@ def main():
         logger.info(f"PROGRESSO: {i}/{len(experiments_to_run)}")
         logger.info(f"{'='*80}\n")
 
+        # Double-check if experiment is completed (safety check)
+        if is_experiment_completed(exp['id'], output_dir):
+            logger.info(f"⏭️  Experimento {exp['id']} já foi concluído. Pulando...")
+            continue
+
         result = run_experiment(exp, args, output_dir, logger)
         results.append(result)
+
+        # Save checkpoint after each experiment
+        logger.info(f"\n💾 Salvando checkpoint...")
+        checkpoint_path = save_checkpoint(
+            results, output_dir, exp['id'],
+            mode=args.mode,
+            datasets=args.datasets,
+            gpu=args.gpu
+        )
+        logger.info(f"✅ Checkpoint salvo em: {checkpoint_path}")
+        logger.info(f"   Você pode retomar com: --resume --output {output_dir}")
 
         # Break on critical failure (optional)
         # if result['status'] != 'success':

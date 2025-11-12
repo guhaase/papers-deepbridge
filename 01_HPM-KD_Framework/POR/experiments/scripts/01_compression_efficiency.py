@@ -79,6 +79,97 @@ BASELINES = [
 
 
 # ============================================================================
+# Checkpoint Utilities for Granular Resume
+# ============================================================================
+
+def get_model_checkpoint_path(output_dir: Path, dataset: str, model_type: str,
+                               baseline: str = None, run: int = None) -> Path:
+    """
+    Generate checkpoint path for a model.
+
+    Args:
+        output_dir: Output directory
+        dataset: Dataset name (MNIST, CIFAR10, etc.)
+        model_type: 'teacher' or 'student'
+        baseline: Baseline name (for student models)
+        run: Run number (for student models)
+
+    Returns:
+        Path to checkpoint file
+    """
+    models_dir = output_dir / 'models'
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    if model_type == 'teacher':
+        return models_dir / f"teacher_{dataset}.pt"
+    else:
+        return models_dir / f"student_{dataset}_{baseline}_run{run}.pt"
+
+
+def save_model_checkpoint(model: nn.Module, checkpoint_path: Path,
+                          accuracy: float, train_time: float, metadata: Dict = None):
+    """
+    Save model checkpoint with metadata.
+
+    Args:
+        model: PyTorch model
+        checkpoint_path: Path to save checkpoint
+        accuracy: Model accuracy
+        train_time: Training time in seconds
+        metadata: Additional metadata
+    """
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'accuracy': accuracy,
+        'train_time': train_time,
+        'timestamp': datetime.now().isoformat(),
+        'metadata': metadata or {}
+    }
+
+    # Atomic save (write to temp then rename)
+    temp_path = checkpoint_path.with_suffix('.tmp')
+    torch.save(checkpoint, temp_path)
+    temp_path.replace(checkpoint_path)
+
+    logger.info(f"💾 Checkpoint saved: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+
+def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> Tuple[nn.Module, float, float]:
+    """
+    Load model from checkpoint.
+
+    Args:
+        model: PyTorch model (architecture)
+        checkpoint_path: Path to checkpoint
+
+    Returns:
+        Tuple of (loaded_model, accuracy, train_time)
+    """
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    accuracy = checkpoint['accuracy']
+    train_time = checkpoint['train_time']
+
+    logger.info(f"✅ Loaded checkpoint: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+    return model, accuracy, train_time
+
+
+def model_checkpoint_exists(checkpoint_path: Path) -> bool:
+    """Check if model checkpoint exists and is valid."""
+    if not checkpoint_path.exists():
+        return False
+
+    try:
+        # Try to load to ensure it's not corrupted
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        return 'model_state_dict' in checkpoint and 'accuracy' in checkpoint
+    except Exception as e:
+        logger.warning(f"⚠️ Checkpoint corrupted: {checkpoint_path.name} - {e}")
+        return False
+
+
+# ============================================================================
 # Model Architectures
 # ============================================================================
 
@@ -602,12 +693,13 @@ def train_hpmkd_deepbridge(student: nn.Module, teacher: nn.Module,
 # ============================================================================
 
 def experiment_baseline_comparison(datasets: List[str], config: Dict,
-                                   device: torch.device) -> pd.DataFrame:
-    """Experimento 1: Baseline Comparison"""
+                                   device: torch.device, output_dir: Path) -> pd.DataFrame:
+    """Experimento 1: Baseline Comparison (with granular checkpointing)"""
     logger.info("="*60)
     logger.info("Experimento 1: Baseline Comparison")
     logger.info("="*60)
     logger.info("✅ Using DeepBridge full HPM-KD implementation")
+    logger.info("✅ Granular checkpointing enabled (resume-friendly)")
 
     results = []
 
@@ -620,12 +712,32 @@ def experiment_baseline_comparison(datasets: List[str], config: Dict,
             dataset_name, config['n_samples'], config['batch_size']
         )
 
-        # Train teacher once
-        logger.info("Training Teacher...")
-        teacher = LeNet5Teacher(num_classes, input_channels)
-        teacher, teacher_acc, teacher_time = train_teacher(
-            teacher, train_loader, test_loader, config['epochs_teacher'], device
+        # Train teacher once (or load from checkpoint)
+        teacher_checkpoint_path = get_model_checkpoint_path(
+            output_dir, dataset_name, 'teacher'
         )
+
+        teacher = LeNet5Teacher(num_classes, input_channels)
+
+        if model_checkpoint_exists(teacher_checkpoint_path):
+            logger.info("⏭️ Teacher checkpoint found - loading...")
+            teacher, teacher_acc, teacher_time = load_model_checkpoint(
+                teacher, teacher_checkpoint_path
+            )
+            teacher = teacher.to(device)
+        else:
+            logger.info("Training Teacher...")
+            teacher, teacher_acc, teacher_time = train_teacher(
+                teacher, train_loader, test_loader, config['epochs_teacher'], device
+            )
+            # Save teacher checkpoint
+            save_model_checkpoint(
+                teacher.cpu(), teacher_checkpoint_path,
+                teacher_acc, teacher_time,
+                metadata={'dataset': dataset_name, 'epochs': config['epochs_teacher']}
+            )
+            teacher = teacher.to(device)
+
         logger.info(f"  Teacher: {teacher_acc:.2f}% in {teacher_time:.1f}s")
 
         # Test each baseline
@@ -638,36 +750,62 @@ def experiment_baseline_comparison(datasets: List[str], config: Dict,
             for run in range(config['n_runs']):
                 logger.info(f"    Run {run+1}/{config['n_runs']}...")
 
+                # Check for student checkpoint
+                student_checkpoint_path = get_model_checkpoint_path(
+                    output_dir, dataset_name, 'student', baseline, run+1
+                )
+
                 student = LeNet5Student(num_classes, input_channels)
 
-                if baseline == 'Direct':
-                    student, acc, train_time = train_direct(
-                        student, train_loader, test_loader, config['epochs_student'], device
+                if model_checkpoint_exists(student_checkpoint_path):
+                    logger.info(f"    ⏭️ Checkpoint found - loading...")
+                    student, acc, train_time = load_model_checkpoint(
+                        student, student_checkpoint_path
                     )
-                elif baseline == 'TraditionalKD':
-                    student, acc, train_time = train_traditional_kd(
-                        student, teacher, train_loader, test_loader, config['epochs_student'], device
+                    student = student.to(device)
+                else:
+                    # Train student
+                    if baseline == 'Direct':
+                        student, acc, train_time = train_direct(
+                            student, train_loader, test_loader, config['epochs_student'], device
+                        )
+                    elif baseline == 'TraditionalKD':
+                        student, acc, train_time = train_traditional_kd(
+                            student, teacher, train_loader, test_loader, config['epochs_student'], device
+                        )
+                    elif baseline == 'FitNets':
+                        student, acc, train_time = train_fitnets(
+                            student, teacher, train_loader, test_loader, config['epochs_student'], device
+                        )
+                    elif baseline == 'AT':
+                        student, acc, train_time = train_attention_transfer(
+                            student, teacher, train_loader, test_loader, config['epochs_student'], device
+                        )
+                    elif baseline == 'TAKD':
+                        student, acc, train_time = train_takd(
+                            student, teacher, train_loader, test_loader, config['epochs_student'], device
+                        )
+                    elif baseline == 'HPM-KD':
+                        student, acc, train_time = train_hpmkd_deepbridge(
+                            student, teacher, train_loader, test_loader, config['epochs_student'], device
+                        )
+
+                    # Save student checkpoint
+                    save_model_checkpoint(
+                        student.cpu(), student_checkpoint_path,
+                        acc, train_time,
+                        metadata={
+                            'dataset': dataset_name,
+                            'baseline': baseline,
+                            'run': run+1,
+                            'epochs': config['epochs_student']
+                        }
                     )
-                elif baseline == 'FitNets':
-                    student, acc, train_time = train_fitnets(
-                        student, teacher, train_loader, test_loader, config['epochs_student'], device
-                    )
-                elif baseline == 'AT':
-                    student, acc, train_time = train_attention_transfer(
-                        student, teacher, train_loader, test_loader, config['epochs_student'], device
-                    )
-                elif baseline == 'TAKD':
-                    student, acc, train_time = train_takd(
-                        student, teacher, train_loader, test_loader, config['epochs_student'], device
-                    )
-                elif baseline == 'HPM-KD':
-                    student, acc, train_time = train_hpmkd_deepbridge(
-                        student, teacher, train_loader, test_loader, config['epochs_student'], device
-                    )
+                    student = student.to(device)
 
                 baseline_accs.append(acc)
                 baseline_times.append(train_time)
-                logger.info(f"{acc:.2f}% in {train_time:.1f}s")
+                logger.info(f"    {acc:.2f}% in {train_time:.1f}s")
 
             mean_acc = np.mean(baseline_accs)
             std_acc = np.std(baseline_accs)
@@ -1018,8 +1156,8 @@ def main():
     plt.style.use('seaborn-v0_8-darkgrid')
     sns.set_palette("husl")
 
-    # Run experiment
-    results_df = experiment_baseline_comparison(config['datasets'], config, device)
+    # Run experiment (with granular checkpointing)
+    results_df = experiment_baseline_comparison(config['datasets'], config, device, output_dir)
 
     # Save results
     results_df.to_csv(str(output_dir / 'results_comparison.csv'), index=False)

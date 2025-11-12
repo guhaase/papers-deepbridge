@@ -87,6 +87,78 @@ COMPONENTS = [
 
 
 # ============================================================================
+# Checkpoint Utilities for Granular Resume
+# ============================================================================
+
+def get_model_checkpoint_path(output_dir: Path, dataset: str, model_type: str,
+                               experiment: str = None, config_id: str = None) -> Path:
+    """
+    Generate checkpoint path for a model.
+
+    Args:
+        output_dir: Output directory
+        dataset: Dataset name (MNIST, CIFAR10, etc.)
+        model_type: 'teacher' or 'student'
+        experiment: Experiment name (e.g., 'exp5_ablation', 'exp6_interactions')
+        config_id: Configuration identifier (e.g., 'no_ProgChain', 'T4_alpha0.5')
+
+    Returns:
+        Path to checkpoint file
+    """
+    models_dir = output_dir / 'models'
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    if model_type == 'teacher':
+        return models_dir / f"teacher_{dataset}.pt"
+    else:
+        return models_dir / f"student_{dataset}_{experiment}_{config_id}.pt"
+
+
+def save_model_checkpoint(model: nn.Module, checkpoint_path: Path,
+                          accuracy: float, train_time: float, metadata: Dict = None):
+    """Save model checkpoint with metadata."""
+    checkpoint = {
+        'model_state_dict': model.state_dict(),
+        'accuracy': accuracy,
+        'train_time': train_time,
+        'timestamp': datetime.now().isoformat(),
+        'metadata': metadata or {}
+    }
+
+    # Atomic save (write to temp then rename)
+    temp_path = checkpoint_path.with_suffix('.tmp')
+    torch.save(checkpoint, temp_path)
+    temp_path.replace(checkpoint_path)
+
+    logger.info(f"💾 Checkpoint saved: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+
+def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> Tuple[nn.Module, float, float]:
+    """Load model from checkpoint."""
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    accuracy = checkpoint['accuracy']
+    train_time = checkpoint['train_time']
+
+    logger.info(f"✅ Loaded checkpoint: {checkpoint_path.name} (acc={accuracy:.2f}%)")
+
+    return model, accuracy, train_time
+
+
+def model_checkpoint_exists(checkpoint_path: Path) -> bool:
+    """Check if model checkpoint exists and is valid."""
+    if not checkpoint_path.exists():
+        return False
+
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        return 'model_state_dict' in checkpoint and 'accuracy' in checkpoint
+    except Exception as e:
+        logger.warning(f"⚠️ Checkpoint corrupted: {checkpoint_path.name} - {e}")
+        return False
+
+
+# ============================================================================
 # Model Architectures
 # ============================================================================
 
@@ -357,8 +429,8 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
 def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader,
                                     test_loader: DataLoader, config: Dict,
                                     device: torch.device, num_classes: int,
-                                    input_channels: int) -> pd.DataFrame:
-    """Experimento 5: Component Ablation"""
+                                    input_channels: int, output_dir: Path) -> pd.DataFrame:
+    """Experimento 5: Component Ablation (with granular checkpointing)"""
     logger.info("="*60)
     logger.info("Experimento 5: Component Ablation")
     logger.info("="*60)
@@ -371,16 +443,32 @@ def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader
 
     for run in range(config['n_runs']):
         logger.info(f"  Run {run+1}/{config['n_runs']}...")
-        student = LeNet5Student(num_classes, input_channels)
-        student, acc = train_hpmkd(
-            student, teacher, train_loader, test_loader,
-            config['epochs_student'], device,
-            disable_components=[],
-            temperature=4.0, alpha=0.5,
-            chain_length=2, n_teachers=1
+
+        # Check for checkpoint
+        checkpoint_path = get_model_checkpoint_path(
+            output_dir, config['dataset'], 'student', 'exp5_ablation', f'full_run{run+1}'
         )
+
+        student = LeNet5Student(num_classes, input_channels)
+
+        if model_checkpoint_exists(checkpoint_path):
+            logger.info(f"  ⏭️ Checkpoint found - loading...")
+            student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+            student = student.to(device)
+        else:
+            student, acc = train_hpmkd(
+                student, teacher, train_loader, test_loader, config['epochs_student'], device
+            )
+
+            # Save checkpoint
+            save_model_checkpoint(
+                student.cpu(), checkpoint_path, acc, 0,  # time=0 for compatibility
+                metadata={'dataset': config['dataset'], 'run': run+1, 'config': 'full'}
+            )
+            student = student.to(device)
+
         full_accs.append(acc)
-        logger.info(f"    {acc:.2f}%")
+        logger.info(f"  {acc:.2f}%")
 
     full_hpmkd_acc = np.mean(full_accs)
     full_hpmkd_std = np.std(full_accs)
@@ -405,16 +493,36 @@ def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader
 
         for run in range(config['n_runs']):
             logger.info(f"  Run {run+1}/{config['n_runs']}...")
-            student = LeNet5Student(num_classes, input_channels)
-            student, acc = train_hpmkd(
-                student, teacher, train_loader, test_loader,
-                config['epochs_student'], device,
-                disable_components=[component],
-                temperature=4.0, alpha=0.5,
-                chain_length=2, n_teachers=1
+
+            # Check for checkpoint
+            checkpoint_path = get_model_checkpoint_path(
+                output_dir, config['dataset'], 'student', 'exp5_ablation', f'no_{component}_run{run+1}'
             )
+
+            student = LeNet5Student(num_classes, input_channels)
+
+            if model_checkpoint_exists(checkpoint_path):
+                logger.info(f"  ⏭️ Checkpoint found - loading...")
+                student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+                student = student.to(device)
+            else:
+                student, acc = train_hpmkd(
+                    student, teacher, train_loader, test_loader,
+                    config['epochs_student'], device,
+                    disable_components=[component],
+                    temperature=4.0, alpha=0.5,
+                    chain_length=2, n_teachers=1
+                )
+
+                # Save checkpoint
+                save_model_checkpoint(
+                    student.cpu(), checkpoint_path, acc, 0,
+                    metadata={'dataset': config['dataset'], 'run': run+1, 'disabled': component}
+                )
+                student = student.to(device)
+
             component_accs.append(acc)
-            logger.info(f"    {acc:.2f}%")
+            logger.info(f"  {acc:.2f}%")
 
         mean_acc = np.mean(component_accs)
         std_acc = np.std(component_accs)
@@ -604,8 +712,9 @@ def experiment_8_progressive_chain_length(teacher: nn.Module, train_loader: Data
 def experiment_9_number_of_teachers(teacher: nn.Module, train_loader: DataLoader,
                                     test_loader: DataLoader, config: Dict,
                                     device: torch.device, num_classes: int,
-                                    input_channels: int) -> pd.DataFrame:
-    """Experimento 9: Number of Teachers"""
+                                    input_channels: int,
+                                    output_dir: Path) -> pd.DataFrame:
+    """Experimento 9: Number of Teachers (checkpointing available, add as needed)"""
     logger.info("="*60)
     logger.info("Experimento 9: Number of Teachers")
     logger.info("="*60)
@@ -1001,23 +1110,37 @@ def main():
     logger.info(f"\nTeacher parameters: {count_parameters(teacher):,}")
     logger.info(f"Student parameters: {count_parameters(LeNet5Student(num_classes, input_channels)):,}")
 
-    # Train teacher
-    logger.info("\nTraining Teacher...")
-    teacher, teacher_acc = train_teacher(teacher, train_loader, test_loader,
-                                        config['epochs_teacher'], device)
-    logger.info(f"Teacher Accuracy: {teacher_acc:.2f}%")
+    # Train teacher (or load from checkpoint)
+    logger.info("✅ Granular checkpointing enabled (resume-friendly)")
+    teacher_checkpoint_path = get_model_checkpoint_path(output_dir, args.dataset, 'teacher')
 
-    # Save teacher
-    teacher_path = output_dir / 'models' / 'teacher.pth'
-    torch.save(teacher.state_dict(), teacher_path)
-    logger.info(f"Saved: {teacher_path}")
+    if model_checkpoint_exists(teacher_checkpoint_path):
+        logger.info("⏭️ Teacher checkpoint found - loading...")
+        teacher, teacher_acc, teacher_time = load_model_checkpoint(teacher, teacher_checkpoint_path)
+        teacher = teacher.to(device)
+    else:
+        logger.info("Training Teacher...")
+        start_time = time.time()
+        teacher, teacher_acc = train_teacher(teacher, train_loader, test_loader,
+                                            config['epochs_teacher'], device)
+        teacher_time = time.time() - start_time
+
+        # Save teacher checkpoint
+        save_model_checkpoint(
+            teacher.cpu(), teacher_checkpoint_path,
+            teacher_acc, teacher_time,
+            metadata={'dataset': args.dataset, 'epochs': config['epochs_teacher']}
+        )
+        teacher = teacher.to(device)
+
+    logger.info(f"Teacher Accuracy: {teacher_acc:.2f}%")
 
     # Run experiments
     results = {}
 
     # Experiment 5: Component Ablation
     ablation_df, full_hpmkd_acc, full_hpmkd_std = experiment_5_component_ablation(
-        teacher, train_loader, test_loader, config, device, num_classes, input_channels
+        teacher, train_loader, test_loader, config, device, num_classes, input_channels, output_dir
     )
     results['ablation_df'] = ablation_df
     results['full_hpmkd_acc'] = full_hpmkd_acc
@@ -1038,7 +1161,7 @@ def main():
     # Experiment 6: Component Interactions
     interaction_df = experiment_6_component_interactions(
         teacher, train_loader, test_loader, config, device,
-        num_classes, input_channels, single_impacts
+        num_classes, input_channels, single_impacts, output_dir
     )
     results['interaction_df'] = interaction_df
     interaction_df.to_csv(output_dir / 'exp06_component_interactions.csv', index=False)
@@ -1046,7 +1169,7 @@ def main():
 
     # Experiment 7: Hyperparameter Sensitivity
     hyperparam_df = experiment_7_hyperparameter_sensitivity(
-        teacher, train_loader, test_loader, config, device, num_classes, input_channels
+        teacher, train_loader, test_loader, config, device, num_classes, input_channels, output_dir
     )
     results['hyperparam_df'] = hyperparam_df
     hyperparam_df.to_csv(output_dir / 'exp07_hyperparameter_sensitivity.csv', index=False)
@@ -1054,7 +1177,7 @@ def main():
 
     # Experiment 8: Progressive Chain Length
     chain_df = experiment_8_progressive_chain_length(
-        teacher, train_loader, test_loader, config, device, num_classes, input_channels
+        teacher, train_loader, test_loader, config, device, num_classes, input_channels, output_dir
     )
     results['chain_df'] = chain_df
     chain_df.to_csv(output_dir / 'exp08_chain_length.csv', index=False)
@@ -1062,7 +1185,7 @@ def main():
 
     # Experiment 9: Number of Teachers
     teachers_df = experiment_9_number_of_teachers(
-        teacher, train_loader, test_loader, config, device, num_classes, input_channels
+        teacher, train_loader, test_loader, config, device, num_classes, input_channels, output_dir
     )
     results['teachers_df'] = teachers_df
     teachers_df.to_csv(output_dir / 'exp09_number_of_teachers.csv', index=False)
