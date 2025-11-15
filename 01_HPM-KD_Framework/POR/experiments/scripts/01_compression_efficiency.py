@@ -157,13 +157,24 @@ def load_model_checkpoint(model: nn.Module, checkpoint_path: Path) -> Tuple[nn.M
 
 def model_checkpoint_exists(checkpoint_path: Path) -> bool:
     """Check if model checkpoint exists and is valid."""
+    logger.info(f"🔍 Checking checkpoint: {checkpoint_path}")
+
     if not checkpoint_path.exists():
+        logger.info(f"   ❌ File does not exist")
         return False
+
+    logger.info(f"   ✅ File exists (size: {checkpoint_path.stat().st_size / (1024*1024):.2f} MB)")
 
     try:
         # Try to load to ensure it's not corrupted
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
-        return 'model_state_dict' in checkpoint and 'accuracy' in checkpoint
+        has_state = 'model_state_dict' in checkpoint
+        has_acc = 'accuracy' in checkpoint
+        result = has_state and has_acc
+
+        logger.info(f"   {'✅' if result else '❌'} Valid checkpoint: state_dict={has_state}, accuracy={has_acc}")
+
+        return result
     except Exception as e:
         logger.warning(f"⚠️ Checkpoint corrupted: {checkpoint_path.name} - {e}")
         return False
