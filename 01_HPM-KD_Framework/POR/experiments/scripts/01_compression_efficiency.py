@@ -776,30 +776,48 @@ def experiment_baseline_comparison(datasets: List[str], config: Dict,
                     student = student.to(device)
                 else:
                     # Train student
+                    logger.info(f"    🔧 Starting training for {baseline}...")
+                    sys.stdout.flush()  # Force flush
+
                     if baseline == 'Direct':
+                        logger.info(f"    📚 Calling train_direct()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_direct(
                             student, train_loader, test_loader, config['epochs_student'], device
                         )
                     elif baseline == 'TraditionalKD':
+                        logger.info(f"    📚 Calling train_traditional_kd()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_traditional_kd(
                             student, teacher, train_loader, test_loader, config['epochs_student'], device
                         )
                     elif baseline == 'FitNets':
+                        logger.info(f"    📚 Calling train_fitnets()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_fitnets(
                             student, teacher, train_loader, test_loader, config['epochs_student'], device
                         )
                     elif baseline == 'AT':
+                        logger.info(f"    📚 Calling train_attention_transfer()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_attention_transfer(
                             student, teacher, train_loader, test_loader, config['epochs_student'], device
                         )
                     elif baseline == 'TAKD':
+                        logger.info(f"    📚 Calling train_takd()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_takd(
                             student, teacher, train_loader, test_loader, config['epochs_student'], device
                         )
                     elif baseline == 'HPM-KD':
+                        logger.info(f"    📚 Calling train_hpmkd_deepbridge()...")
+                        sys.stdout.flush()
                         student, acc, train_time = train_hpmkd_deepbridge(
                             student, teacher, train_loader, test_loader, config['epochs_student'], device
                         )
+
+                    logger.info(f"    ✅ Training completed!")
+                    sys.stdout.flush()
 
                     # Save student checkpoint
                     save_model_checkpoint(
