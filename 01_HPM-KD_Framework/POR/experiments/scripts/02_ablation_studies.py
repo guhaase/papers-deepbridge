@@ -1161,7 +1161,7 @@ def main():
     # Experiment 6: Component Interactions
     interaction_df = experiment_6_component_interactions(
         teacher, train_loader, test_loader, config, device,
-        num_classes, input_channels, single_impacts, output_dir
+        num_classes, input_channels, single_impacts
     )
     results['interaction_df'] = interaction_df
     interaction_df.to_csv(output_dir / 'exp06_component_interactions.csv', index=False)
