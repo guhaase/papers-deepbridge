@@ -11,7 +11,7 @@
 | **Dataset** | CIFAR10 |
 | **Compression Ratios** | **2.3×, 5×, 7×** |
 | **Modelos a Treinar** | 46 modelos (1 teacher + 45 students) |
-| **Plataforma** | **Kaggle** (9-12h sessões vs 90min Colab) |
+| **Plataforma** | **RunPod.io** (GPU contratada por hora) |
 
 ---
 
@@ -31,7 +31,7 @@
 ║  ✅ Testa hipótese: "KD é efetivo com gaps MAIORES"            ║
 ║  ✅ Arquiteturas MODERNAS (ResNet50 → ResNet18/10/MobileNetV2) ║
 ║  ✅ Dataset DESAFIADOR (CIFAR10 com 10 classes)                ║
-║  ✅ 100% PRONTO para executar no Kaggle                        ║
+║  ✅ 100% PRONTO para executar com GPU dedicada (RunPod)        ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════╝
 ```
@@ -86,36 +86,17 @@
 | 2 | **Traditional KD** | KD clássico | T=4.0, α=0.5 | Hinton et al. (2015) |
 | 3 | **HPM-KD** | Nossa proposta | T=6.0, α=0.7 | **Ours** ⭐ |
 
-**Nota:** Reduzido de 6 para 3 métodos para focar nos mais importantes e economizar tempo.
-
 ---
 
 ## ⚙️ Hiperparâmetros
 
-### **Quick Mode (Teste - 2-3h):**
-
-| Parâmetro | Valor |
-|-----------|-------|
-| **Teacher Epochs** | 50 |
-| **Student Epochs** | 20 |
-| **Runs por método** | 3 |
-| **Batch Size** | 128 |
-| **Learning Rate** | 0.1 |
-| **Optimizer** | SGD (momentum=0.9, weight_decay=5e-4) |
-| **Scheduler** | MultiStepLR [60, 120, 160] |
-| **Data Augmentation** | RandomCrop, RandomHorizontalFlip |
-
-**Modelos:** 1 teacher + (3 compression × 3 métodos × 3 runs) = **28 modelos**
-
-**Tempo:** 2-3h (Kaggle GPU T4)
-
-### **Full Mode (Paper - 8-10h):**
+### **Full Mode (Recomendado):**
 
 | Parâmetro | Valor |
 |-----------|-------|
 | **Teacher Epochs** | 100 |
 | **Student Epochs** | 50 |
-| **Runs por método** | **5** (maior robustez) |
+| **Runs por método** | **5** (maior robustez estatística) |
 | **Batch Size** | 128 |
 | **Learning Rate** | 0.1 |
 | **Optimizer** | SGD (momentum=0.9, weight_decay=5e-4) |
@@ -124,7 +105,98 @@
 
 **Modelos:** 1 teacher + (3 compression × 3 métodos × 5 runs) = **46 modelos**
 
-**Tempo:** 8-10h (Kaggle GPU T4) ou 5-7h (Kaggle GPU P100)
+**Tempo Estimado:**
+- **GPU RTX 4090:** ~5-7h
+- **GPU A100:** ~3-5h
+- **GPU V100:** ~7-10h
+
+---
+
+## 🚀 Como Executar (RunPod)
+
+### **Passo 1: Setup RunPod**
+
+1. Acesse https://www.runpod.io/
+2. Selecione template **PyTorch** ou **CUDA**
+3. GPU recomendada: **RTX 4090**, **A100**, ou **V100**
+4. Storage: mínimo 50GB
+
+### **Passo 2: Preparar Ambiente**
+
+```bash
+# Instalar dependências
+pip install torch torchvision numpy pandas matplotlib seaborn scipy tqdm
+pip install deepbridge  # DeepBridge Library (HPM-KD)
+
+# Clonar repositório (se necessário)
+git clone <seu-repo>
+cd papers/01_HPM-KD_Framework/POR/experiments/experimento_01b_compression_ratios/scripts/
+
+# Verificar GPU
+python -c "import torch; print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"NONE\"}')"
+```
+
+### **Passo 3: Executar Experimento**
+
+```bash
+# Full Mode (recomendado para paper)
+python 01b_compression_ratios.py --mode full --dataset CIFAR10 --gpu 0
+
+# Quick Mode (teste rápido - 3 runs)
+python 01b_compression_ratios.py --mode quick --dataset CIFAR10 --gpu 0
+
+# Compression específico (apenas 5×)
+python 01b_compression_ratios.py --mode full --dataset CIFAR10 --compression 5x --gpu 0
+```
+
+### **Opções Disponíveis:**
+```bash
+--mode {quick,full}              # Modo de execução
+--dataset {CIFAR10,CIFAR100}     # Dataset
+--compression {all,2.3x,5x,7x}   # Compression ratio específico
+--gpu 0                          # GPU ID
+--seed 42                        # Seed para reprodutibilidade
+```
+
+---
+
+## 📊 Outputs Gerados
+
+### **Estrutura de Saída:**
+```
+results/exp1b_full_YYYYMMDD_HHMMSS/
+├── results.csv                       📊 Dados numéricos (CSV)
+├── experiment_report.md              📄 Relatório completo (Markdown)
+├── experiment.log                    📋 Log de execução detalhado
+│
+├── figures/                          📈 Visualizações (PNG 300 DPI)
+│   ├── accuracy_vs_compression.png  ⭐⭐⭐ FIGURA PRINCIPAL (paper)
+│   ├── hpmkd_vs_direct.png          ⭐⭐ "When does KD help?"
+│   └── retention_analysis.png       📊 Retenção de conhecimento
+│
+└── models/                           💾 Modelos treinados
+    ├── teacher_resnet50_CIFAR10.pt  2.6 MB (reutilizado!)
+    └── student_*.pt                 45 modelos (227 KB cada)
+```
+
+**Tamanho Total:** ~2 GB (Full Mode)
+
+### **Figuras Geradas (PNG 300 DPI):**
+
+1. **`accuracy_vs_compression.png`** ⭐⭐⭐ **PRINCIPAL**
+   - Accuracy vs Compression Ratio
+   - 3 métodos (Direct, TraditionalKD, HPM-KD)
+   - Error bars (desvio padrão)
+   - **USO:** Section 5 (Results) do paper
+
+2. **`hpmkd_vs_direct.png`** ⭐⭐
+   - Delta (HPM-KD - Direct) vs Compression
+   - Mostra onde KD ajuda
+   - **USO:** Analysis "When does KD help?"
+
+3. **`retention_analysis.png`** 📊
+   - Knowledge retention (%)
+   - Por método e compression
 
 ---
 
@@ -158,147 +230,6 @@ CONCLUSÃO: KD (HPM-KD) é efetivo quando gap ≥ 5×
 
 ---
 
-## 🚀 Como Executar (Kaggle)
-
-### **Por Que Kaggle e Não Colab:**
-
-| Aspecto | Google Colab | Kaggle ✅ |
-|---------|--------------|-----------|
-| **Sessão** | 90 minutos | **9-12 horas** |
-| **GPU/semana** | ~12h | **30h** |
-| **Desconexões** | Frequentes | Raras |
-| **Experimento 1B** | ❌ Não completa | ✅ **Completa** |
-
-**Decisão:** Migrado para Kaggle devido a sessões longas (experimento leva 8-10h).
-
-### **Passo 1: Setup Kaggle (2 minutos)**
-
-1. Acesse: https://www.kaggle.com/code
-2. Clique em **New Notebook**
-3. **Settings** → **Accelerator** → **GPU T4 x2** → **Save**
-4. **Settings** → **Internet** → **ON** → **Save**
-
-### **Passo 2: Upload Script (1 minuto)**
-
-1. Baixe: `scripts/run_exp1b_kaggle.py`
-2. Kaggle → **Add Data** → **Upload**
-3. Execute em célula:
-```python
-!cp /kaggle/input/*/run_exp1b_kaggle.py /kaggle/working/
-```
-
-### **Passo 3: Executar (2-10 horas)**
-
-#### **Quick Mode (2-3h) - Testar Pipeline:**
-```python
-!python /kaggle/working/run_exp1b_kaggle.py --mode quick --dataset CIFAR10
-```
-
-#### **Full Mode (8-10h) - Resultados para Paper:**
-```python
-!python /kaggle/working/run_exp1b_kaggle.py --mode full --dataset CIFAR10
-```
-
-#### **Compression Específico (1h) - Apenas 5×:**
-```python
-!python /kaggle/working/run_exp1b_kaggle.py --mode quick --compression 5x
-```
-
-#### **Retomar se Desconectar (raro):**
-```python
-!python /kaggle/working/run_exp1b_kaggle.py --mode full --resume
-```
-
-### **Monitoramento:**
-```python
-# Ver progresso
-!tail -50 /kaggle/working/experiment.log
-
-# GPU usage
-!nvidia-smi
-
-# Checkpoints salvos
-!ls -lh /kaggle/working/exp1b_*/checkpoints/
-```
-
----
-
-## 💾 Sistema de Checkpoints
-
-### **Features:**
-
-- ✅ **Teacher reutilizado**: Treinado UMA VEZ e usado para todos os students (economia 30min-1h!)
-- ✅ **Granular**: Checkpoint por experimento/método/run
-- ✅ **Resume automático**: `--resume` flag retoma de onde parou
-- ✅ **Robusto**: Salva estado completo (pickle) após cada run
-
-### **Estrutura:**
-```python
-checkpoints/
-├── experiment_state.pkl              # Estado completo (resume)
-├── teacher_resnet50_CIFAR10.pt      # 2.6 MB (reutilizado!)
-└── student_*.pt                      # 27 (quick) ou 45 (full) modelos
-```
-
-### **Se Kaggle Desconectar (raro):**
-```python
-!python run_exp1b_kaggle.py --mode full --resume
-# Retoma de onde parou! Teacher já treinado não é retreinado.
-```
-
----
-
-## 📊 Outputs Gerados
-
-### **Estrutura de Saída:**
-```
-/kaggle/working/exp1b_full_YYYYMMDD_HHMMSS/
-├── results.csv                       📊 Dados numéricos (CSV)
-├── experiment_report.md              📄 Relatório completo (Markdown)
-├── experiment.log                    📋 Log de execução detalhado
-│
-├── figures/                          📈 Visualizações (PNG 300 DPI)
-│   ├── accuracy_vs_compression.png  ⭐⭐⭐ FIGURA PRINCIPAL (paper)
-│   ├── hpmkd_vs_direct.png          ⭐⭐ "When does KD help?"
-│   └── retention_analysis.png       📊 Retenção de conhecimento
-│
-├── checkpoints/                      💾 Para retomar se desconectar
-│   ├── experiment_state.pkl         Estado completo
-│   ├── teacher_resnet50_CIFAR10.pt  2.6 MB (reutilizado!)
-│   └── student_*.pt                 27 ou 45 modelos (227 KB cada)
-│
-└── data/                             📦 CIFAR10 (auto-download)
-    └── cifar-10-batches-py/
-```
-
-**Tamanho Total:**
-- Quick Mode: ~500 MB
-- Full Mode: ~2 GB
-
-### **Download:**
-```
-Output tab (canto superior direito) → Download All (ZIP)
-```
-
-### **Figuras Geradas (PNG 300 DPI):**
-
-1. **`accuracy_vs_compression.png`** ⭐⭐⭐ **PRINCIPAL**
-   - Accuracy vs Compression Ratio
-   - 3 métodos (Direct, TraditionalKD, HPM-KD)
-   - Error bars (desvio padrão)
-   - **USO:** Section 5 (Results) do paper
-
-2. **`hpmkd_vs_direct.png`** ⭐⭐
-   - Delta (HPM-KD - Direct) vs Compression
-   - Mostra onde KD ajuda
-   - **USO:** Analysis "When does KD help?"
-
-3. **`retention_analysis.png`** 📊
-   - Knowledge retention (%)
-   - Por método e compression
-
----
-
 ## 📁 Estrutura de Arquivos
 
 ```
@@ -306,8 +237,7 @@ experimento_01b_compression_ratios/
 ├── README.md                          ← Este arquivo
 │
 ├── scripts/                           ← Scripts Python
-│   ├── 01b_compression_ratios.py     Script original (822 linhas)
-│   └── run_exp1b_kaggle.py           ⭐ Script Kaggle (810 linhas) - USAR ESTE
+│   └── 01b_compression_ratios.py     Script principal (822 linhas)
 │
 └── results/                           ← Resultados (vazio - aguardando execução)
     └── (outputs serão salvos aqui após execução)
@@ -315,27 +245,18 @@ experimento_01b_compression_ratios/
 
 ---
 
-## ⏱️ Estimativa de Tempo
+## ⏱️ Estimativa de Tempo (RunPod)
 
-### **Kaggle GPU T4:**
+### **Por GPU:**
 
-| Modo | Tempo | Breakdown |
-|------|-------|-----------|
-| **Quick** | 2-3h | Teacher: 30min, Students: 1.5-2.5h |
-| **Full** | 8-10h | Teacher: 1h, Students: 7-9h |
-| **5× only** | 45-60min | Teacher: 30min, Students 5×: 15-30min |
+| GPU | Full Mode | Quick Mode | Custo Estimado (Full) |
+|-----|-----------|------------|----------------------|
+| **RTX 4090** | 5-7h | 2-3h | $5-7 USD |
+| **A100** | 3-5h | 1-2h | $10-15 USD |
+| **V100** | 7-10h | 3-4h | $7-10 USD |
+| **RTX 3090** | 8-12h | 3-5h | $6-9 USD |
 
-### **Kaggle GPU P100 (40% mais rápido):**
-
-| Modo | Tempo | Breakdown |
-|------|-------|-----------|
-| **Quick** | 1.5-2h | Teacher: 20min, Students: 1-1.5h |
-| **Full** | 5-7h | Teacher: 40min, Students: 4.5-6.5h |
-| **5× only** | 30-45min | Teacher: 20min, Students 5×: 10-25min |
-
-**Limite Kaggle:** 9-12h por sessão → **Suficiente para Full Mode!**
-
-**Quota Kaggle:** 30h GPU/semana grátis
+**Recomendação:** RTX 4090 (melhor custo-benefício)
 
 ---
 
@@ -361,57 +282,38 @@ experimento_01b_compression_ratios/
   2. Diferenças não são estatisticamente significativas (p > 0.05)
 ```
 
-### **Possíveis Cenários:**
-
-| Cenário | Resultado | Ação |
-|---------|-----------|-------|
-| **A** | HPM-KD > Direct (5× e 7×) | ✅ **RQ1 validada! Incluir no paper** |
-| **B** | HPM-KD > Direct (apenas 7×) | ⚠️ Validado parcialmente, discutir no paper |
-| **C** | Direct ≥ HPM-KD (todos) | ❌ RQ1 falhou, rever método ou hipótese |
-
 ---
 
 ## 📚 Documentação Relacionada
 
-### **Guias Kaggle:**
-- **Quick Start:** `../../kaggle/QUICK_START_KAGGLE.md` (3 passos)
-- **Guia Completo:** `../../kaggle/README_KAGGLE.md` (516 linhas)
-- **Índice:** `../../kaggle/INDEX.md`
-
-### **Comparação de Plataformas:**
-- **Kaggle vs Colab:** `../../README_PLATAFORMAS.md`
-
-### **Documentação Geral:**
-- **Sumário Completo:** `../../SUMARIO_COMPLETO_EXPERIMENTOS.md`
-- **Contagem de Modelos:** `../../CONTAGEM_MODELOS.md`
+- **Experimento 1:** `../experimento_01_compression_efficiency/README.md` (concluído)
+- **Sumário Completo:** `../SUMARIO_COMPLETO_EXPERIMENTOS.md`
+- **Biblioteca lib/:** `../lib/` (utils compartilhados)
 
 ---
 
 ## ✅ Checklist de Execução
 
 ### **Antes de Executar:**
-- [ ] Conta Kaggle criada
-- [ ] Telefone verificado (libera GPU)
-- [ ] Lido `../../kaggle/QUICK_START_KAGGLE.md`
-- [ ] Script `run_exp1b_kaggle.py` baixado
-- [ ] Notebook Kaggle criado
-- [ ] GPU ativada (Settings → GPU T4)
-- [ ] Internet ON (Settings → Internet)
+- [ ] RunPod configurado com GPU adequada
+- [ ] Dependências instaladas (PyTorch, DeepBridge, etc.)
+- [ ] GPU verificada (`nvidia-smi`)
+- [ ] Disco com ≥50GB disponível
+- [ ] Script `01b_compression_ratios.py` disponível
 
 ### **Durante Execução:**
-- [ ] GPU P100 ou T4 detectada
+- [ ] GPU sendo utilizada (verificar `nvidia-smi`)
 - [ ] Dataset CIFAR10 baixando
 - [ ] Teacher ResNet50 treinando
 - [ ] Progress bars aparecendo
-- [ ] Checkpoints salvando automaticamente
-- [ ] Não fechar aba do navegador
+- [ ] Logs sendo gerados
 
 ### **Após Execução:**
 - [ ] Ver `results.csv` (dados numéricos)
 - [ ] Ler `experiment_report.md` (relatório)
 - [ ] Analisar `accuracy_vs_compression.png` ⭐⭐⭐
-- [ ] Download All (Output tab)
-- [ ] Save Version (guardar outputs permanentemente)
+- [ ] Download resultados localmente
+- [ ] Backup em cloud storage
 - [ ] Incluir figuras no paper (Section 5)
 - [ ] Atualizar paper com resultados
 - [ ] Validar RQ1 ✅ ou ❌
@@ -430,8 +332,8 @@ experimento_01b_compression_ratios/
 ║  ✅ Corrige o problema do Experimento 1 (compression 2×) ║
 ║  ✅ Testa compression ratios REALISTAS (5×, 7×)          ║
 ║  ✅ Valida efetivamente RQ1 do paper                     ║
-║  ✅ 100% pronto para executar no Kaggle                  ║
-║  ✅ Resultados em 8-10h (Full Mode)                      ║
+║  ✅ 100% pronto para executar com GPU dedicada           ║
+║  ✅ Resultados em 3-10h (dependendo da GPU)              ║
 ║  ✅ Figuras prontas para publicação                      ║
 ║                                                            ║
 ║  SEM ESTE EXPERIMENTO, O PAPER NÃO TEM VALIDAÇÃO DE RQ1! ║
@@ -440,13 +342,16 @@ experimento_01b_compression_ratios/
 ```
 
 ### **Próximo Passo:**
-**EXECUTAR AGORA NO KAGGLE!** 🚀
+**EXECUTAR AGORA NO RUNPOD!** 🚀
 
-1. Leia `../../kaggle/QUICK_START_KAGGLE.md` (5 minutos)
-2. Upload `scripts/run_exp1b_kaggle.py` no Kaggle
-3. Execute Quick Mode (2-3h) para testar
-4. Execute Full Mode (8-10h) para o paper
-5. Aguarde resultados e valide RQ1
+```bash
+# Setup RunPod
+cd scripts/
+python 01b_compression_ratios.py --mode full --dataset CIFAR10 --gpu 0
+
+# Aguarde 3-10h (dependendo da GPU)
+# Valide RQ1 com os resultados
+```
 
 ---
 
@@ -456,3 +361,4 @@ experimento_01b_compression_ratios/
 **Importância:** ⭐⭐⭐ **CRÍTICO**
 **Autor:** Gustavo Haase
 **Paper:** HPM-KD Framework
+**Plataforma:** RunPod.io (GPU dedicada)
