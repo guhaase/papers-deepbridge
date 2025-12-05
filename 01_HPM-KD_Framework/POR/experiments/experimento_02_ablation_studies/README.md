@@ -102,8 +102,8 @@ Validar a **Research Question 2 (RQ2)** do paper HPM-KD analisando a **contribui
 
 | Modo | Dataset | Runs | Tempo |
 |------|---------|------|-------|
-| **Quick** | MNIST | 3 | ~1h |
-| **Full** | CIFAR100 | 5 | ~2h |
+| **Quick** | MNIST | 3 | ~2-3h |
+| **Full** | CIFAR100 | 5 | ~10-15h |
 
 ### **Total de Modelos (Full Mode):**
 ```

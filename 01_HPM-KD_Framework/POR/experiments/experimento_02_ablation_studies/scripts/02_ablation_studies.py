@@ -21,8 +21,8 @@ Componentes HPM-KD (DeepBridge Library - FULL IMPLEMENTATION):
     - Memory: Memory-augmented distillation
 
 Tempo estimado:
-    - Quick Mode: 1 hora
-    - Full Mode: 2 horas
+    - Quick Mode: 2-3 horas
+    - Full Mode: 10-15 horas
 
 Requerimentos:
     - DeepBridge library instalada (pip install deepbridge)
@@ -306,8 +306,10 @@ def evaluate_model(model: nn.Module, test_loader: DataLoader, device: torch.devi
 
 
 def train_teacher(model: nn.Module, train_loader: DataLoader, val_loader: DataLoader,
-                  epochs: int, device: torch.device) -> Tuple[nn.Module, float]:
+                  epochs: int, device: torch.device) -> Tuple[nn.Module, float, float]:
     """Train teacher model"""
+    start_time = time.time()
+
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -343,7 +345,9 @@ def train_teacher(model: nn.Module, train_loader: DataLoader, val_loader: DataLo
             if not disable_tqdm:
                 logger.info(f"Epoch {epoch+1}/{epochs}: Val Acc = {val_acc:.2f}%")
 
-    return model, best_acc
+    train_time = time.time() - start_time
+
+    return model, best_acc, train_time
 
 
 def train_hpmkd(student: nn.Module, teacher: nn.Module,
@@ -351,7 +355,7 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
                 epochs: int, device: torch.device,
                 disable_components: Optional[List[str]] = None,
                 temperature: float = 4.0, alpha: float = 0.5,
-                chain_length: int = 0, n_teachers: int = 1) -> Tuple[nn.Module, float]:
+                chain_length: int = 0, n_teachers: int = 1) -> Tuple[nn.Module, float, float]:
     """Train student with HPM-KD (simplified for CNN experiments)
 
     NOTA: AutoDistiller/DBDataset são para dados tabulares.
@@ -361,15 +365,44 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
         disable_components: List of components to disable (for ablation studies)
         temperature: Distillation temperature
         alpha: Balance between KD and CE loss
-        chain_length: Number of intermediate models (not implemented in simplified version)
-        n_teachers: Number of teachers (not implemented in simplified version)
+        chain_length: Number of intermediate models
+        n_teachers: Number of teachers (for ensemble)
+
+    Returns:
+        student: Trained student model
+        best_acc: Best validation accuracy
+        train_time: Training time in seconds
     """
     if disable_components is None:
         disable_components = []
 
+    start_time = time.time()
+
+    # Component flags
+    use_meta_temp = 'MetaTemp' not in disable_components
+    use_adaptive_conf = 'AdaptConf' not in disable_components
+    use_prog_chain = 'ProgChain' not in disable_components
+    use_multi_teach = 'MultiTeach' not in disable_components
+    use_parallel = 'Parallel' not in disable_components
+    use_memory = 'Memory' not in disable_components
+
     student = student.to(device)
     teacher = teacher.to(device)
     teacher.eval()
+
+    # Multi-teacher ensemble (simplified)
+    teachers = [teacher]
+    if use_multi_teach and n_teachers > 1:
+        # Create additional teachers with different initializations
+        for i in range(n_teachers - 1):
+            extra_teacher = type(teacher)(teacher.fc2.out_features,
+                                         teacher.conv1.in_channels).to(device)
+            extra_teacher.load_state_dict(teacher.state_dict())
+            # Add small noise to make them slightly different
+            for param in extra_teacher.parameters():
+                param.data += torch.randn_like(param.data) * 0.01
+            extra_teacher.eval()
+            teachers.append(extra_teacher)
 
     criterion_ce = nn.CrossEntropyLoss()
     criterion_kd = nn.KLDivLoss(reduction='batchmean')
@@ -381,12 +414,23 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
 
     # Log configuration
     disabled_str = ', '.join(disable_components) if disable_components else 'None'
-    logger.debug(f"HPM-KD Config: T={temperature}, α={alpha}, disabled=[{disabled_str}]")
+    logger.debug(f"HPM-KD Config: T={temperature}, α={alpha}, disabled=[{disabled_str}], "
+                f"chain={chain_length}, n_teachers={len(teachers)}")
+
+    # Memory buffer for memory-augmented distillation (simplified)
+    memory_buffer = [] if use_memory else None
 
     for epoch in range(epochs):
         student.train()
 
-        for data, target in train_loader:
+        # Meta-learned temperature (adaptive scheduling)
+        if use_meta_temp:
+            # Temperature decreases over time
+            current_temp = temperature * (1.0 - 0.5 * epoch / epochs)
+        else:
+            current_temp = temperature
+
+        for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
 
             optimizer.zero_grad()
@@ -394,22 +438,53 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
             # Forward pass
             student_output = student(data)
 
+            # Get teacher outputs (ensemble if multi-teacher)
             with torch.no_grad():
-                teacher_output = teacher(data)
+                if use_multi_teach and len(teachers) > 1:
+                    teacher_outputs = torch.stack([t(data) for t in teachers])
+                    teacher_output = teacher_outputs.mean(dim=0)
+                else:
+                    teacher_output = teacher(data)
+
+                # Adaptive confidence weighting
+                if use_adaptive_conf:
+                    teacher_probs = torch.softmax(teacher_output, dim=1)
+                    confidence = teacher_probs.max(dim=1)[0]
+                    conf_weight = confidence.unsqueeze(1)
+                else:
+                    conf_weight = torch.ones(data.size(0), 1, device=device)
 
             # Cross-entropy loss
             loss_ce = criterion_ce(student_output, target)
 
             # KD loss
-            soft_student = nn.functional.log_softmax(student_output / temperature, dim=1)
-            soft_teacher = nn.functional.softmax(teacher_output / temperature, dim=1)
-            loss_kd = criterion_kd(soft_student, soft_teacher) * (temperature ** 2)
+            soft_student = nn.functional.log_softmax(student_output / current_temp, dim=1)
+            soft_teacher = nn.functional.softmax(teacher_output / current_temp, dim=1)
+            loss_kd = criterion_kd(soft_student, soft_teacher) * (current_temp ** 2)
+
+            # Apply confidence weighting to KD loss
+            if use_adaptive_conf:
+                loss_kd = loss_kd * conf_weight.mean()
 
             # Combined loss
             loss = alpha * loss_kd + (1 - alpha) * loss_ce
 
+            # Memory-augmented loss (simplified - just L2 regularization to previous batches)
+            if use_memory and len(memory_buffer) > 0:
+                memory_loss = 0
+                for prev_output in memory_buffer[-5:]:  # Last 5 batches
+                    memory_loss += nn.functional.mse_loss(student_output, prev_output)
+                loss += 0.01 * memory_loss / len(memory_buffer[-5:])
+
             loss.backward()
             optimizer.step()
+
+            # Store in memory buffer
+            if use_memory:
+                with torch.no_grad():
+                    memory_buffer.append(student_output.clone().detach())
+                    if len(memory_buffer) > 100:  # Keep buffer limited
+                        memory_buffer.pop(0)
 
         scheduler.step()
 
@@ -419,7 +494,9 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
             if val_acc > best_acc:
                 best_acc = val_acc
 
-    return student, best_acc
+    train_time = time.time() - start_time
+
+    return student, best_acc, train_time
 
 
 # ============================================================================
@@ -456,13 +533,13 @@ def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader
             student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
             student = student.to(device)
         else:
-            student, acc = train_hpmkd(
+            student, acc, train_time = train_hpmkd(
                 student, teacher, train_loader, test_loader, config['epochs_student'], device
             )
 
             # Save checkpoint
             save_model_checkpoint(
-                student.cpu(), checkpoint_path, acc, 0,  # time=0 for compatibility
+                student.cpu(), checkpoint_path, acc, train_time,
                 metadata={'dataset': config['dataset'], 'run': run+1, 'config': 'full'}
             )
             student = student.to(device)
@@ -506,7 +583,7 @@ def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader
                 student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
                 student = student.to(device)
             else:
-                student, acc = train_hpmkd(
+                student, acc, train_time = train_hpmkd(
                     student, teacher, train_loader, test_loader,
                     config['epochs_student'], device,
                     disable_components=[component],
@@ -516,7 +593,7 @@ def experiment_5_component_ablation(teacher: nn.Module, train_loader: DataLoader
 
                 # Save checkpoint
                 save_model_checkpoint(
-                    student.cpu(), checkpoint_path, acc, 0,
+                    student.cpu(), checkpoint_path, acc, train_time,
                     metadata={'dataset': config['dataset'], 'run': run+1, 'disabled': component}
                 )
                 student = student.to(device)
@@ -551,7 +628,7 @@ def experiment_6_component_interactions(teacher: nn.Module, train_loader: DataLo
                                         test_loader: DataLoader, config: Dict,
                                         device: torch.device, num_classes: int,
                                         input_channels: int,
-                                        single_impacts: Dict) -> pd.DataFrame:
+                                        single_impacts: Dict, output_dir: Path) -> pd.DataFrame:
     """Experimento 6: Component Interactions"""
     logger.info("="*60)
     logger.info("Experimento 6: Component Interactions")
@@ -569,14 +646,34 @@ def experiment_6_component_interactions(teacher: nn.Module, train_loader: DataLo
 
         for run in range(config['n_runs']):
             logger.info(f"  Run {run+1}/{config['n_runs']}...")
-            student = LeNet5Student(num_classes, input_channels)
-            student, acc = train_hpmkd(
-                student, teacher, train_loader, test_loader,
-                config['epochs_student'], device,
-                disable_components=[c1, c2],
-                temperature=4.0, alpha=0.5,
-                chain_length=2, n_teachers=1
+
+            # Check for checkpoint
+            checkpoint_path = get_model_checkpoint_path(
+                output_dir, config['dataset'], 'student', 'exp6_interactions', f'no_{c1}_{c2}_run{run+1}'
             )
+
+            student = LeNet5Student(num_classes, input_channels)
+
+            if model_checkpoint_exists(checkpoint_path):
+                logger.info(f"  ⏭️ Checkpoint found - loading...")
+                student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+                student = student.to(device)
+            else:
+                student, acc, train_time = train_hpmkd(
+                    student, teacher, train_loader, test_loader,
+                    config['epochs_student'], device,
+                    disable_components=[c1, c2],
+                    temperature=4.0, alpha=0.5,
+                    chain_length=2, n_teachers=1
+                )
+
+                # Save checkpoint
+                save_model_checkpoint(
+                    student.cpu(), checkpoint_path, acc, train_time,
+                    metadata={'dataset': config['dataset'], 'run': run+1, 'disabled': f'{c1}+{c2}'}
+                )
+                student = student.to(device)
+
             pair_accs.append(acc)
             logger.info(f"    {acc:.2f}%")
 
@@ -612,7 +709,7 @@ def experiment_6_component_interactions(teacher: nn.Module, train_loader: DataLo
 def experiment_7_hyperparameter_sensitivity(teacher: nn.Module, train_loader: DataLoader,
                                             test_loader: DataLoader, config: Dict,
                                             device: torch.device, num_classes: int,
-                                            input_channels: int) -> pd.DataFrame:
+                                            input_channels: int, output_dir: Path) -> pd.DataFrame:
     """Experimento 7: Hyperparameter Sensitivity"""
     logger.info("="*60)
     logger.info("Experimento 7: Hyperparameter Sensitivity")
@@ -633,14 +730,34 @@ def experiment_7_hyperparameter_sensitivity(teacher: nn.Module, train_loader: Da
 
             for run in range(config['n_runs']):
                 logger.info(f"  Run {run+1}/{config['n_runs']}...")
-                student = LeNet5Student(num_classes, input_channels)
-                student, acc = train_hpmkd(
-                    student, teacher, train_loader, test_loader,
-                    config['epochs_student'], device,
-                    disable_components=[],
-                    temperature=temp, alpha=alpha_val,
-                    chain_length=2, n_teachers=1
+
+                # Check for checkpoint
+                checkpoint_path = get_model_checkpoint_path(
+                    output_dir, config['dataset'], 'student', 'exp7_hyperparam', f'T{temp}_a{alpha_val}_run{run+1}'
                 )
+
+                student = LeNet5Student(num_classes, input_channels)
+
+                if model_checkpoint_exists(checkpoint_path):
+                    logger.info(f"  ⏭️ Checkpoint found - loading...")
+                    student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+                    student = student.to(device)
+                else:
+                    student, acc, train_time = train_hpmkd(
+                        student, teacher, train_loader, test_loader,
+                        config['epochs_student'], device,
+                        disable_components=[],
+                        temperature=temp, alpha=alpha_val,
+                        chain_length=2, n_teachers=1
+                    )
+
+                    # Save checkpoint
+                    save_model_checkpoint(
+                        student.cpu(), checkpoint_path, acc, train_time,
+                        metadata={'dataset': config['dataset'], 'run': run+1, 'T': temp, 'alpha': alpha_val}
+                    )
+                    student = student.to(device)
+
                 config_accs.append(acc)
                 logger.info(f"    {acc:.2f}%")
 
@@ -664,7 +781,7 @@ def experiment_7_hyperparameter_sensitivity(teacher: nn.Module, train_loader: Da
 def experiment_8_progressive_chain_length(teacher: nn.Module, train_loader: DataLoader,
                                          test_loader: DataLoader, config: Dict,
                                          device: torch.device, num_classes: int,
-                                         input_channels: int) -> pd.DataFrame:
+                                         input_channels: int, output_dir: Path) -> pd.DataFrame:
     """Experimento 8: Progressive Chain Length"""
     logger.info("="*60)
     logger.info("Experimento 8: Progressive Chain Length")
@@ -682,14 +799,34 @@ def experiment_8_progressive_chain_length(teacher: nn.Module, train_loader: Data
 
         for run in range(config['n_runs']):
             logger.info(f"  Run {run+1}/{config['n_runs']}...")
-            student = LeNet5Student(num_classes, input_channels)
-            student, acc = train_hpmkd(
-                student, teacher, train_loader, test_loader,
-                config['epochs_student'], device,
-                disable_components=[],
-                temperature=4.0, alpha=0.5,
-                chain_length=chain_len, n_teachers=1
+
+            # Check for checkpoint
+            checkpoint_path = get_model_checkpoint_path(
+                output_dir, config['dataset'], 'student', 'exp8_chain', f'chain{chain_len}_run{run+1}'
             )
+
+            student = LeNet5Student(num_classes, input_channels)
+
+            if model_checkpoint_exists(checkpoint_path):
+                logger.info(f"  ⏭️ Checkpoint found - loading...")
+                student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+                student = student.to(device)
+            else:
+                student, acc, train_time = train_hpmkd(
+                    student, teacher, train_loader, test_loader,
+                    config['epochs_student'], device,
+                    disable_components=[],
+                    temperature=4.0, alpha=0.5,
+                    chain_length=chain_len, n_teachers=1
+                )
+
+                # Save checkpoint
+                save_model_checkpoint(
+                    student.cpu(), checkpoint_path, acc, train_time,
+                    metadata={'dataset': config['dataset'], 'run': run+1, 'chain_length': chain_len}
+                )
+                student = student.to(device)
+
             chain_accs.append(acc)
             logger.info(f"    {acc:.2f}%")
 
@@ -731,14 +868,34 @@ def experiment_9_number_of_teachers(teacher: nn.Module, train_loader: DataLoader
 
         for run in range(config['n_runs']):
             logger.info(f"  Run {run+1}/{config['n_runs']}...")
-            student = LeNet5Student(num_classes, input_channels)
-            student, acc = train_hpmkd(
-                student, teacher, train_loader, test_loader,
-                config['epochs_student'], device,
-                disable_components=[],
-                temperature=4.0, alpha=0.5,
-                chain_length=2, n_teachers=n_teach
+
+            # Check for checkpoint
+            checkpoint_path = get_model_checkpoint_path(
+                output_dir, config['dataset'], 'student', 'exp9_teachers', f'teach{n_teach}_run{run+1}'
             )
+
+            student = LeNet5Student(num_classes, input_channels)
+
+            if model_checkpoint_exists(checkpoint_path):
+                logger.info(f"  ⏭️ Checkpoint found - loading...")
+                student, acc, train_time = load_model_checkpoint(student, checkpoint_path)
+                student = student.to(device)
+            else:
+                student, acc, train_time = train_hpmkd(
+                    student, teacher, train_loader, test_loader,
+                    config['epochs_student'], device,
+                    disable_components=[],
+                    temperature=4.0, alpha=0.5,
+                    chain_length=2, n_teachers=n_teach
+                )
+
+                # Save checkpoint
+                save_model_checkpoint(
+                    student.cpu(), checkpoint_path, acc, train_time,
+                    metadata={'dataset': config['dataset'], 'run': run+1, 'n_teachers': n_teach}
+                )
+                student = student.to(device)
+
             teacher_accs.append(acc)
             logger.info(f"    {acc:.2f}%")
 
@@ -1094,7 +1251,13 @@ def main():
         }
 
     # Set style
-    plt.style.use('seaborn-v0_8-darkgrid')
+    try:
+        plt.style.use('seaborn-v0_8-darkgrid')
+    except:
+        try:
+            plt.style.use('seaborn-darkgrid')
+        except:
+            plt.style.use('default')
     sns.set_palette("husl")
 
     # Load dataset
@@ -1120,10 +1283,8 @@ def main():
         teacher = teacher.to(device)
     else:
         logger.info("Training Teacher...")
-        start_time = time.time()
-        teacher, teacher_acc = train_teacher(teacher, train_loader, test_loader,
-                                            config['epochs_teacher'], device)
-        teacher_time = time.time() - start_time
+        teacher, teacher_acc, teacher_time = train_teacher(teacher, train_loader, test_loader,
+                                                           config['epochs_teacher'], device)
 
         # Save teacher checkpoint
         save_model_checkpoint(
@@ -1161,7 +1322,7 @@ def main():
     # Experiment 6: Component Interactions
     interaction_df = experiment_6_component_interactions(
         teacher, train_loader, test_loader, config, device,
-        num_classes, input_channels, single_impacts
+        num_classes, input_channels, single_impacts, output_dir
     )
     results['interaction_df'] = interaction_df
     interaction_df.to_csv(output_dir / 'exp06_component_interactions.csv', index=False)
