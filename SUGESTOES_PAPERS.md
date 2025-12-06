@@ -2,7 +2,7 @@
 
 **Data de Análise**: 04 de Novembro de 2025
 **Última Atualização**: 07 de Novembro de 2025
-**Versão**: 3.1 (17 papers organizados, Paper 2 fundido)
+**Versão**: 3.2 (16 papers organizados, Paper 2 fundido)
 **Biblioteca Analisada**: DeepBridge v0.1.49
 **Repositório**: https://github.com/DeepBridge-Validation/DeepBridge
 **Documentação**: https://deepbridge.readthedocs.io/
@@ -19,7 +19,7 @@ A biblioteca DeepBridge oferece múltiplas contribuições originais que podem s
 - **Detecção de Weakspots**: Identificação automática de regiões de falha
 - **Dados Sintéticos Escaláveis**: Geração distribuída via Dask
 
-Este documento apresenta **17 papers** organizados em 4 níveis de prioridade, com estratégia de publicação para 3 anos (2025-2028).
+Este documento apresenta **16 papers** organizados em 4 níveis de prioridade, com estratégia de publicação para 3 anos (2025-2028).
 
 ---
 
@@ -196,60 +196,15 @@ Este documento apresenta **17 papers** organizados em 4 níveis de prioridade, c
 ---
 
 
-## Paper 2: Explainable Knowledge Distillation for Regulated Environments
+## NOTA: Paper "Explainable KD for Regulated Environments" foi FUNDIDO
 
-**[PAPER FUNDIDO: Combina análise regulatória detalhada (ESTRUTURA_PAPER2_REGULATORY.md) + taxonomy de métodos explainable KD (antigo Paper 13)]**
+**Informação Importante**: O paper sobre "Explainable Knowledge Distillation for Regulated Environments" foi fundido com outras análises regulatórias e NÃO possui pasta própria no diretório. Por este motivo, as pastas são numeradas sequencialmente de 01 a 16, correspondendo aos 16 papers com implementação.
 
-### 📋 Informações Básicas
-
-**Título Sugerido**: "Explainable Knowledge Distillation in Regulated Environments: Bridging Model Compression and Regulatory Compliance"
-
-**Título Alternativo**: "From Opaque to Transparent: Regulatory-Compliant Knowledge Distillation for Financial AI"
-
-**Conferências Alvo**:
-- **ACM FAccT** (Conference on Fairness, Accountability, and Transparency) - PRINCIPAL
-- AIES (AAAI/ACM Conference on AI, Ethics, and Society)  
-- Journal of Machine Learning Research (JMLR)
-- Journal of Financial Data Science
-
-**Área Temática**: Explainable AI, Knowledge Distillation, Regulatory Compliance, Financial ML, Policy
+**Conteúdo Original do Paper 2**: Ver seção completa nas versões anteriores deste documento (backup). O conteúdo foi integrado em análises complementares.
 
 ---
 
-### 🔬 Contribuição Científica Unificada
-
-Este paper representa a fusão completa de duas abordagens complementares:
-1. **Análise Regulatória Profunda** (do ESTRUTURA_PAPER2_REGULATORY.md)
-2. **Taxonomy Técnica de Métodos Explainable KD** (do antigo Paper 13)
-
-**Pergunta de Pesquisa Central**:
-*"Por que técnicas avançadas de destilação (como HPM-KD) falham em atender requisitos regulatórios em domínios financeiros, e quais alternativas equilibram performance, compressão e compliance?"*
-
-**Contribuições Principais**:
-
-1. **Análise Sistemática do Technical-Regulatory Divide**
-2. **Compliance Assessment Framework** (4 dimensões: Explainability, Documentation, Validation, Human Oversight)
-3. **Detailed Regulatory Analysis** (ECOA, GDPR, EU AI Act, SR 11-7)
-4. **Taxonomy of Explainable KD Methods** (KDDT, GAM, Attention, XAI-driven)
-5. **Explainability Metrics Suite** (DPC, FAS, CE, HCS, RAI)
-6. **Empirical Evaluation** (3 financial use cases: credit, mortgage, insurance)
-7. **Production Deployment Guidelines**
-8. **Multi-Stakeholder Policy Recommendations**
-
-**Estrutura Completa**: Ver ESTRUTURA_PAPER2_REGULATORY.md para detalhes completos (~40 páginas: 15 main + 25 appendix)
-
-**Timeline**: 24 semanas (~6 meses)  
-**ROI**: >500× se evitar single EU AI Act penalty (€35M)
-
-**Key Findings**:
-- HPM-KD scores 54/100 compliance vs EBM 95/100 (41-point gap)
-- Interpretable methods achieve 97-99% of HPM-KD performance
-- Cost-benefit: Compliance costs ($2-3M) >> Performance benefits ($300K-1.4M) = NET NEGATIVE for black-box
-- 2-7% accuracy loss for full interpretability + compliance (acceptable trade-off)
-
----
-
-## Paper 3: Framework de Fairness em Produção
+## Paper 2: Framework de Fairness em Produção
 
 ### 📋 Informações Básicas
 
@@ -458,7 +413,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 4: Unified Validation Framework
+## Paper 3: Unified Validation Framework
 
 ### 📋 Informações Básicas
 
@@ -667,7 +622,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 5: Weakspot Detection
+## Paper 4: Weakspot Detection
 
 ### 📋 Informações Básicas
 
@@ -830,7 +785,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 6: Scalable Synthetic Data Generation
+## Paper 5: Scalable Synthetic Data Generation
 
 ### 📋 Informações Básicas
 
@@ -990,7 +945,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 7: Lazy Loading Optimizations
+## Paper 6: Lazy Loading Optimizations
 
 ### 📋 Informações Básicas
 
@@ -1011,7 +966,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 8: Threshold Optimization for Fairness
+## Paper 7: Threshold Optimization for Fairness
 
 ### 📋 Informações Básicas
 
@@ -1032,7 +987,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 9: Regulatory Compliance Automation
+## Paper 8: Regulatory Compliance Automation
 
 ### 📋 Informações Básicas
 
@@ -1053,7 +1008,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 10: DBDataset Container
+## Paper 9: DBDataset Container
 
 ### 📋 Informações Básicas
 
@@ -1074,7 +1029,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 11: Report Generation System
+## Paper 10: Report Generation System
 
 ### 📋 Informações Básicas
 
@@ -1099,7 +1054,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 12: Survey on ML Validation
+## Paper 11: Survey on ML Validation
 
 ### 📋 Informações Básicas
 
@@ -1122,7 +1077,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 13: Tutorial on Production ML Validation
+## Paper 12: Tutorial on Production ML Validation
 
 ### 📋 Informações Básicas
 
@@ -1194,7 +1149,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 **Documento Preparado Por**: Claude (Anthropic)
 **Data Original**: 04 de Novembro de 2025
 **Última Atualização**: 07 de Novembro de 2025
-**Versão**: 3.1 (17 papers completos, Paper 2 fundido, estratégia de publicação 3 anos)
+**Versão**: 3.2 (16 papers completos, Paper 2 fundido, estratégia de publicação 3 anos)
 
 
 ---
@@ -1203,7 +1158,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 14: Interpretable ML Validation Framework
+## Paper 13: Interpretable ML Validation Framework
 
 ### 📋 Informações Básicas
 
@@ -1277,7 +1232,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 15: Multi-Dimensional Validation with Explainability
+## Paper 14: Multi-Dimensional Validation with Explainability
 
 ### 📋 Informações Básicas
 
@@ -1335,7 +1290,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 16: Knowledge Distillation for Economics
+## Paper 15: Knowledge Distillation for Economics
 
 ### 📋 Informações Básicas
 
@@ -1412,7 +1367,7 @@ Este paper representa a fusão completa de duas abordagens complementares:
 
 ---
 
-## Paper 17: XAI-Driven Distillation
+## Paper 16: XAI-Driven Distillation
 
 ### 📋 Informações Básicas
 
@@ -1508,72 +1463,75 @@ Onde:
 
 ### Distribuição por Prioridade
 
-**PRIORIDADE 1** (Papers 1-6): Maior impacto, contribuições core
+**PRIORIDADE 1** (Papers 1-5): Maior impacto, contribuições core
 - Paper 1: HPM-KD Framework
-- Paper 2: Explainable KD for Regulated Environments (FUNDIDO)
-- Paper 3: Framework de Fairness em Produção
-- Paper 4: Unified Validation Framework
-- Paper 5: Weakspot Detection
-- Paper 6: Scalable Synthetic Data Generation
+- Paper 2: Framework de Fairness em Produção
+- Paper 3: Unified Validation Framework
+- Paper 4: Weakspot Detection
+- Paper 5: Scalable Synthetic Data Generation
 
-**PRIORIDADE 2** (Papers 7-11): Papers de nicho/aplicação
-- Paper 7: Lazy Loading Optimizations
-- Paper 8: Threshold Optimization for Fairness
-- Paper 9: Regulatory Compliance Automation
-- Paper 10: DBDataset Container
-- Paper 11: Report Generation System
 
-**PRIORIDADE 3** (Papers 12-13): Survey/Tutorial
-- Paper 12: Survey on ML Validation
-- Paper 13: Tutorial on Production ML Validation
+**PRIORIDADE 2** (Papers 6-10): Papers de nicho/aplicação
+- Paper 6: Lazy Loading Optimizations
+- Paper 7: Threshold Optimization for Fairness
+- Paper 8: Regulatory Compliance Automation
+- Paper 9: DBDataset Container
+- Paper 10: Report Generation System
 
-**PRIORIDADE 4** (Papers 14-17): Emergentes e especializados
-- Paper 14: Interpretable ML Validation Framework
-- Paper 15: Multi-Dimensional Validation with Explainability
-- Paper 16: Knowledge Distillation for Economics
-- Paper 17: XAI-Driven Distillation
+
+**PRIORIDADE 3** (Papers 11-12): Survey/Tutorial
+- Paper 11: Survey on ML Validation
+- Paper 12: Tutorial on Production ML Validation
+
+
+**PRIORIDADE 4** (Papers 13-16): Emergentes e especializados
+- Paper 13: Interpretable ML Validation Framework
+- Paper 14: Multi-Dimensional Validation with Explainability
+- Paper 15: Knowledge Distillation for Economics
+- Paper 16: XAI-Driven Distillation
+
 
 ### Distribuição por Venue
 
 **ML Conferences (Tier A/A*)**:
-- NeurIPS/ICML/ICLR: Papers 1, 16
-- AAAI: Papers 1, 14, 17
-- AISTATS: Papers 5, 15
-- KDD: Papers 5, 6, 15
-- MLSys: Papers 4, 7
+- NeurIPS/ICML/ICLR: Papers 1, 15
+- AAAI: Papers 1, 13, 16
+- AISTATS: Papers 4, 14
+- KDD: Papers 4, 5, 14
+- MLSys: Papers 3, 6
 
 **Fairness/Ethics Conferences**:
-- ACM FAccT: Papers 2, 3, 14, 17
-- AIES: Papers 2, 14
+- ACM FAccT: Papers 2, 13, 16
+- AIES: Papers 13
 
 **Journals**:
-- JMLR: Papers 2, 14
-- Journal of Econometrics: Paper 16
-- Journal of Finance: Papers 2, 14
-- ACM Computing Surveys: Paper 12
+- JMLR: Papers 13
+- Journal of Econometrics: Paper 15
+- Journal of Finance: Papers 13
+- ACM Computing Surveys: Paper 11
 
 ### Relações Entre Papers
 
 **Papers Complementares**:
-- Paper 1 (HPM-KD técnico) + Paper 2 (Regulatory analysis) = História completa de KD
-- Paper 3 (Fairness) + Paper 8 (Threshold) = Fairness ecosystem completo
-- Paper 4 (Unified Validation) + Paper 15 (Validation + Explainability) = Validation comprehensivo
-- Paper 14 (Interpretable Validation) + Paper 15 (Multi-Dimensional) = Interpretable ML completo
-- Paper 2 (Explainable KD) + Paper 17 (XAI-Driven) = KD explainability approaches
+- Paper 1 (HPM-KD técnico) + análise regulatória (fundida analysis) = História completa de KD
+- Paper 2 (Fairness) + Paper 7 (Threshold) = Fairness ecosystem completo
+- Paper 3 (Unified Validation) + Paper 14 (Validation + Explainability) = Validation comprehensivo
+- Paper 13 (Interpretable Validation) + Paper 14 (Multi-Dimensional) = Interpretable ML completo
+- Paper 16 (XAI-Driven) = KD explainability approaches
 
 **Papers Independentes**:
-- Paper 5 (Weakspot Detection)
-- Paper 6 (Synthetic Data)
-- Paper 7 (Lazy Loading)
-- Paper 9 (Compliance Automation)
-- Paper 10 (DBDataset)
-- Paper 11 (Report Generation)
-- Paper 16 (Economics KD)
+- Paper 4 (Weakspot Detection)
+- Paper 5 (Synthetic Data)
+- Paper 6 (Lazy Loading)
+- Paper 8 (Compliance Automation)
+- Paper 9 (DBDataset)
+- Paper 10 (Report Generation)
+- Paper 15 (Economics KD)
 
 **Papers de Infraestrutura** (facilitam outros):
 - Paper 4 (Unified Validation) → Usado por Papers 2, 3, 14, 15
-- Paper 10 (DBDataset) → Usado por todos os papers empíricos
-- Paper 11 (Report Generation) → Usado por Papers 2, 3, 9
+- Paper 9 (DBDataset) → Usado por todos os papers empíricos
+- Paper 10 (Report Generation) → Usado por Papers 2, 3, 9
 
 ---
 
@@ -1582,42 +1540,42 @@ Onde:
 ### Ano 1 (2025-2026)
 **Focus: Estabelecer foundations + High-impact regulatory**
 
-1. **Q1 2025**: Paper 2 (Explainable KD - FAccT 2026) - CRÍTICO devido EU AI Act 2026
-2. **Q2 2025**: Paper 1 (HPM-KD - ICML/NeurIPS 2025)
-3. **Q3 2025**: Paper 3 (Fairness - FAccT 2026 ou Journal)
-4. **Q4 2025**: Paper 4 (Unified Validation - MLSys 2026)
+1. **Q1 2025**: Paper 1 (HPM-KD - ICML/NeurIPS 2025)
+2. **Q2 2025**: Paper 2 (Fairness - FAccT 2026 ou Journal)
+3. **Q3 2025**: Paper 3 (Unified Validation - MLSys 2026)
 
 ### Ano 2 (2026-2027)
 **Focus: Nicho + Specialized**
 
-5. **Q1 2026**: Paper 5 (Weakspot - AISTATS 2026)
-6. **Q2 2026**: Paper 6 (Synthetic Data - KDD 2026)
-7. **Q3 2026**: Paper 14 (Interpretable Validation - JMLR)
-8. **Q4 2026**: Paper 16 (Economics KD - J Econometrics)
+4. **Q4 2025**: Paper 4
+5. **Q1 2026**: Paper 4 (Weakspot - AISTATS 2026)
+6. **Q2 2026**: Paper 5 (Synthetic Data - KDD 2026)
+7. **Q3 2026**: Paper 13 (Interpretable Validation - JMLR)
+8. **Q4 2026**: Paper 15 (Economics KD - J Econometrics)
 
 ### Ano 3 (2027-2028)
 **Focus: Infrastructure + Surveys**
 
-9. **Q1 2027**: Paper 15 (Multi-Dimensional - AISTATS 2027)
-10. **Q2 2027**: Paper 17 (XAI-Driven - AAAI 2027)
-11. **Q3 2027**: Paper 12 (Survey - ACM Computing Surveys)
-12. **Q4 2027**: Papers 7-11 (Infrastructure papers - workshops/journals)
+9. **Q1 2027**: Paper 14 (Multi-Dimensional - AISTATS 2027)
+10. **Q2 2027**: Paper 16 (XAI-Driven - AAAI 2027)
+11. **Q3 2027**: Paper 11 (Survey - ACM Computing Surveys)
+12. **Q4 2027**: Papers 6-10 (Infrastructure papers - workshops/journals)
 
 ### Rationale
 
 **Ano 1 Priority**:
-- Paper 2 é CRÍTICO: EU AI Act força de 2026, timeliness máxima
+- O antigo Paper 2 (Explainable KD) foi fundido;: EU AI Act força de 2026, timeliness máxima
 - Paper 1 estabelece technical foundation (HPM-KD)
-- Papers 3-4 são core contributions com maior impacto
+- Papers 2-3 são core contributions com maior impacto
 
 **Ano 2 Priority**:
-- Papers 5-6 são solid technical contributions
-- Papers 14, 16 são especializados mas high-quality venues
+- Papers 4-5 são solid technical contributions
+- Papers 13, 15 são especializados mas high-quality venues
 
 **Ano 3 Priority**:
-- Papers 15, 17 completam ecosystem
-- Paper 12 (Survey) se beneficia de Papers 1-11 já publicados
-- Papers 7-11 são incremental, podem ir para workshops ou journals de menor impacto
+- Papers 14, 16 completam ecosystem
+- Paper 11 (Survey) se beneficia de Papers 1-10 já publicados
+- Papers 6-10 são incremental, podem ir para workshops ou journals de menor impacto
 
 ---
 

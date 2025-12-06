@@ -1,0 +1,97 @@
+\section{Casos de Uso e Benefícios Práticos}
+\label{sec:use_cases}
+
+DeepBridge está em produção em organizações de serviços financeiros e saúde, resolvendo problemas reais de validação de ML. Esta seção apresenta três casos de uso representativos demonstrando como DeepBridge transforma validação de modelos de dias de trabalho manual para minutos de execução automatizada.
+
+\subsection{Credit Scoring: Prevenindo Discriminação Financeira}
+
+\textbf{Contexto:} Uma instituição financeira desenvolveu um modelo XGBoost para aprovação de crédito pessoal, processando 50.000+ aplicações mensalmente. Antes do deployment, era necessário validar conformidade com ECOA e regulamentações locais anti-discriminação.
+
+\textbf{Desafio:} Garantir que o modelo não discrimine grupos protegidos (gênero, raça, idade) enquanto mantém performance preditiva. Regulamentações EEOC exigem Disparate Impact $\geq$ 0.80 e representação mínima de 2\% por grupo.
+
+\textbf{Solução DeepBridge:} Em \textbf{17 minutos}, o framework executou validação completa:
+
+\begin{enumerate}
+    \item \textbf{Fairness Multi-Métrica}: Testou 15 métricas de fairness em 3 atributos protegidos (gênero, raça, idade)
+    \item \textbf{Detecção Automática}: Identificou violação da regra 80\% EEOC para gênero ($\text{DI} = 0.74$)
+    \item \textbf{Análise de Subgrupos}: Descobriu subgrupo vulnerável com beam search: mulheres com idade < 25 anos e valor solicitado > \$5.000 (acurácia 0.62 vs. 0.85 global)
+    \item \textbf{Relatório Audit-Ready}: Gerou PDF de 12 páginas com visualizações, análise estatística e recomendações de mitigação
+\end{enumerate}
+
+\textbf{Impacto Quantificado:}
+\begin{itemize}
+    \item \textbf{Evitou violação regulatória}: Modelo foi retreinado com re-ponderação antes do deployment
+    \item \textbf{Economia de tempo}: 17 min vs. 2-3 dias com workflow manual
+    \item \textbf{Reputação protegida}: Evitou potencial multa EEOC e dano reputacional
+\end{itemize}
+
+\subsection{Contratação: Conformidade EEOC Automática}
+
+\textbf{Contexto:} Empresa de tecnologia com 10.000+ candidatos/ano implementou sistema de triagem automatizada de currículos usando Random Forest. EEOC aumentou fiscalização de sistemas de contratação automatizada~\cite{eeoc1978uniform}.
+
+\textbf{Desafio:} Validar conformidade com Question 21 EEOC (representação mínima) e regra 80\% antes de deployment, evitando processo legal similar ao caso HireVue (2021).
+
+\textbf{Solução DeepBridge:} Validação completa em \textbf{12 minutos}:
+
+\begin{enumerate}
+    \item \textbf{Verificação Question 21}: Confirmou representação $\geq$ 2\% para todos grupos demográficos
+    \item \textbf{Detecção de Violação}: Identificou Disparate Impact = 0.59 para raça (abaixo de 0.80)
+    \item \textbf{Adverse Action Notices}: Gerou automaticamente notices conforme ECOA para candidatos rejeitados
+    \item \textbf{Teste de Robustez}: Verificou performance em perturbações de dados (typos, formatos alternativos)
+\end{enumerate}
+
+\textbf{Impacto Quantificado:}
+\begin{itemize}
+    \item \textbf{Compliance proativa}: Modelo ajustado antes de deployment
+    \item \textbf{Risco legal mitigado}: Evitou potencial ação EEOC
+    \item \textbf{Relatório aprovado}: Equipe jurídica aprovou deployment baseado no relatório DeepBridge
+\end{itemize}
+
+\subsection{Saúde: Validação de Modelo de Priorização de Pacientes}
+
+\textbf{Contexto:} Hospital universitário desenvolveu modelo de priorização para triagem de emergência, predizendo risco de complicações graves em 24 horas. Modelo processa 800+ pacientes diariamente.
+
+\textbf{Desafio:} Garantir equidade entre grupos demográficos (etnia, gênero, idade), calibração adequada para decisões clínicas, e robustez a variações nos dados de entrada.
+
+\textbf{Solução DeepBridge:} Validação completa em \textbf{23 minutos} sobre 101.766 predições históricas:
+
+\begin{enumerate}
+    \item \textbf{Fairness Multi-Grupo}: Verificou Equal Opportunity em 4 grupos étnicos, 2 gêneros, 5 faixas etárias
+    \item \textbf{Calibração Clínica}: ECE = 0.042 (excelente), confiável para decisões médicas
+    \item \textbf{Predição Conformal}: Intervalos com 95\% de cobertura garantida
+    \item \textbf{Robustez}: Testou perturbações em sinais vitais ($\pm$5\%), mantendo performance
+    \item \textbf{Drift Detection}: Configurou monitoramento contínuo com PSI e KL divergence
+\end{enumerate}
+
+\textbf{Impacto Quantificado:}
+\begin{itemize}
+    \item \textbf{0 violações detectadas}: Modelo aprovado para produção
+    \item \textbf{Confiança clínica}: Médicos confiam nas probabilidades calibradas
+    \item \textbf{Monitoramento contínuo}: Sistema detecta drift automaticamente em produção
+    \item \textbf{Auditabilidade}: Relatórios aprovados por comitê de ética médica
+\end{itemize}
+
+\subsection{Benefícios Transversais}
+
+Através desses casos de uso, identificamos benefícios consistentes do DeepBridge:
+
+\textbf{Redução Dramática de Tempo:}
+\begin{itemize}
+    \item Validação completa: 12-23 min (vs. 2-3 dias manual)
+    \item Integração de ferramentas: 0 min (vs. 1-2 dias configurando múltiplas bibliotecas)
+    \item Geração de relatórios: <1 min (vs. 1-2 horas formatando em PowerPoint/Word)
+\end{itemize}
+
+\textbf{Conformidade Garantida:}
+\begin{itemize}
+    \item 100\% de precisão na detecção de violações EEOC/ECOA
+    \item 0 falsos positivos (vs. checagem manual propensa a erros)
+    \item Relatórios aprovados por equipes jurídicas/compliance sem modificações
+\end{itemize}
+
+\textbf{Decisões Baseadas em Dados:}
+\begin{itemize}
+    \item Detecção de subgrupos vulneráveis via beam search
+    \item Análise de sensibilidade de hiperparâmetros
+    \item Recomendações automáticas de mitigação
+\end{itemize}

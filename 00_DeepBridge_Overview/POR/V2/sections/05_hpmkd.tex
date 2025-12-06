@@ -1,0 +1,79 @@
+\section{HPM-KD: Destilação de Conhecimento para Dados Tabulares}
+\label{sec:hpmkd}
+
+Modelos de ML em produção para dados tabulares (XGBoost, LightGBM, ensembles) alcançam alta acurácia mas apresentam custos proibitivos: latência >100ms, memória >1GB, inferência cara em escala. Destilação de conhecimento~\cite{hinton2015distilling} oferece uma solução: treinar um modelo student compacto que imita um teacher complexo, retendo acurácia com fração do tamanho.
+
+\subsection{Framework HPM-KD}
+
+Hierarchical Progressive Multi-Teacher Knowledge Distillation (HPM-KD) aborda desafios de dados tabulares através de 7 componentes integrados:
+
+\begin{enumerate}
+    \item \textbf{Adaptive Configuration Manager}: Seleciona hiperparâmetros via meta-aprendizado
+    \item \textbf{Progressive Distillation Chain}: Refina student incrementalmente através de múltiplos estágios
+    \item \textbf{Attention-Weighted Multi-Teacher}: Ensemble com pesos de atenção aprendidos
+    \item \textbf{Meta-Temperature Scheduler}: Temperatura adaptativa baseada em dificuldade da tarefa
+    \item \textbf{Parallel Processing Pipeline}: Carga de trabalho distribuída entre cores
+    \item \textbf{Shared Optimization Memory}: Aprendizado cross-experiment
+    \item \textbf{Intelligent Cache}: Otimização de memória
+\end{enumerate}
+
+\subsection{Destilação Progressiva}
+
+Diferente de KD padrão que destila diretamente de teacher para student, HPM-KD usa cadeia progressiva:
+
+$$
+\text{Teacher} \xrightarrow{\text{KD}} \text{Student}_1 \xrightarrow{\text{KD}} \text{Student}_2 \xrightarrow{\text{KD}} \text{Student}_{\text{final}}
+$$
+
+Cada estágio usa capacidade de student menor, preenchendo o gap teacher-student. A função de perda combina:
+
+$$
+\mathcal{L}_{\text{HPM-KD}} = \alpha \mathcal{L}_{\text{hard}} + (1-\alpha) \mathcal{L}_{\text{soft}}
+$$
+
+onde:
+\begin{itemize}
+    \item $\mathcal{L}_{\text{hard}} = \text{CrossEntropy}(y, \hat{y}_{\text{student}})$
+    \item $\mathcal{L}_{\text{soft}} = \text{KL}(\sigma(z_{\text{teacher}}/T), \sigma(z_{\text{student}}/T))$
+    \item $T$ é temperatura meta-aprendida
+\end{itemize}
+
+\subsection{Atenção Multi-Teacher}
+
+Dados $K$ modelos teacher $\{M_1, \ldots, M_K\}$, computamos soft labels ponderados por atenção:
+
+$$
+p_{\text{soft}} = \sum_{k=1}^K w_k \sigma(z_k / T)
+$$
+
+onde pesos de atenção $w_k$ são aprendidos via:
+
+$$
+w_k = \frac{\exp(\text{score}(M_k, x))}{\sum_{j=1}^K \exp(\text{score}(M_j, x))}
+$$
+
+A função score considera acurácia do teacher em instâncias similares.
+
+\subsection{Resultados}
+
+A Tabela~\ref{tab:hpmkd_results} compara HPM-KD com baselines em 20 datasets UCI/OpenML.
+
+\begin{table}[h]
+\centering
+\caption{Desempenho HPM-KD vs. Baselines}
+\label{tab:hpmkd_results}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Método} & \textbf{Acurácia} & \textbf{Compressão} & \textbf{Latência} \\
+\midrule
+Teacher Ensemble & 87.2\% & 1.0$\times$ & 125ms \\
+Vanilla KD & 82.5\% & 10.2$\times$ & 12ms \\
+TAKD & 83.8\% & 10.1$\times$ & 13ms \\
+Auto-KD & 84.4\% & 10.3$\times$ & 12ms \\
+\textbf{HPM-KD} & \textbf{85.8\%} & \textbf{10.3$\times$} & \textbf{12ms} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+HPM-KD alcança \textbf{98.4\% de retenção de acurácia} (85.8\% vs. 87.2\% teacher) com \textbf{compressão de 10.3$\times$} (2.4GB → 230MB) e \textbf{speedup de latência de 10$\times$} (125ms → 12ms).

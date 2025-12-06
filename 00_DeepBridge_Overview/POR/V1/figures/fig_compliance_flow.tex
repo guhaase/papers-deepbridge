@@ -1,0 +1,47 @@
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+    box/.style={rectangle, draw, minimum width=3cm, minimum height=0.8cm, align=center, font=\small},
+    decision/.style={diamond, draw, minimum width=2cm, minimum height=2cm, align=center, font=\scriptsize},
+    arrow/.style={->, >=stealth, thick},
+    label/.style={font=\footnotesize}
+]
+
+% Input
+\node[box, fill=blue!20] (input) at (0,0) {Modelo + Dados\\+ Atributos Protegidos};
+
+% Compute metrics
+\node[box, fill=yellow!20] (metrics) at (0,-1.5) {Calcular Métricas\\(DI, EO, etc.)};
+
+\draw[arrow] (input) -- (metrics);
+
+% Check EEOC 80%
+\node[decision, fill=orange!20] (eeoc80) at (0,-3.5) {DI $\geq$ 0.80\\(EEOC)?};
+
+\draw[arrow] (metrics) -- (eeoc80);
+
+% Check EEOC Q21
+\node[decision, fill=orange!20] (eeocq21) at (0,-6) {Repr. $\geq$ 2\%\\(Q21)?};
+
+\draw[arrow] (eeoc80) -- node[right, label] {PASS} (eeocq21);
+
+% Results
+\node[box, fill=green!20] (pass) at (3,-7.5) {COMPLIANT\\Gerar relatório};
+\node[box, fill=red!20] (fail) at (-3,-7.5) {NON-COMPLIANT\\+ Recomendações};
+
+\draw[arrow] (eeocq21) -- node[above right, label] {PASS} (pass);
+\draw[arrow] (eeocq21) -- node[above left, label] {FAIL} (fail);
+\draw[arrow] (eeoc80) -| node[above, label, pos=0.2] {FAIL} (fail);
+
+% Recommendations
+\node[box, fill=purple!20, minimum width=4cm] (recommend) at (0,-9) {Recomendações de Mitigação\\(reweighting, threshold tuning)};
+
+\draw[arrow] (fail) -- (recommend);
+
+% Title
+\node[font=\bfseries] at (0,0.8) {Fluxo de Verificação Automática de Compliance};
+
+\end{tikzpicture}
+\caption{Workflow de verificação automática de compliance regulatório. DeepBridge calcula métricas e verifica automaticamente conformidade com EEOC (80\% rule, Question 21) e ECOA, gerando recomendações de mitigação quando violações são detectadas.}
+\label{fig:compliance_flow}
+\end{figure}

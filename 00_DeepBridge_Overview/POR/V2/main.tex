@@ -1,0 +1,100 @@
+\documentclass[sigconf,anonymous]{acmart}
+
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumerate}
+\usepackage{subfig}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{pifont}
+
+% Define checkmark and xmark
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    language=Python,
+    showstringspaces=false,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red}
+}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmConference{MLSys}{2026}{Conference}
+
+\begin{document}
+
+\title{DeepBridge: Um Framework Unificado e Pronto para Produção para Validação Multi-Dimensional de Machine Learning}
+
+\author{Nome do Autor}
+\email{autor@email.com}
+\affiliation{%
+  \institution{Nome da Instituição}
+  \country{País}
+}
+
+\renewcommand{\shortauthors}{Anônimo}
+
+\begin{abstract}
+Sistemas de ML em produção requerem validação multi-dimensional (fairness, robustez, incerteza, resiliência) e conformidade regulatória (EEOC, ECOA, GDPR). Ferramentas existentes são fragmentadas: profissionais devem integrar mais de 5 bibliotecas especializadas com APIs distintas, resultando em fluxos de trabalho custosos e propensos a erros. Nenhum framework unificado existe que: (1) integre múltiplas dimensões de validação com API consistente, (2) verifique conformidade regulatória automaticamente, e (3) gere relatórios prontos para auditoria.
+
+Apresentamos o \textbf{DeepBridge}, uma biblioteca Python com 80K linhas de código que unifica validação multi-dimensional, verificação automática de conformidade, destilação de conhecimento e geração de dados sintéticos. DeepBridge oferece: (i) 5 suítes de validação (fairness com 15 métricas, robustez com detecção de pontos fracos, incerteza via predição conformal, resiliência com 5 tipos de drift, sensibilidade de hiperparâmetros), (ii) verificação automática EEOC/ECOA/GDPR, (iii) sistema de relatórios multi-formato (HTML interativo/estático, PDF, JSON), (iv) framework HPM-KD para destilação de conhecimento com meta-aprendizado, e (v) geração escalável de dados sintéticos via Dask.
+
+Através de 6 estudos de caso (credit scoring, contratação, saúde, hipoteca, seguros, fraude) demonstramos que DeepBridge: \textbf{reduz o tempo de validação em 89\%} (17 min vs. 150 min com ferramentas fragmentadas), \textbf{detecta automaticamente violações de fairness} com cobertura completa (10/10 features vs. 2/10 de ferramentas existentes), \textbf{gera relatórios prontos para auditoria} em minutos, e \textbf{comprime modelos 10.3$\times$} com 98.4\% de retenção de acurácia via HPM-KD. Estudo de usabilidade com 20 participantes mostra SUS score 87.5 (top 10\%, ``excelente''), taxa de sucesso 95\%, e baixa carga cognitiva (NASA-TLX 28/100).
+
+DeepBridge é open-source sob licença MIT em \url{https://github.com/deepbridge/deepbridge}, com documentação completa em \url{https://deepbridge.readthedocs.io}.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10010147.10010257</concept_id>
+<concept_desc>Computing methodologies~Machine learning</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10010147.10010257.10010293.10010294</concept_id>
+<concept_desc>Computing methodologies~Neural networks</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computing methodologies~Machine learning}
+\ccsdesc[300]{Computing methodologies~Neural networks}
+
+\keywords{Validação de Machine Learning, Fairness, Robustez, Quantificação de Incerteza, Destilação de Conhecimento, Compressão de Modelos, Conformidade Regulatória, MLOps, ML em Produção}
+
+\maketitle
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_architecture}
+\input{sections/04_validation}
+\input{sections/05_hpmkd}
+\input{sections/06_evaluation}
+\input{sections/07_conclusion}
+
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

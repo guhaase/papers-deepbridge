@@ -1,0 +1,102 @@
+\section{Introdução}
+\label{sec:introduction}
+
+A validação de modelos de Machine Learning (ML) tornou-se crítica à medida que esses sistemas são implantados em domínios de alto impacto, como serviços financeiros, saúde e contratação~\cite{sculley2015hidden,amershi2019software}. Ao contrário de sistemas de software tradicionais, modelos de ML apresentam desafios únicos de validação: seu comportamento emerge dos dados de treinamento, podem falhar silenciosamente em subgrupos específicos, e frequentemente operam como ``caixas-pretas'' que dificultam interpretação e auditoria~\cite{breck2017ml}.
+
+Regulamentações recentes intensificaram a necessidade de validação rigorosa. A Equal Employment Opportunity Commission (EEOC) nos Estados Unidos exige que sistemas de contratação automatizada atendam à ``regra dos 80\%'' para evitar impacto discriminatório~\cite{eeoc1978uniform}. A Equal Credit Opportunity Act (ECOA) proíbe discriminação em decisões de crédito e exige ``razões específicas'' para decisões adversas~\cite{ecoa1974equal}. Na União Europeia, o GDPR garante o direito à explicação de decisões automatizadas~\cite{gdpr2016general}.
+
+\subsection{DeepBridge: Validação Unificada e Pronta para Produção}
+
+Validar modelos de ML em produção tradicionalmente requer dias de trabalho manual, integrando múltiplas ferramentas especializadas com APIs inconsistentes. \textbf{DeepBridge transforma esse processo em minutos} através de três inovações principais:
+
+\textbf{1. API Unificada Tipo ``Scikit-Learn''}
+
+Criação única de dataset container que funciona em todas as dimensões de validação:
+
+\begin{lstlisting}[language=Python, caption=Validação completa em 3 linhas de código]
+from deepbridge import DBDataset, Experiment
+
+# Criar uma vez, usar em qualquer lugar
+dataset = DBDataset(
+    data=df,
+    target_column='approved',
+    model=trained_model,
+    protected_attributes=['gender', 'race']
+)
+
+# Validação completa em 3 linhas
+exp = Experiment(dataset, tests='all')
+results = exp.run_tests()
+exp.save_pdf('complete_report.pdf')  # <5 minutos
+\end{lstlisting}
+
+\textbf{Benefício:} Redução de 89\% no tempo de validação (17 min vs. 150 min manual).
+
+\textbf{2. Conformidade Regulatória Automática}
+
+Primeiro framework que verifica automaticamente conformidade EEOC/ECOA:
+\begin{itemize}
+    \item \textbf{Regra 80\% EEOC}: Verifica se $\text{DI} \geq 0.80$ automaticamente
+    \item \textbf{Question 21 EEOC}: Valida representação mínima 2\% por grupo
+    \item \textbf{ECOA}: Gera \textit{adverse action notices} automaticamente
+\end{itemize}
+
+\textbf{Benefício:} 100\% de precisão na detecção de violações vs. checagem manual propensa a erros.
+
+\textbf{3. Relatórios Audit-Ready em Minutos}
+
+Sistema template-driven gera relatórios profissionais em HTML/PDF/JSON com:
+\begin{itemize}
+    \item Visualizações interativas automáticas
+    \item Recomendações de mitigação
+    \item Customização de branding corporativo
+    \item Formato aprovado por equipes de compliance
+\end{itemize}
+
+\textbf{Benefício:} Relatórios que antes levavam 60 minutos agora em menos de 1 minuto.
+
+\subsection{DeepBridge: Framework Completo}
+
+DeepBridge é uma biblioteca Python open-source com aproximadamente 80K linhas de código que unifica:
+
+\begin{itemize}
+    \item \textbf{Validação Multi-Dimensional}: Integra 5 dimensões (fairness, robustez, incerteza, resiliência, sensibilidade de hiperparâmetros) em uma interface consistente
+
+    \item \textbf{Framework HPM-KD}: Algoritmo estado-da-arte de destilação de conhecimento para dados tabulares, alcançando 98.4\% de retenção de acurácia com compressão de 10.3$\times$
+
+    \item \textbf{Dados Sintéticos Escaláveis}: Implementação baseada em Dask de Gaussian Copula para geração de dados sintéticos em escala (>100GB)
+\end{itemize}
+
+\subsection{Contribuições e Resultados}
+
+Através de avaliação empírica rigorosa em 6 estudos de caso (Seção~\ref{sec:evaluation}), demonstramos que DeepBridge oferece:
+
+\textbf{Economia de Tempo:}
+\begin{itemize}
+    \item \textbf{89\% de redução} no tempo de validação (17 min vs. 150 min)
+    \item \textbf{98\% de redução} na geração de relatórios (<1 min vs. 60 min)
+    \item \textbf{12 minutos} para integração CI/CD (vs. 2-3 dias manual)
+\end{itemize}
+
+\textbf{Economia de Custo (via HPM-KD):}
+\begin{itemize}
+    \item \textbf{10$\times$ speedup} de latência (125ms → 12ms)
+    \item \textbf{10.3$\times$ compressão} de modelo (2.4GB → 230MB)
+    \item \textbf{10$\times$ redução} no custo de inferência
+\end{itemize}
+
+\textbf{Conformidade e Qualidade:}
+\begin{itemize}
+    \item \textbf{100\% de precisão} na detecção de violações EEOC/ECOA
+    \item \textbf{0 falsos positivos} em 6 estudos de caso
+    \item \textbf{100\% de aprovação} de relatórios por equipes de compliance
+\end{itemize}
+
+\textbf{Usabilidade Excelente:}
+\begin{itemize}
+    \item \textbf{SUS Score 87.5} (top 10\% - classificação ``excelente'')
+    \item \textbf{95\% de taxa de sucesso} (19/20 usuários completaram todas tarefas)
+    \item \textbf{12 minutos} tempo médio para primeira validação
+\end{itemize}
+
+DeepBridge está implantado em produção em organizações de serviços financeiros e saúde, processando milhões de predições mensalmente, e é open-source sob licença MIT em \url{https://github.com/DeepBridge-Validation/DeepBridge}.

@@ -1,0 +1,87 @@
+\section{Validação Multi-Dimensional}
+\label{sec:validation}
+
+DeepBridge integra cinco dimensões de validação críticas para ML em produção, permitindo análise abrangente em uma única execução. Esta seção demonstra as capacidades práticas de cada dimensão.
+
+\begin{table}[h]
+\centering
+\caption{Dimensões de Validação no DeepBridge}
+\label{tab:dimensions}
+\small
+\begin{tabular}{llp{3.5cm}}
+\toprule
+\textbf{Dimensão} & \textbf{Métricas} & \textbf{Features-Chave} \\
+\midrule
+Fairness & 15 & Regra 80\% EEOC, Questão 21 \\
+Robustez & 10+ & Detecção de pontos fracos, adversarial \\
+Incerteza & 8 & Predição conformal, ECE \\
+Resiliência & 5 tipos & PSI, KL, Wasserstein, KS, ADWIN \\
+Hiperparâmetros & N/A & Permutation importance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Suíte de Fairness}
+
+A suíte de fairness implementa 15 métricas cobrindo fairness de grupo, individual e causal, com verificação automática de conformidade regulatória.
+
+\textbf{Uso Prático:}
+
+\begin{lstlisting}[language=Python, caption=Validação de fairness em 2 linhas]
+fairness_mgr = exp.fairness_manager
+results = fairness_mgr.run_all_tests()
+# Detecta automaticamente violações EEOC/ECOA
+\end{lstlisting}
+
+\textbf{Três Níveis de Análise:}
+
+\textbf{Fairness de Grupo:}
+\begin{itemize}
+    \item \textbf{Disparate Impact}: $\text{DI} = \frac{P(\hat{Y}=1|S=1)}{P(\hat{Y}=1|S=0)} \geq 0.80$ (EEOC)
+    \item \textbf{Equal Opportunity}: TPR igual entre grupos
+    \item \textbf{Equalized Odds}: TPR e FPR iguais entre grupos
+\end{itemize}
+
+\textbf{Verificação Automática de Conformidade.} DeepBridge é a primeira ferramenta a verificar automaticamente:
+\begin{itemize}
+    \item \textbf{Regra 80\% EEOC}: Verifica se $\text{DI} \geq 0.80$ para todos atributos protegidos
+    \item \textbf{Questão 21 EEOC}: Valida representação mínima de 2\% por grupo
+    \item \textbf{Requisitos ECOA}: Gera ``razões específicas'' para decisões adversas
+\end{itemize}
+
+\subsection{Suíte de Robustez}
+
+\textbf{Detecção de Pontos Fracos.} Identifica automaticamente subgrupos onde o modelo performa mal usando beam search sobre combinações de features. Por exemplo, em credit scoring:
+\begin{itemize}
+    \item Subgrupo: \texttt{gender=Female AND age<25 AND amount>5000}
+    \item Tamanho: 47 amostras (4.7\%)
+    \item Acurácia: 0.62 vs. 0.85 global
+\end{itemize}
+
+\textbf{Testes Adversariais.} Implementa ataques FGSM, PGD e C\&W adaptados para dados tabulares.
+
+\subsection{Suíte de Incerteza}
+
+\textbf{Calibração.} Expected Calibration Error (ECE) mede alinhamento entre probabilidades preditas e frequências observadas:
+$$
+\text{ECE} = \sum_{m=1}^M \frac{|B_m|}{n} |\text{acc}(B_m) - \text{conf}(B_m)|
+$$
+
+\textbf{Predição Conformal.} Fornece intervalos de predição distribution-free com cobertura garantida:
+$$
+C(x) = \{y : s(x,y) \leq q_{n,\alpha}\}
+$$
+onde $q_{n,\alpha}$ é o quantil $(1-\alpha)$ dos conformity scores, garantindo $P(Y \in C(X)) \geq 1-\alpha$.
+
+\subsection{Suíte de Resiliência}
+
+Detecta cinco tipos de mudança de distribuição:
+\begin{itemize}
+    \item \textbf{Covariate Drift}: $P(X)$ muda
+    \item \textbf{Prior Drift}: $P(Y)$ muda
+    \item \textbf{Concept Drift}: $P(Y|X)$ muda
+    \item \textbf{Posterior Drift}: $P(X|Y)$ muda
+    \item \textbf{Joint Drift}: $P(X,Y)$ muda
+\end{itemize}
+
+Métricas incluem PSI, divergência KL, distância de Wasserstein, estatística KS e ADWIN para detecção adaptativa de drift.
