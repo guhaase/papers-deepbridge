@@ -1,0 +1,197 @@
+# Configuration for Usability Study Experiment
+
+experiment:
+  name: "Usability Study"
+  version: "1.0"
+  description: "Empirical usability study with ML practitioners"
+
+# Study parameters
+study:
+  n_participants: 20
+  random_seed: 42
+
+  participants:
+    data_scientists: 10
+    ml_engineers: 10
+
+    experience_years:
+      min: 2
+      max: 10
+
+    domains:
+      fintech: 8
+      healthcare: 5
+      tech: 4
+      retail: 3
+
+# Tasks
+tasks:
+  task1_fairness:
+    name: "Validate Fairness of Model"
+    expected_time_min: 6.5
+    expected_time_std: 1.2
+    difficulty: "medium"
+
+  task2_report:
+    name: "Generate Audit-Ready PDF Report"
+    expected_time_min: 2.8
+    expected_time_std: 0.8
+    difficulty: "easy"
+
+  task3_cicd:
+    name: "Integrate Validation in CI/CD Pipeline"
+    expected_time_min: 6.2
+    expected_time_std: 1.5
+    difficulty: "medium"
+
+# Target metrics
+targets:
+  sus_score:
+    target: 85
+    interpretation: "excellent"
+    percentile: "top 10%"
+
+  nasa_tlx:
+    target: 30
+    interpretation: "low workload"
+
+  success_rate:
+    target: 90  # percentage
+    interpretation: "high success"
+
+  completion_time:
+    target: 15  # minutes
+    interpretation: "fast completion"
+
+  errors:
+    target: 2
+    interpretation: "low error rate"
+
+# Expected results (for mock data generation)
+expected_results:
+  sus_score:
+    mean: 87.5
+    std: 3.2
+    min: 80
+    max: 95
+
+  nasa_tlx:
+    overall:
+      mean: 28
+      std: 5.1
+    dimensions:
+      mental_demand:
+        mean: 35
+        std: 8
+      physical_demand:
+        mean: 10
+        std: 5
+      temporal_demand:
+        mean: 25
+        std: 8
+      performance:
+        mean: 20  # Low is good (inverted)
+        std: 10
+      effort:
+        mean: 32
+        std: 8
+      frustration:
+        mean: 18
+        std: 10
+
+  success_rate:
+    overall: 95  # 19 out of 20
+    task1: 100
+    task2: 100
+    task3: 95
+
+  completion_time:
+    total:
+      mean: 12.0
+      std: 2.5
+    task1:
+      mean: 6.5
+      std: 1.2
+    task2:
+      mean: 2.8
+      std: 0.8
+    task3:
+      mean: 6.2
+      std: 1.5
+
+  errors:
+    mean: 1.3
+    std: 0.9
+    distribution:  # Poisson
+      lambda: 1.3
+
+# Baseline comparison (fragmented workflow)
+baseline:
+  name: "Fragmented Workflow"
+  tools: ["AIF360", "Fairlearn", "Alibi Detect", "etc."]
+  estimated_time: 45  # minutes
+  estimated_sus: 60
+  estimated_complexity: "high"
+
+# Statistical analysis
+statistical:
+  alpha: 0.05  # Significance level
+  confidence_level: 0.95
+
+  tests:
+    sus_one_sample_ttest:
+      null_hypothesis: "SUS = 68"
+      alternative: "greater"
+      population_mean: 68
+
+    normality:
+      method: "shapiro-wilk"
+
+  effect_size:
+    method: "cohen_d"
+
+# Visualization settings
+visualization:
+  style: "whitegrid"
+  dpi: 300
+  format: "pdf"
+  color_palette: "Set2"
+
+  figures:
+    sus_distribution:
+      filename: "sus_score_distribution.pdf"
+      bins: 10
+
+    nasa_tlx_dimensions:
+      filename: "nasa_tlx_dimensions.pdf"
+      type: "radar_and_bar"
+
+    task_times:
+      filename: "task_completion_times.pdf"
+      type: "boxplot_and_cdf"
+
+    success_rates:
+      filename: "success_rate_by_task.pdf"
+      type: "bar"
+
+# Output settings
+output:
+  save_mock_data: true
+  save_metrics: true
+  save_statistical_analysis: true
+  generate_latex_table: true
+  generate_summary_report: true
+
+# Logging
+logging:
+  level: "INFO"
+  console: true
+  file: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Ethics
+ethics:
+  consent_required: true
+  anonymization: true
+  data_retention_days: 365
+  irb_approval_required: false  # Set to true if academic institution

@@ -1,0 +1,149 @@
+# Experiment 6: Ablation Studies Configuration
+# Decomposes DeepBridge time gains by component
+
+experiment:
+  name: "Ablation Studies"
+  type: "ablation"
+  version: "1.0"
+  seed: 42
+
+# Dataset configuration
+dataset:
+  name: "Adult Income"
+  samples: 48842
+  features: 14
+  protected_attributes:
+    - gender
+    - race
+    - age
+
+# Execution configuration
+execution:
+  runs_per_config: 10
+  parallel_configs: false  # Set to true to run configs in parallel
+
+# Ablation configurations
+configurations:
+  full:
+    unified_api: true
+    parallel_execution: true
+    caching: true
+    automated_reporting: true
+    expected_time: 17.0  # minutes
+
+  no_api:
+    unified_api: false
+    parallel_execution: true
+    caching: true
+    automated_reporting: true
+    expected_time: 83.0  # minutes
+
+  no_parallel:
+    unified_api: true
+    parallel_execution: false
+    caching: true
+    automated_reporting: true
+    expected_time: 57.0  # minutes
+
+  no_cache:
+    unified_api: true
+    parallel_execution: true
+    caching: false
+    automated_reporting: true
+    expected_time: 30.0  # minutes
+
+  no_auto_report:
+    unified_api: true
+    parallel_execution: true
+    caching: true
+    automated_reporting: false
+    expected_time: 30.0  # minutes
+
+  none:
+    unified_api: false
+    parallel_execution: false
+    caching: false
+    automated_reporting: false
+    expected_time: 150.0  # minutes
+
+# Expected contributions
+expected_contributions:
+  api_unificada:
+    absolute: 66.0  # minutes
+    percentage: 50.0  # %
+    description: "API unificada elimina conversões manuais"
+
+  paralizacao:
+    absolute: 40.0  # minutes
+    percentage: 30.0  # %
+    description: "Paralelização executa testes simultaneamente"
+
+  caching:
+    absolute: 13.0  # minutes
+    percentage: 10.0  # %
+    description: "Caching evita recomputação de predições"
+
+  automacao_relatorios:
+    absolute: 13.0  # minutes
+    percentage: 10.0  # %
+    description: "Automação gera relatórios instantaneamente"
+
+# Total gain
+total_gain:
+  baseline: 17.0  # DeepBridge completo
+  fragmented: 150.0  # Workflow fragmentado
+  gain: 133.0  # 150 - 17
+  speedup: 8.8  # 150 / 17
+
+# Statistical analysis
+statistical_analysis:
+  anova:
+    alpha: 0.05
+    expected_p_value: 0.001  # p < 0.001 (highly significant)
+
+  tukey_hsd:
+    alpha: 0.05
+    expected_all_significant: true
+
+# Output paths
+outputs:
+  data_dir: "data"
+  results_dir: "results"
+  figures_dir: "figures"
+  tables_dir: "tables"
+  logs_dir: "logs"
+
+  files:
+    demo_results: "results/ablation_demo_results.json"
+    all_configs: "results/ablation_all_configs.json"
+    contributions: "results/ablation_contributions.json"
+    anova: "results/ablation_anova.json"
+    latex_table: "tables/ablation_results.tex"
+
+# Visualization settings
+visualizations:
+  - name: "waterfall"
+    type: "waterfall"
+    output: "figures/ablation_waterfall.pdf"
+    description: "Cumulative contribution of components"
+
+  - name: "stacked_bar"
+    type: "stacked_bar"
+    output: "figures/ablation_stacked_bar.pdf"
+    description: "Stacked bar showing component contributions"
+
+  - name: "boxplot"
+    type: "boxplot"
+    output: "figures/ablation_boxplot.pdf"
+    description: "Boxplot comparison across configurations"
+
+  - name: "pie"
+    type: "pie"
+    output: "figures/ablation_contributions_pie.pdf"
+    description: "Pie chart of component contributions"
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  datefmt: "%Y-%m-%d %H:%M:%S"

@@ -1,0 +1,156 @@
+# Configuration for Case Studies Experiments
+
+experiment:
+  name: "Case Studies - 6 Domains"
+  version: "1.0"
+  description: "Reproducing Table 3 results from DeepBridge paper"
+
+# Global settings
+global:
+  random_seed: 42
+  test_split: 0.3
+  n_jobs: -1  # Use all available cores
+  verbose: true
+
+# Case-specific configurations
+cases:
+  credit:
+    enabled: true
+    n_samples: 1000
+    expected_time_minutes: 17
+    expected_violations: 2
+    model:
+      type: "XGBoost"
+      n_estimators: 100
+      max_depth: 6
+      learning_rate: 0.1
+    protected_attributes:
+      - gender
+      - age
+    validation:
+      fairness: true
+      robustness: true
+      uncertainty: true
+      resilience: true
+
+  hiring:
+    enabled: true
+    n_samples: 7214
+    expected_time_minutes: 12
+    expected_violations: 1
+    model:
+      type: "RandomForest"
+      n_estimators: 200
+      max_depth: 10
+    protected_attributes:
+      - race
+      - sex
+      - age
+    validation:
+      fairness: true
+      robustness: true
+      uncertainty: true
+      resilience: true
+
+  healthcare:
+    enabled: true
+    n_samples: 101766
+    expected_time_minutes: 23
+    expected_violations: 0
+    model:
+      type: "XGBoost"
+      n_estimators: 150
+      max_depth: 8
+      learning_rate: 0.05
+    protected_attributes:
+      - ethnicity
+      - gender
+      - age_group
+    validation:
+      fairness: true
+      robustness: true
+      uncertainty: true
+      resilience: true
+      conformal_prediction: true
+
+  mortgage:
+    enabled: true
+    n_samples: 450000
+    expected_time_minutes: 45
+    expected_violations: 1
+    model:
+      type: "GradientBoosting"
+      n_estimators: 100
+      max_depth: 5
+      learning_rate: 0.1
+    protected_attributes:
+      - race
+      - ethnicity
+      - gender
+    validation:
+      fairness: true
+      robustness: true
+      uncertainty: true
+      resilience: true
+      ecoa_compliance: true
+
+  insurance:
+    enabled: true
+    n_samples: 595212
+    expected_time_minutes: 38
+    expected_violations: 0
+    model:
+      type: "XGBoost"
+      n_estimators: 150
+      max_depth: 6
+      learning_rate: 0.1
+    protected_attributes: []  # Anonymized features
+    validation:
+      fairness: true
+      robustness: true
+      uncertainty: true
+      resilience: true
+
+  fraud:
+    enabled: true
+    n_samples: 284807
+    expected_time_minutes: 31
+    expected_violations: 0
+    model:
+      type: "LightGBM"
+      n_estimators: 100
+      max_depth: 8
+      learning_rate: 0.1
+    protected_attributes: []  # No demographics
+    validation:
+      fairness: false  # Not applicable
+      robustness: true
+      uncertainty: true
+      resilience: true
+      drift_detection: true
+
+# Validation thresholds
+thresholds:
+  disparate_impact: 0.80  # EEOC 80% rule
+  ece_max: 0.05  # Expected Calibration Error
+  conformal_coverage: 0.95  # 95% coverage
+
+# Output settings
+output:
+  save_models: false
+  save_predictions: true
+  generate_reports: true
+  report_format: "pdf"  # In real implementation
+
+# Logging
+logging:
+  level: "INFO"
+  console: true
+  file: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Performance
+performance:
+  enable_gpu: false  # Set to true if GPU available
+  memory_limit_gb: 16  # Adjust based on system
+  parallel_cases: false  # Run cases sequentially by default

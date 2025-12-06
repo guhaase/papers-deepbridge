@@ -1,0 +1,21 @@
+participant_id,role,domain,years_experience,python_proficiency,ml_deployment_experience
+P001,Data Scientist,Retail,5.6,Advanced,Yes
+P002,ML Engineer,Tech,6.1,Expert,Yes
+P003,ML Engineer,Tech,4.5,Advanced,Yes
+P004,Data Scientist,Fintech,3.5,Expert,Yes
+P005,Data Scientist,Fintech,2.5,Advanced,Yes
+P006,Data Scientist,Healthcare,4.7,Intermediate,Yes
+P007,ML Engineer,Tech,5.0,Expert,No
+P008,Data Scientist,Fintech,4.7,Advanced,Yes
+P009,ML Engineer,Fintech,6.0,Advanced,Yes
+P010,ML Engineer,Fintech,7.2,Expert,Yes
+P011,ML Engineer,Fintech,5.6,Advanced,Yes
+P012,Data Scientist,Healthcare,4.6,Advanced,Yes
+P013,Data Scientist,Tech,9.1,Expert,Yes
+P014,ML Engineer,Healthcare,4.7,Advanced,Yes
+P015,Data Scientist,Retail,7.1,Advanced,Yes
+P016,ML Engineer,Healthcare,6.3,Advanced,Yes
+P017,Data Scientist,Retail,6.6,Expert,Yes
+P018,ML Engineer,Healthcare,5.4,Advanced,Yes
+P019,ML Engineer,Fintech,9.7,Advanced,Yes
+P020,Data Scientist,Fintech,4.1,Expert,Yes

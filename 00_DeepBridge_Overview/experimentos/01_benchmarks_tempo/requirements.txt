@@ -1,0 +1,37 @@
+# Requirements para Experimento 01: Benchmarks de Tempo
+
+# Core dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# ML Models
+xgboost>=1.7.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# Logging
+python-dateutil>=2.8.0
+
+# Statistics
+statsmodels>=0.14.0
+
+# System info
+psutil>=5.9.0
+
+# Optional: Baseline tools (descomentar para usar ferramentas reais)
+# aif360>=0.5.0
+# fairlearn>=0.9.0
+# alibi-detect>=0.11.4
+# uq360>=0.3.0
+# evidently>=0.4.0
+
+# Optional: DeepBridge (quando disponível)
+# deepbridge>=0.1.0

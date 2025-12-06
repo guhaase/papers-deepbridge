@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Resultados do HPM-KD Framework}
+\label{tab:hpmkd_results}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Método} & \textbf{Acurácia} & \textbf{Compressão} & \textbf{Latência} & \textbf{Retenção} \\
+\midrule
+Teacher Ensemble & 86.7\% & 1.0$\times$ & 126ms & 100.0\% \\
+Vanilla KD & 82.2\% & 10.0$\times$ & 12ms & 94.9\% \\
+TAKD & 84.0\% & 10.0$\times$ & 12ms & 96.9\% \\
+Auto-KD & 84.0\% & 10.0$\times$ & 12ms & 96.8\% \\
+\textbf{HPM-KD} & \textbf{84.9\%} & \textbf{10.0$\times$} & \textbf{12ms} & \textbf{98.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,192 @@
+# Configuration for HPM-KD Experiment
+
+experiment:
+  name: "HPM-KD Framework"
+  version: "1.0"
+  description: "Knowledge Distillation for Model Compression"
+  random_seed: 42
+
+# Datasets
+datasets:
+  n_datasets: 20
+  test_size: 0.3
+  cv_folds: 5
+
+  # Binary classification datasets
+  binary:
+    - adult
+    - bank_marketing
+    - credit_default
+    - credit_g
+    - cylinder_bands
+    - diabetes
+    - heart_disease
+    - ionosphere
+    - mushroom
+    - spect_heart
+
+  # Multi-class classification datasets
+  multiclass:
+    - car_evaluation
+    - chess
+    - connect_4
+    - letter_recognition
+    - nursery
+    - page_blocks
+    - pen_digits
+    - satimage
+    - vehicle
+    - wine_quality
+
+# Teacher Models
+teachers:
+  ensemble_size: 3
+
+  xgboost:
+    n_estimators: 200
+    max_depth: 8
+    learning_rate: 0.05
+    random_state: 42
+
+  lightgbm:
+    n_estimators: 200
+    max_depth: 8
+    learning_rate: 0.05
+    random_state: 42
+
+  catboost:
+    iterations: 200
+    depth: 8
+    learning_rate: 0.05
+    random_seed: 42
+    verbose: false
+
+# Student Model
+student:
+  architecture: [64, 32]
+  activation: relu
+  optimizer: adam
+  batch_size: 256
+  max_epochs: 100
+  learning_rate: 0.001
+
+# Knowledge Distillation Parameters
+distillation:
+  vanilla_kd:
+    temperature: 3.0
+    alpha: 0.5  # Weight for soft labels
+
+  takd:
+    num_stages: 2
+    assistant_architecture: [128, 64]
+
+  auto_kd:
+    search_space:
+      temperature: [1.0, 2.0, 3.0, 5.0, 10.0]
+      alpha: [0.1, 0.3, 0.5, 0.7, 0.9]
+    n_trials: 20
+
+  hpmkd:
+    num_progressive_stages: 3
+    use_attention_weighting: true
+    use_meta_temperature: true
+    use_adaptive_config: true
+    use_parallel_processing: true
+    n_jobs: 4
+
+# Expected Results (for mock data generation)
+expected_results:
+  teacher:
+    accuracy_mean: 87.2
+    accuracy_std: 5.2
+    size_mb: 2400
+    latency_ms: 125
+
+  vanilla_kd:
+    accuracy_mean: 82.5
+    accuracy_std: 5.8
+    size_mb: 230
+    latency_ms: 12
+
+  takd:
+    accuracy_mean: 83.8
+    accuracy_std: 5.5
+    size_mb: 230
+    latency_ms: 13
+
+  auto_kd:
+    accuracy_mean: 84.4
+    accuracy_std: 5.3
+    size_mb: 230
+    latency_ms: 12
+
+  hpmkd:
+    accuracy_mean: 85.8
+    accuracy_std: 5.1
+    size_mb: 230
+    latency_ms: 12
+
+# Metrics
+metrics:
+  - accuracy
+  - retention_rate
+  - compression_ratio
+  - latency_speedup
+  - throughput
+
+# Ablation Study
+ablation:
+  components:
+    - adaptive_config
+    - progressive_distillation
+    - attention_weighting
+    - meta_temperature
+    - parallel_processing
+
+  expected_contributions:
+    progressive_distillation: 1.5  # % improvement
+    attention_weighting: 0.8
+    meta_temperature: 0.5
+    adaptive_config: 0.3
+    parallel_processing: 0.0  # Only affects time
+
+# Statistical Analysis
+statistical:
+  alpha: 0.05
+  confidence_level: 0.95
+
+  tests:
+    - paired_ttest  # HPM-KD vs each baseline
+    - effect_size   # Cohen's d
+
+# Visualization
+visualization:
+  dpi: 300
+  format: pdf
+  style: whitegrid
+  color_palette: Set2
+
+  figures:
+    - accuracy_comparison
+    - retention_rates
+    - compression_latency
+    - ablation_study
+
+# Output
+output:
+  save_models: true
+  save_predictions: false
+  save_metrics: true
+  generate_latex: true
+
+# Logging
+logging:
+  level: INFO
+  console: true
+  file: true
+
+# Hardware
+hardware:
+  use_gpu: true
+  n_jobs: 4
+  memory_limit_gb: 16

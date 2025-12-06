@@ -1,0 +1,142 @@
+================================================================================
+              ESTRUTURA FINAL DOS 3 EXPERIMENTOS - DEEPBRIDGE
+================================================================================
+
+Localização base: /home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/
+
+================================================================================
+EXPERIMENTO 1: Benchmarks de Tempo
+================================================================================
+Pasta: 01_benchmarks_tempo/
+Status: ✅ COMPLETO - Pronto para execução
+
+Estrutura:
+  ├── scripts/ (8 arquivos Python)
+  ├── config/ (1 YAML)
+  ├── results/ (gerados)
+  ├── figures/ (gerados)
+  ├── tables/ (gerados)
+  ├── logs/ (gerados)
+  └── docs/ (5 arquivos MD)
+
+Principais comandos:
+  python scripts/run_experiment.py
+
+================================================================================
+EXPERIMENTO 2: Estudos de Caso em 6 Domínios
+================================================================================
+Pasta: 02_estudos_de_caso/
+Status: ✅ COMPLETO - Pronto para execução
+
+Estrutura:
+  ├── scripts/ (10 arquivos Python)
+  │   ├── 6 casos de estudo
+  │   ├── 3 scripts de análise
+  │   └── utils.py
+  ├── config/ (1 YAML)
+  ├── results/ (gerados)
+  ├── figures/ (gerados)
+  ├── tables/ (gerados)
+  ├── data/ (para datasets)
+  ├── logs/ (gerados)
+  └── docs/ (5 arquivos MD)
+
+Principais comandos:
+  python scripts/run_all_cases.py
+  python scripts/aggregate_analysis.py
+
+================================================================================
+EXPERIMENTO 3: Estudo de Usabilidade
+================================================================================
+Pasta: 03_usabilidade/
+Status: ✅ INFRAESTRUTURA COMPLETA - Aguarda participantes reais
+
+Estrutura:
+  ├── scripts/ (7 arquivos Python)
+  │   ├── generate_mock_data.py
+  │   ├── calculate_metrics.py
+  │   ├── statistical_analysis.py
+  │   ├── generate_visualizations.py
+  │   ├── analyze_usability.py
+  │   └── utils.py
+  ├── materials/ (3 arquivos MD - questionários e tarefas)
+  │   ├── SUS_questionnaire.md
+  │   ├── NASA_TLX_questionnaire.md
+  │   └── study_tasks.md
+  ├── config/ (1 YAML)
+  ├── results/ (gerados)
+  ├── figures/ (gerados - 4 PDFs)
+  ├── tables/ (gerados)
+  ├── data/ (para dados de participantes)
+  ├── notebooks/ (para análise exploratória)
+  ├── logs/ (gerados)
+  └── docs/ (4 arquivos MD)
+
+Principais comandos:
+  python scripts/analyze_usability.py  # Com dados mock
+
+================================================================================
+ESTATÍSTICAS GERAIS
+================================================================================
+
+Total de arquivos criados: ~60+
+
+Por experimento:
+  - Exp 1: ~20 arquivos
+  - Exp 2: ~25 arquivos
+  - Exp 3: ~22 arquivos
+
+Scripts Python total: ~25 arquivos
+Documentação total: ~14 arquivos MD
+Configurações: 3 arquivos YAML
+
+Linhas de código (estimado):
+  - Exp 1: ~1.500 linhas Python
+  - Exp 2: ~2.500 linhas Python
+  - Exp 3: ~1.400 linhas Python
+  - TOTAL: ~5.400 linhas Python
+
+Documentação (estimado):
+  - ~2.500 linhas Markdown
+
+================================================================================
+PRÓXIMOS PASSOS
+================================================================================
+
+Imediato (Testar):
+  1. cd 01_benchmarks_tempo && python scripts/run_experiment.py
+  2. cd 02_estudos_de_caso && python scripts/run_all_cases.py
+  3. cd 03_usabilidade && python scripts/analyze_usability.py
+
+Curto Prazo (Validar):
+  1. Verificar outputs gerados
+  2. Revisar visualizações
+  3. Validar tabelas LaTeX
+
+Médio Prazo (Integrar):
+  1. Integrar DeepBridge real (Exp 1-2)
+  2. Recrutar participantes (Exp 3)
+  3. Executar experimentos finais
+  4. Integrar resultados no paper
+
+================================================================================
+COMANDOS RÁPIDOS
+================================================================================
+
+# Ver estrutura completa
+tree -L 2 /home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/
+
+# Executar todos os experimentos (mock)
+cd /home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/
+(cd 01_benchmarks_tempo && python scripts/run_experiment.py)
+(cd 02_estudos_de_caso && python scripts/run_all_cases.py)
+(cd 03_usabilidade && python scripts/analyze_usability.py)
+
+# Ver status
+cat 01_benchmarks_tempo/STATUS.md
+cat 02_estudos_de_caso/STATUS.md
+cat 03_usabilidade/STATUS.md
+
+================================================================================
+                              FIM DA ESTRUTURA
+================================================================================

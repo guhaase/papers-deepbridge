@@ -1,0 +1,34 @@
+# Requirements para Experimento 03: Estudo de Usabilidade
+
+# Core dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Statistics
+statsmodels>=0.14.0
+pingouin>=0.5.3  # Para análises estatísticas avançadas
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# Logging
+python-dateutil>=2.8.0
+
+# Jupyter (para análise)
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# Report generation
+reportlab>=4.0.0
+
+# Survey/Forms (para gerar PDFs dos questionários)
+fpdf2>=2.7.0
+
+# Optional: DeepBridge (quando disponível)
+# deepbridge>=0.1.0
