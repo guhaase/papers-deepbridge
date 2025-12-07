@@ -1,0 +1,5 @@
+dataset_name,source,n_samples,n_features,target_column,sensitive_attributes,notes
+compas,propublica,7214,12,two_year_recid,"race,sex,age",ProPublica COMPAS dataset
+german_credit,uci,1000,20,credit_risk,"age,sex,foreign_worker",UCI German Credit
+adult,uci,48842,14,income,"sex,race",UCI Adult Income dataset
+healthcare_synthetic,synthetic,10000,25,readmitted,"race,age_group",Synthetic based on MIMIC-III
