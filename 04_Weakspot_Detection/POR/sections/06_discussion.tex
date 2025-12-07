@@ -1,0 +1,271 @@
+\section{Discussão}
+\label{sec:discussion}
+
+\subsection{Quando Usar Weakspot Detection}
+
+\textbf{Casos Ideais}:
+\begin{itemize}
+    \item \textbf{Modelos em produção}: Detectar problemas antes de deployment
+    \item \textbf{Aplicações de alto risco}: Finanças, saúde, justiça (consequências severas)
+    \item \textbf{Após model training}: Como parte de pipeline de validação
+    \item \textbf{Debugging de performance}: Entender onde modelo falha
+    \item \textbf{Compliance}: Demonstrar que não há bias oculto
+\end{itemize}
+
+\textbf{Exemplos de Uso}:
+\begin{enumerate}
+    \item \textbf{Pre-deployment check}: "Há algum subgrupo com degradação > 15\%?"
+    \item \textbf{Model comparison}: "Modelo B tem menos weakspots que Modelo A?"
+    \item \textbf{Data augmentation}: "Quais regiões precisam de mais dados?"
+    \item \textbf{Feature engineering}: "Interações de features causam problemas?"
+\end{enumerate}
+
+\subsection{Interpretação de Resultados}
+
+\textbf{Severidade}:
+\begin{itemize}
+    \item \textbf{Critical}: Ação imediata (re-treinar, não deploy)
+    \item \textbf{High}: Mitigação recomendada (data augmentation, ensemble)
+    \item \textbf{Medium}: Monitorar em produção
+    \item \textbf{Low}: Documentar, aceitar trade-off
+\end{itemize}
+
+\textbf{Tamanho de Amostra}:
+\begin{itemize}
+    \item Weakspot com 1000+ amostras: Problema real e impactante
+    \item Weakspot com 30-100 amostras: Validar se é noise ou padrão real
+    \item Weakspot com < 30 amostras: Geralmente filtrado (pode ser outlier)
+\end{itemize}
+
+\textbf{Interações}:
+\begin{itemize}
+    \item Interações 2-way: Comuns e interpretáveis
+    \item Interações 3-way+: Raras, difíceis de remediar
+    \item Priorizar: Interações com maior degradação + tamanho
+\end{itemize}
+
+\subsection{Estratégias de Remediação}
+
+Após detectar weakspots, como corrigir?
+
+\textbf{1. Data Augmentation}:
+\begin{itemize}
+    \item Coletar mais dados para região de degradação
+    \item Synthetic data generation (SMOTE, GANs)
+    \item Oversampling do subgrupo
+\end{itemize}
+
+\textbf{Exemplo}: Weakspot em age < 25 $\rightarrow$ Coletar 2x mais amostras deste grupo.
+
+\textbf{2. Feature Engineering}:
+\begin{itemize}
+    \item Criar features específicas para weakspot
+    \item Transformações não-lineares
+    \item Interaction features
+\end{itemize}
+
+\textbf{Exemplo}: Weakspot em (age < 25, duration > 24) $\rightarrow$ Criar feature \texttt{risk\_score = duration / age}.
+
+\textbf{3. Model Refinement}:
+\begin{itemize}
+    \item Re-treinar com sample weights (upweight weakspot)
+    \item Ensemble: Modelo geral + modelo específico para weakspot
+    \item Threshold tuning para subgrupo
+\end{itemize}
+
+\textbf{Exemplo}: Train model especializado para age < 25, combine via stacking.
+
+\textbf{4. Domain Constraints}:
+\begin{itemize}
+    \item Regras de negócio para weakspot
+    \item Human-in-the-loop para casos críticos
+    \item Confidence thresholds mais altos
+\end{itemize}
+
+\textbf{Exemplo}: Fraudes > \$10K (weakspot) $\rightarrow$ Require manual review.
+
+\textbf{5. Monitoramento Contínuo}:
+\begin{itemize}
+    \item Tracking de performance em produção por slice
+    \item Alerts quando weakspot degrada mais
+    \item Periodic re-detection (drift pode criar novos weakspots)
+\end{itemize}
+
+\subsection{Limitações}
+
+\textbf{1. Features Categóricas com Alta Cardinalidade}:
+
+\textbf{Problema}: Features com 100+ categorias (e.g., merchant ID, ZIP code) geram muitos slices.
+
+\textbf{Mitigação}:
+\begin{itemize}
+    \item Agrupar categorias similares (clustering)
+    \item Limitar a top-K categorias mais frequentes
+    \item Tree-based slicing (agrupa automaticamente)
+\end{itemize}
+
+\textbf{2. Datasets Pequenos}:
+
+\textbf{Problema}: n < 1000 amostras $\rightarrow$ Slices muito pequenos, alta variância.
+
+\textbf{Mitigação}:
+\begin{itemize}
+    \item Aumentar \texttt{min\_samples\_per\_slice} (e.g., 50)
+    \item Usar apenas quantile slicing (mais robusto)
+    \item Bootstrap para intervalos de confiança
+\end{itemize}
+
+\textbf{3. Interações de Alta Ordem}:
+
+\textbf{Problema}: 3-way+ interactions são exponenciais e difíceis de interpretar.
+
+\textbf{Decisão de Design}: Limitamos a 2-way interactions.
+
+\textbf{Justificativa}: 90\%+ dos weakspots são single ou 2-way (análise empírica).
+
+\textbf{4. Overfitting em Tree-Based Slicing}:
+
+\textbf{Problema}: Decision tree pode criar splits espúrios.
+
+\textbf{Mitigação}:
+\begin{itemize}
+    \item \texttt{min\_samples\_leaf} = 50
+    \item \texttt{max\_depth} = 3
+    \item Validação cruzada
+    \item Significance testing
+\end{itemize}
+
+\textbf{5. Interpretação de Múltiplos Weakspots}:
+
+\textbf{Problema}: 100+ weakspots detectados $\rightarrow$ Overwhelming.
+
+\textbf{Mitigação}:
+\begin{itemize}
+    \item Ranking por severidade $\times$ tamanho
+    \item Agrupamento de weakspots similares
+    \item Foco em top-10 críticos
+\end{itemize}
+
+\subsection{Boas Práticas}
+
+\textbf{1. Configure Thresholds por Domínio}:
+\begin{itemize}
+    \item Saúde/Justiça: Thresholds conservadores (Critical > 10\%)
+    \item Marketing/Recomendação: Thresholds relaxados (Critical > 25\%)
+\end{itemize}
+
+\textbf{2. Valide Weakspots Manualmente}:
+\begin{itemize}
+    \item Spot-check top-10 weakspots
+    \item Verifique se fazem sentido no domínio
+    \item Consulte domain experts
+\end{itemize}
+
+\textbf{3. Use Estratégia Combinada}:
+\begin{itemize}
+    \item Quantile + Uniform + Tree (padrão)
+    \item Complementaridade aumenta cobertura
+    \item Overhead de tempo é marginal
+\end{itemize}
+
+\textbf{4. Priorize por Impact}:
+\begin{itemize}
+    \item Impact = Degradation $\times$ Sample Size
+    \item Foque em weakspots com alto impact
+    \item Documente decisões de aceitar low-severity weakspots
+\end{itemize}
+
+\textbf{5. Integre ao CI/CD}:
+\begin{itemize}
+    \item Detecção automática a cada re-training
+    \item Bloqueie deployment se Critical weakspot
+    \item Track histórico de weakspots (trends)
+\end{itemize}
+
+\subsection{Direções Futuras}
+
+\textbf{1. Automated Remediation}:
+
+\textbf{Proposta}: Não apenas detectar, mas sugerir fixes automaticamente.
+
+\textbf{Técnicas}:
+\begin{itemize}
+    \item Auto-generate SMOTE samples para weakspot
+    \item Auto-create ensemble com specialized model
+    \item Auto-suggest feature engineering
+\end{itemize}
+
+\textbf{2. Deep Learning Support}:
+
+\textbf{Desafio}: Features são embeddings (não interpretáveis).
+
+\textbf{Abordagem}:
+\begin{itemize}
+    \item Slicing em embedding space (clustering)
+    \item Activation-based slicing (layer outputs)
+    \item Concept-based slicing (TCAV)
+\end{itemize}
+
+\textbf{3. Temporal Weakspot Tracking}:
+
+\textbf{Proposta}: Detectar quando novos weakspots emergem (drift).
+
+\textbf{Features}:
+\begin{itemize}
+    \item Periodic re-detection em produção
+    \item Alerts quando weakspot degrada mais
+    \item Dashboards históricos
+\end{itemize}
+
+\textbf{4. Multi-Model Comparison}:
+
+\textbf{Proposta}: Compare weakspots entre modelos candidatos.
+
+\textbf{Workflow}:
+\begin{enumerate}
+    \item Treinar N modelos (hyperparameter tuning)
+    \item Detectar weakspots em cada
+    \item Selecionar modelo com menos/menos severos weakspots
+\end{enumerate}
+
+\textbf{5. Causal Weakspot Analysis}:
+
+\textbf{Questão}: Por que este weakspot existe?
+
+\textbf{Abordagem}:
+\begin{itemize}
+    \item Causal inference (SCM)
+    \item Counterfactual analysis
+    \item Identificar root causes (data bias vs. model bias)
+\end{itemize}
+
+\subsection{Relação com Fairness}
+
+Weakspot detection \textbf{complementa} análise de fairness:
+
+\textbf{Fairness Tools}:
+\begin{itemize}
+    \item Focam em grupos protegidos conhecidos (raça, gênero, idade)
+    \item Métricas específicas (disparate impact, equalized odds)
+\end{itemize}
+
+\textbf{Weakspot Detection}:
+\begin{itemize}
+    \item Descobre degradação em \textit{qualquer} subgrupo
+    \item Pode incluir grupos não-protegidos (e.g., score range)
+    \item Métricas gerais (accuracy, F1)
+\end{itemize}
+
+\textbf{Uso Conjunto}:
+\begin{enumerate}
+    \item Execute fairness tests (grupos conhecidos)
+    \item Execute weakspot detection (descoberta exploratória)
+    \item Priorize issues que aparecem em ambos
+\end{enumerate}
+
+\textbf{Exemplo}:
+\begin{itemize}
+    \item Fairness: Detecta disparate impact em gender
+    \item Weakspot: Detecta degradação em (gender=F, age<30, income<\$40K)
+    \item Insight: Problema é interseccional, não apenas gender
+\end{itemize}

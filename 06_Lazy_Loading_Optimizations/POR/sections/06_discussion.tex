@@ -1,0 +1,169 @@
+\section{Discussao}
+\label{sec:discussion}
+
+\subsection{Quando Usar Lazy vs Eager}
+
+\textbf{Lazy Loading} ideal para:
+\begin{itemize}
+    \item Usuarios executam subsets de testes (CI/CD, dev iterativo)
+    \item Recursos limitados (<32GB RAM)
+    \item Experimentacao rapida (testar 1-2 dimensoes)
+    \item Workflows interativos
+\end{itemize}
+
+\textbf{Eager Loading} preferivel para:
+\begin{itemize}
+    \item Sempre executar todos testes (producao completa)
+    \item Predicoes pre-computadas disponiveis
+    \item Debugging (stack traces mais claros)
+    \item Benchmarks deterministicos
+\end{itemize}
+
+\textbf{Recomendacao}: Lazy por padrao, eager como opcao.
+
+\subsection{Trade-offs}
+
+\textbf{Lazy Loading}:
+\begin{itemize}
+    \item \textbf{Pro}: -42\% memoria, -56\% setup time (subsets)
+    \item \textbf{Con}: +1-2\% overhead (worst case), debugging mais dificil
+\end{itemize}
+
+\textbf{Prediction Caching}:
+\begin{itemize}
+    \item \textbf{Pro}: -30\% tempo total (cache hits 70-85\%)
+    \item \textbf{Con}: Memoria para cache (configuravel)
+\end{itemize}
+
+\textbf{Parallel Loading}:
+\begin{itemize}
+    \item \textbf{Pro}: -10-20\% tempo (4+ testes)
+    \item \textbf{Con}: Complexidade, race conditions possiveis
+\end{itemize}
+
+\subsection{Boas Praticas}
+
+\textbf{1. Configure Cache Size Apropriadamente}:
+\begin{itemize}
+    \item Padrao: 128 entradas (suficiente para workflows tipicos)
+    \item Aumentar para workflows com muitos modelos
+    \item Monitorar hit rate (target >70\%)
+\end{itemize}
+
+\textbf{2. Use Preload Seletivo}:
+\begin{lstlisting}[language=Python]
+# Preload apenas recursos compartilhados
+dataset.preload_predictions()  # Usado por 4+ testes
+# Deixe recursos raros lazy
+\end{lstlisting}
+
+\textbf{3. Monitor Memory Usage}:
+\begin{lstlisting}[language=Python]
+from deepbridge.profiling import MemoryMonitor
+
+with MemoryMonitor() as mon:
+    results = exp.run_tests()
+print(f"Peak memory: {mon.peak_memory_mb:.0f} MB")
+\end{lstlisting}
+
+\textbf{4. Clear Cache Quando Necessario}:
+\begin{lstlisting}[language=Python]
+# Apos processar batch de experimentos
+dataset.clear_cache()
+\end{lstlisting}
+
+\subsection{Limitacoes}
+
+\textbf{1. Debugging Complexity}:
+
+Lazy loading adia erros, tornando stack traces confusos.
+
+\textbf{Mitigacao}: Pre-flight validation checks.
+
+\textbf{2. Non-Deterministic Timing}:
+
+First access e lento (carrega), subsequent accesses rapidos.
+
+\textbf{Mitigacao}: Warmup runs para benchmarks.
+
+\textbf{3. Thread Safety}:
+
+Cache compartilhado entre threads requer locks.
+
+\textbf{Mitigacao}: Thread-safe cache implementation (nossa solucao).
+
+\textbf{4. Memory Leaks Possiveis}:
+
+Referencias circulares podem impedir garbage collection.
+
+\textbf{Mitigacao}: Weak references + manual clear\_cache().
+
+\subsection{Alternativas Consideradas}
+
+\textbf{1. Full Eager Loading}:
+\begin{itemize}
+    \item Simples, deterministico
+    \item Limitacao: Nao escala, alto uso de memoria
+\end{itemize}
+
+\textbf{2. Lazy Tudo (Haskell-style)}:
+\begin{itemize}
+    \item Minimo memoria
+    \item Limitacao: Overhead alto, debugging dificil
+\end{itemize}
+
+\textbf{3. Explicit Load Calls}:
+\begin{lstlisting}[language=Python]
+dataset.load_predictions()  # Explicit
+preds = dataset.predictions  # Ja carregado
+\end{lstlisting}
+\begin{itemize}
+    \item Controle total
+    \item Limitacao: API verbosa, usuario deve saber quando carregar
+\end{itemize}
+
+\textbf{Nossa Escolha}: Lazy properties (transparente) + preload opcoes (controle).
+
+\subsection{Licoes Aprendidas}
+
+\textbf{1. Cache Hit Rate e Critico}:
+
+70-85\% hit rate reduz tempo em 30\%. Invest em cache inteligente vale a pena.
+
+\textbf{2. Overhead de Lazy e Minimo}:
+
+<2\% overhead no pior caso. Preocupacoes sobre performance sao infundadas.
+
+\textbf{3. Usuarios Querem Transparencia}:
+
+API nao deve mudar entre lazy e eager. Properties sao perfeitas para isso.
+
+\textbf{4. Weak References Sao Essenciais}:
+
+Sem weak refs, memoria nao e liberada. GC integration e fundamental.
+
+\textbf{5. Monitoring e Necessario}:
+
+Usuarios precisam ver cache hit rate, memoria usada. Instrumentacao built-in ajuda.
+
+\subsection{Trabalhos Futuros}
+
+\textbf{1. Adaptive Lazy Loading}:
+
+Analise de workflow historico para decidir o que carregar eager vs lazy automaticamente.
+
+\textbf{2. Distributed Caching}:
+
+Cache compartilhado entre processos (Redis, Memcached).
+
+\textbf{3. Persistent Cache}:
+
+Salvar predicoes em disco, recarregar entre sessoes.
+
+\textbf{4. ML-Based Prefetching}:
+
+Predizer quais recursos serao necessarios, pre-carregar em background.
+
+\textbf{5. GPU Memory Management}:
+
+Extend lazy loading para modelos em GPU (cuda tensors).

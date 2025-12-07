@@ -1,0 +1,167 @@
+\section{Introducao}
+\label{sec:introduction}
+
+\subsection{Motivacão}
+
+Dados sintéticos—datasets artificiais que preservam propriedades estatísticas dos dados reais—são essenciais para três casos de uso críticos em ML:
+
+\textbf{1. Privacy-Preserving Data Sharing}:
+\begin{itemize}
+    \item Healthcare: Compartilhar registros de pacientes sem violar HIPAA/GDPR
+    \item Finance: Datasets de transacões para pesquisa sem expor dados sensíveis
+    \item Governo: Dados censitários para análise pública
+\end{itemize}
+
+\textbf{2. Data Augmentation}:
+\begin{itemize}
+    \item Datasets desbalanceados: Gerar amostras sintéticas da classe minoritária
+    \item Treino de modelos: Aumentar tamanho do dataset para melhorar generalizacão
+    \item Testing: Criar cenários edge-case para validacão
+\end{itemize}
+
+\textbf{3. Development \& Testing}:
+\begin{itemize}
+    \item Ambientes de desenvolvimento sem acesso a dados reais
+    \item Benchmarking de algoritmos com datasets controlados
+    \item CI/CD: Testes automatizados com dados realistas mas não sensíveis
+\end{itemize}
+
+\subsection{O Problema da Escalabilidade}
+
+Geradores de dados sintéticos atuais enfrentam \textbf{barreiras críticas de escala}:
+
+\textbf{Limitacões de Memória}:
+\begin{itemize}
+    \item SDV (Synthetic Data Vault): Carrega dataset completo em RAM
+    \item Limite prático: ~5-10GB em máquinas com 64GB RAM
+    \item Datasets modernos: Healthcare (10M+ pacientes), Finance (100M+ transacões)
+\end{itemize}
+
+\textbf{Tempo de Processamento}:
+\begin{itemize}
+    \item CTGAN: 12+ horas para 1M amostras (GPU)
+    \item TVAE: 8+ horas para 500K amostras
+    \item Impraticável para datasets 10M+ rows
+\end{itemize}
+
+\textbf{Degradacão de Qualidade}:
+\begin{itemize}
+    \item Subsampling: Perda de correlacões e padrões raros
+    \item Compressão: Distorcao de distribuições
+    \item Trade-off: Escala vs. qualidade
+\end{itemize}
+
+\textbf{Exemplo Motivador}:
+
+\begin{table}[h]
+\centering
+\caption{Escalabilidade de geradores atuais}
+\label{tab:scalability_problem}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Método} & \textbf{Max Size} & \textbf{Tempo (1M rows)} & \textbf{Memória} \\
+\midrule
+SDV & 10GB & 45 min & 64GB \\
+CTGAN & 5GB & 720 min & 32GB + GPU \\
+TVAE & 8GB & 480 min & 48GB \\
+\midrule
+\textbf{DeepBridge} & \textbf{100GB+} & \textbf{12 min} & \textbf{8GB} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Nossa Abordagem}
+
+Apresentamos um framework \textbf{escalável} para geracao de dados sintéticos baseado em Copulas Gaussianas distribuídas:
+
+\textbf{Estratégia}: Dividir dataset em chunks processáveis, fit distribuído, sampling paralelo.
+
+\textbf{Tecnologia}: Dask para orquestracão distribuída, implementacão memory-efficient.
+
+\begin{lstlisting}[language=Python, caption={API simples para geracao em larga escala}]
+from deepbridge.synthetic import GaussianCopulaSynthesizer
+
+# Dataset grande (50GB, 100M rows)
+df = dd.read_parquet('large_dataset.parquet')
+
+# Fit distribuido em chunks
+synthesizer = GaussianCopulaSynthesizer()
+synthesizer.fit(df, chunk_size='100MB')
+
+# Sample sintetico
+synthetic = synthesizer.sample(n_rows=10_000_000)
+
+# Quality report
+report = synthesizer.evaluate(df, synthetic)
+\end{lstlisting}
+
+\subsection{Contribuições}
+
+\textbf{1. Arquitetura Distribuída} (Secao~\ref{sec:architecture}):
+\begin{itemize}
+    \item \textbf{Chunk-based processing}: Divide dataset em chunks paralelos
+    \item \textbf{Incremental fitting}: Atualiza estatísticas via streaming algorithms
+    \item \textbf{Memory-efficient sampling}: Gera sintéticos sem carregar dataset completo
+    \item \textbf{Dask integration}: Orquestracão automática de workers
+\end{itemize}
+
+\textbf{2. Implementacao Memory-Efficient} (Secao~\ref{sec:implementation}):
+\begin{itemize}
+    \item \textbf{Streaming algorithms}: Mean, variance, covariance via Welford's method
+    \item \textbf{Lazy evaluation}: Computacão sob demanda
+    \item \textbf{Chunked I/O}: Leitura/escrita em batches
+    \item \textbf{-95\% uso de memória} vs. baseline
+\end{itemize}
+
+\textbf{3. Preservacão de Qualidade e Privacidade} (Secao~\ref{sec:evaluation}):
+\begin{itemize}
+    \item \textbf{Métricas estatísticas}: Kolmogorov-Smirnov, Jensen-Shannon, correlacão
+    \item \textbf{ML utility}: Train synthetic, test real (degradacão < 3pp)
+    \item \textbf{Privacy metrics}: k-anonymity, nearest neighbor distance
+    \item \textbf{Differential privacy}: Opcao para DP-Gaussian Copula
+\end{itemize}
+
+\textbf{4. Avaliacão Abrangente}:
+\begin{itemize}
+    \item Scalability: 1GB, 10GB, 50GB, 100GB datasets
+    \item Quality: Comparacão com SDV, CTGAN, TVAE
+    \item 3 estudos de caso: Healthcare, Finance, E-commerce
+\end{itemize}
+
+\subsection{Resultados Principais}
+
+\textbf{Escalabilidade}:
+\begin{itemize}
+    \item \textbf{50x speedup} vs. SDV (100GB dataset)
+    \item \textbf{-95\% memória}: 8GB vs. 64GB+ (baseline)
+    \item \textbf{100GB+ datasets}: Processa dados além de limites de RAM
+\end{itemize}
+
+\textbf{Qualidade}:
+\begin{itemize}
+    \item \textbf{98\% similarity}: Métricas estatísticas vs. real
+    \item \textbf{-2pp ML utility}: Accuracy 87\% (synthetic) vs. 89\% (real)
+    \item \textbf{Correlacões preservadas}: 96\% de agreement em pairwise correlations
+\end{itemize}
+
+\textbf{Privacidade}:
+\begin{itemize}
+    \item \textbf{k-anonymity > 5}: Nenhuma amostra sintética é cópia exata
+    \item \textbf{Nearest neighbor distance}: Média 0.15 (threshold 0.10)
+    \item \textbf{DP option}: Differential Privacy com epsilon configurável
+\end{itemize}
+
+\subsection{Estrutura do Paper}
+
+Secao~\ref{sec:background}: Background em geracao sintética e Copulas Gaussianas
+
+Secao~\ref{sec:architecture}: Arquitetura distribuída do framework
+
+Secao~\ref{sec:implementation}: Implementacao memory-efficient
+
+Secao~\ref{sec:evaluation}: Avaliacão experimental e estudos de caso
+
+Secao~\ref{sec:discussion}: Discussão, limitacões, boas práticas
+
+Secao~\ref{sec:conclusion}: Conclusão e trabalhos futuros

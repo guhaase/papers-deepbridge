@@ -1,62 +1,53 @@
-# Article 1: Are Historical Redlining Effects Immutable?
+# Detecção de Weakspots em Modelos de Machine Learning
 
-## Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
+**Paper 4 da série DeepBridge**
 
-**Authors:** Gustavo Coelho Haase, Osvaldo Candido da Silva Filho
-**Status:** In Preparation
-**Target Journal:** Journal of Urban Economics (Tier 1)
-**Started:** January 2025
+## Descrição
 
----
+Este paper apresenta um framework sistemático para **detecção automática de weakspots** em modelos de Machine Learning—regiões do espaço de features onde performance degrada significativamente. Nossa abordagem combina três estratégias complementares de slicing (quantile-based, uniform, tree-based) com classificação de severidade e análise de interações.
 
-## Directory Structure
+**Conferência alvo**: AISTATS 2026
+
+**Páginas**: 10 (máximo)
+
+**Referências bibliográficas**: 10
+
+## Estrutura
 
 ```
-01-Effects_Immutable/
-├── main.tex                    # Main LaTeX file
-├── sections/                   # Article sections
-│   ├── 01-introduction.tex
-│   ├── 02-literature.tex
-│   ├── 03-data.tex
-│   ├── 04-methodology.tex
-│   ├── 05-results.tex
-│   ├── 06-robustness.tex
-│   ├── 07-discussion.tex
-│   └── appendix.tex
-├── figures/                    # Figures (PDF format)
-│   ├── fig01_map_redlining.pdf
-│   └── fig02_event_study.pdf
-├── tables/                     # Tables (LaTeX format)
-│   ├── tab01_descriptive_stats.tex
-│   ├── tab02_main_result.tex
-│   ├── tab03_temporal_evolution.tex
-│   ├── tab04_placebo_test.tex
-│   └── tab05_threshold_sensitivity.tex
-├── bibliography/               # References
-│   └── references.bib
-├── supplementary/              # Online appendix
-│   └── online_appendix.tex
-├── build/                      # Compiled outputs
-│   └── main.pdf
-├── elsarticle.cls              # Elsevier article class
-├── elsarticle-harv.bst         # Harvard bibliography style
-├── Makefile                    # Compilation automation
-├── README.md                   # This file
-└── PLANEJAMENTO_ARTIGO.md      # Detailed planning document
+04_Weakspot_Detection/POR/
+├── main.tex                    # Documento principal
+├── sections/
+│   ├── 01_introduction.tex     # Introdução e motivação
+│   ├── 02_background.tex       # Trabalhos relacionados
+│   ├── 03_framework.tex        # Framework de detecção
+│   ├── 04_strategies.tex       # Estratégias de slicing
+│   ├── 05_evaluation.tex       # Avaliação experimental
+│   ├── 06_discussion.tex       # Discussão e limitações
+│   └── 07_conclusion.tex       # Conclusão e trabalhos futuros
+├── bibliography/
+│   └── references.bib          # Referências bibliográficas
+├── acmart.cls                  # Classe LaTeX ACM (corrigida)
+├── compile.sh                  # Script de compilação
+└── README.md                   # Este arquivo
 ```
 
----
+## Compilação
 
-## Compilation Instructions
+### Método 1: Script automatizado (recomendado)
 
-### Option 1: Using Makefile (Recommended)
 ```bash
-make          # Compile the article
-make clean    # Remove auxiliary files
-make view     # Open the compiled PDF
+chmod +x compile.sh
+./compile.sh
 ```
 
-### Option 2: Manual Compilation
+O script executa:
+1. Limpeza de arquivos temporários
+2. Compilação LaTeX (3 passes + BibTeX)
+3. Verificação de páginas
+
+### Método 2: Manual
+
 ```bash
 pdflatex main.tex
 bibtex main
@@ -64,173 +55,167 @@ pdflatex main.tex
 pdflatex main.tex
 ```
 
-### Option 3: Overleaf
-Upload all files to Overleaf and compile online.
+## Principais Contribuições
 
----
+1. **Framework Multi-Estratégia**:
+   - Quantile-based slicing: Robusto a distribuições skewed
+   - Uniform slicing: Interpretável para features com domínio conhecido
+   - Tree-based slicing: Data-driven, descobre boundaries ótimos
+   - Interaction detection: Weakspots multi-dimensionais
 
-## Key Files
+2. **Classificação de Severidade**:
+   - Thresholds configuráveis (Low/Medium/High/Critical)
+   - Testes de significância estatística
+   - Requisitos de tamanho mínimo de amostra
+   - Filtros anti-overfitting
 
-### Planning and Organization
-- **PLANEJAMENTO_ARTIGO.md**: Comprehensive planning document with:
-  - Article structure (6,000-8,000 words target)
-  - Section-by-section guidelines
-  - Figure/table specifications
-  - Timeline and checklist
-  - Journal submission strategy
+3. **Avaliação Abrangente**:
+   - Datasets sintéticos: 94% F1 na detecção
+   - 8 datasets reais: 127 weakspots detectados
+   - 3 estudos de caso (credit, healthcare, fraud)
+   - Comparação com baselines: 2.8x cobertura, 80x speedup
 
-### Main Document
-- **main.tex**: Master file that compiles all sections
-- **sections/*.tex**: Individual section files (see structure above)
+## Resultados Principais
 
-### Data Visualization
-- **figures/**:
-  - `fig01_map_redlining.pdf`: Spatial distribution of redlined areas
-  - `fig02_event_study.pdf`: Temporal evolution (2018-2024)
+**Eficácia de Detecção**:
+- **94% F1 score** em datasets sintéticos
+- **127 weakspots únicos** em 8 datasets reais
+- **Degradações de até 35pp** em subgrupos específicos
+- **6% false discovery rate** (vs. 12-22% em baselines)
 
-### Tables
-- **tables/**:
-  - `tab01`: Descriptive statistics
-  - `tab02`: Main result (balanced panel)
-  - `tab03`: Year-by-year decomposition
-  - `tab04`: Placebo test (parallel trends)
-  - `tab05`: Threshold sensitivity
+**Eficiência Computacional**:
+- **80x speedup**: 3 min vs. 4 horas (análise manual)
+- **2.8x cobertura**: 127 vs. 45 weakspots (manual)
+- **Escalável**: 0.5-8 min para datasets de 300 a 500K amostras
 
-### References
-- **bibliography/references.bib**: BibTeX database
-  - Source: Dissertation bibliography (filtered for cited references only)
-  - Style: Harvard (author-year)
+**Insights de Produção**:
+- **Credit scoring**: Degradação de 28pp em jovens de baixa renda
+- **Healthcare**: AUC 21pp menor para jovens obesos
+- **Fraud detection**: F1 30pp menor em transações grandes de madrugada
 
----
+## Estratégias de Slicing
 
-## Current Status
+### Quantile-Based
+- Divide features em quantis (P10, P25, P50, P75, P90)
+- Vantagem: Tamanhos equilibrados, robusto a outliers
+- Uso: Exploração inicial, features com distribuição desconhecida
 
-### Completed
-- [x] Directory structure created
-- [x] Template files copied
-- [x] Planning document written
-- [x] Section files created with TODOs
-- [x] Main.tex configured
+### Uniform
+- Bins uniformes no range da feature
+- Vantagem: Interpretação direta, útil para features com semântica de range
+- Uso: Features com domínio conhecido (idade, score)
 
-### In Progress
-- [ ] Writing sections (see PLANEJAMENTO_ARTIGO.md for detailed timeline)
+### Tree-Based
+- Decision tree identifica splits ótimos
+- Vantagem: Descobre interações automaticamente
+- Uso: Descoberta de boundaries não-lineares
 
-### To Do
-- [ ] Adapt content from dissertation
-- [ ] Create/copy figures
-- [ ] Create/copy tables
-- [ ] Extract and clean bibliography
-- [ ] Write cover letter
-- [ ] Prepare supplementary materials
+**Recomendação**: Use estratégia combinada (padrão do framework) para máxima cobertura.
 
----
+## Estudos de Caso
 
-## Word Count Target
+### Credit Scoring (German Credit)
+- **Weakspot crítico**: Jovens (<25) com empréstimos longos (>24 meses)
+- **Degradação**: 48% accuracy vs. 76% global (28pp)
+- **Ação**: Data augmentation + feature engineering
 
-**Total:** 6,000-8,000 words (excluding references and tables)
+### Healthcare (Diabetes)
+- **Weakspot crítico**: Jovens (<30) obesos (BMI>35)
+- **Degradação**: AUC 0.62 vs. 0.83 global (21pp)
+- **Preocupação**: Potencial bias demográfico
 
-**Breakdown:**
-- Introduction: ~1,000 words
-- Literature: ~1,500 words
-- Data + Methodology: ~1,500 words
-- Results: ~2,500 words
-- Robustness: ~800 words
-- Discussion: ~700 words
+### Fraud Detection
+- **Weakspot crítico**: Transações grandes (>\$10K) de madrugada (2-5AM)
+- **Degradação**: F1 0.58 vs. 0.88 global (30pp)
+- **Ação**: Oversampling + ensemble model
 
----
+## Verificação
 
-## Submission Checklist
+Para verificar se o PDF foi gerado corretamente:
 
-Before submitting to journal:
+```bash
+# Verificar número de páginas
+pdfinfo main.pdf | grep Pages
 
-### Content
-- [ ] Abstract (≤200 words)
-- [ ] Keywords (5-7)
-- [ ] JEL codes
-- [ ] All sections complete
-- [ ] References formatted correctly
-- [ ] Figures high resolution (300 dpi)
-- [ ] Tables properly formatted
-- [ ] Online appendix prepared
+# Verificar referências
+grep "\\bibitem" main.bbl | wc -l
 
-### Formatting
-- [ ] Follow journal guidelines
-- [ ] Line numbering (if required)
-- [ ] Double spacing (if required)
-- [ ] Author affiliations correct
-- [ ] Acknowledgments section
-- [ ] Disclosure statements
+# Visualizar PDF
+xdg-open main.pdf  # Linux
+# ou
+open main.pdf      # macOS
+```
 
-### Supporting Materials
-- [ ] Cover letter
-- [ ] Highlights (3-5 bullet points)
-- [ ] Graphical abstract (optional)
-- [ ] Replication code (GitHub/OSF)
-- [ ] Data availability statement
+**Saída esperada**:
+- Pages: 10
+- Referências: ~10
 
----
+## Integração com DeepBridge
 
-## Target Journals (in order)
+Weakspot detection é uma das 5 dimensões do DeepBridge (Paper 3):
 
-1. **Journal of Urban Economics** (Tier 1)
-   - Impact Factor: ~3.5
-   - Scope: Urban economics, housing, discrimination
-   - Typical turnaround: 3-4 months
+```python
+from deepbridge import Experiment, DBDataset
 
-2. **Real Estate Economics** (Tier 1)
-   - Impact Factor: ~3.2
-   - Scope: Real estate, housing finance
-   - Typical turnaround: 3-6 months
+dataset = DBDataset(X, y, model=model)
 
-3. **Regional Science and Urban Economics** (Tier 2)
-   - Impact Factor: ~2.8
-   - Scope: Regional economics, urban issues
-   - Typical turnaround: 2-3 months
+exp = Experiment(
+    dataset=dataset,
+    tests=['robustness', 'weakspots'],  # Inclui weakspot detection
+    config='medium'
+)
 
-4. **Journal of Housing Economics** (Tier 2)
-   - Impact Factor: ~2.5
-   - Scope: Housing markets, policy
-   - Typical turnaround: 3-4 months
+results = exp.run_tests()
 
----
+# Weakspots detectados automaticamente
+print(results.weakspots.summary)
+```
 
-## Contacts
+Também disponível standalone:
 
-**Corresponding Author:**
-Gustavo Coelho Haase
-Email: [your-email]
+```python
+from deepbridge.weakspots import WeakspotDetector
 
-**Co-author:**
-Prof. Dr. Osvaldo Candido da Silva Filho
-Email: [advisor-email]
+detector = WeakspotDetector(
+    model=trained_model,
+    metric='accuracy',
+    strategies=['quantile', 'uniform', 'tree']
+)
 
----
+weakspots = detector.detect(X_test, y_test)
+```
 
-## Notes
+## Dependências
 
-### From Dissertation
-This article adapts content from:
-- Chapter 1 (Introduction) → Section 1
-- Chapter 2 (Literature, Sections 2.1-2.4) → Section 2
-- Chapter 3 (Methodology, Sections 3.1-3.3) → Sections 3-4
-- Chapter 4 (Results, Sections 4.1-4.3) → Section 5-6
-- Chapter 5 (Limitations) → Section 7
-- Chapter 6 (Conclusion) → Section 7
+- LaTeX (TeXLive 2020 ou superior)
+- Pacotes: acmart, babel (portuguese), listings, graphicx, booktabs, amsmath
+- BibTeX
 
-### Key Changes from Dissertation
-- **Condensed**: 76 pages → 25-30 pages
-- **Focused**: Temporal variation (main finding only)
-- **Simplified**: Removed excessive technical details
-- **Repositioned**: Descriptive contribution, not causal
+## Notas
 
-### Complementary Articles
-This is Article 1 of 5-6 planned publications:
-- **Article 2:** Selective convergence (heterogeneity)
-- **Article 3:** Methodological challenges (panel data)
-- **Article 4:** Policy implications
-- **Article 5:** Heckman correction (short note)
-- **Article 6:** Literature review (optional)
+- O arquivo `acmart.cls` inclui correção para o bug de ordem de carregamento hyperref/hyperxmp
+- Compilação requer 3 passes do pdflatex + 1 do bibtex
+- Alguns avisos de referências faltantes são esperados (referências não adicionadas ainda ao .bib)
 
----
+## Limitações e Trabalhos Futuros
 
-**Last Updated:** January 2025
+**Limitações Atuais**:
+- Features categóricas com alta cardinalidade (>100 categorias)
+- Datasets muito pequenos (n < 1000)
+- Interações limitadas a 2-way
+- Otimizado para modelos tabulares
+
+**Trabalhos Futuros**:
+1. Automated remediation (sugerir fixes automaticamente)
+2. Deep Learning support (slicing em embedding spaces)
+3. Temporal tracking (detectar novos weakspots via drift)
+4. Causal analysis (identificar root causes)
+5. Multi-model comparison (selecionar modelo com menos weakspots)
+
+## Autores
+
+Paper desenvolvido como parte da série DeepBridge sobre validação de modelos ML.
+
+## Licença
+
+Conteúdo acadêmico - todos os direitos reservados aos autores.

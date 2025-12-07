@@ -1,0 +1,242 @@
+\section{Estratégias de Slicing}
+\label{sec:strategies}
+
+Apresentamos três estratégias complementares de slicing, cada uma com vantagens específicas.
+
+\subsection{Quantile-Based Slicing}
+
+\textbf{Ideia}: Divide features contínuas em quantis (P10, P25, P50, P75, P90).
+
+\textbf{Rationale}: Captura regiões de distribuição real dos dados, evita bins vazios.
+
+\textbf{Algoritmo}:
+\begin{enumerate}
+    \item Para feature contínua $x_j$, compute quantis $q = [0.1, 0.25, 0.5, 0.75, 0.9]$
+    \item Crie slices: $S_i = \{x : q_{i-1} \leq x_j < q_i\}$
+    \item Avalie performance em cada slice
+\end{enumerate}
+
+\textbf{Exemplo} (feature: age):
+\begin{itemize}
+    \item Slice 1: age < P10 (e.g., < 22)
+    \item Slice 2: P10 $\leq$ age < P25 (22-28)
+    \item Slice 3: P25 $\leq$ age < P50 (28-38)
+    \item Slice 4: P50 $\leq$ age < P75 (38-52)
+    \item Slice 5: age $\geq$ P75 (> 52)
+\end{itemize}
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Tamanhos de slice equilibrados
+    \item Robusto a outliers
+    \item Adaptativo à distribuição
+\end{itemize}
+
+\textbf{Desvantagens}:
+\begin{itemize}
+    \item Pode perder boundaries não-quantílicos
+    \item Não captura interações
+\end{itemize}
+
+\subsection{Uniform Slicing}
+
+\textbf{Ideia}: Divide range de features em bins uniformes.
+
+\textbf{Rationale}: Simples e interpretável, útil para features com domínio conhecido.
+
+\textbf{Algoritmo}:
+\begin{enumerate}
+    \item Para feature $x_j$, determine range $[x_{\min}, x_{\max}]$
+    \item Divida em $k$ bins uniformes: width $w = (x_{\max} - x_{\min}) / k$
+    \item Crie slices: $S_i = \{x : x_{\min} + (i-1)w \leq x_j < x_{\min} + iw\}$
+\end{enumerate}
+
+\textbf{Exemplo} (feature: income, range [\$10K, \$200K], k=5):
+\begin{itemize}
+    \item Slice 1: \$10K - \$48K
+    \item Slice 2: \$48K - \$86K
+    \item Slice 3: \$86K - \$124K
+    \item Slice 4: \$124K - \$162K
+    \item Slice 5: \$162K - \$200K
+\end{itemize}
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Interpretação direta
+    \item Útil para features com semântica de range
+\end{itemize}
+
+\textbf{Desvantagens}:
+\begin{itemize}
+    \item Bins desbalanceados (se distribuição skewed)
+    \item Bins vazios possíveis
+\end{itemize}
+
+\subsection{Tree-Based Slicing}
+
+\textbf{Ideia}: Use decision tree para encontrar splits ótimos que maximizam degradação.
+
+\textbf{Rationale}: Data-driven, descobre boundaries não-lineares.
+
+\textbf{Algoritmo}:
+\begin{enumerate}
+    \item Compute residuals: $r_i = \mathbb{1}[\text{modelo errou em } x_i]$
+    \item Fit decision tree: $T = \text{DecisionTree}(X, r)$
+    \item Extraia leaf nodes como slices
+    \item Filtre leaves com alta taxa de erro
+\end{enumerate}
+
+\textbf{Exemplo}:
+\begin{verbatim}
+Tree structure:
+  age < 28?
+    |-- Yes: income < $25K?
+    |    |-- Yes: HIGH ERROR (48% error rate) <- Weakspot!
+    |    +-- No:  Medium (12%)
+    +-- No: Low error (5%)
+\end{verbatim}
+
+Weakspot identificado: age < 28 AND income < \$25K
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Descobre interações automaticamente
+    \item Splits otimizados para degradação
+    \item Não requer pré-definição de ranges
+\end{itemize}
+
+\textbf{Desvantagens}:
+\begin{itemize}
+    \item Pode overfit em datasets pequenos
+    \item Menos interpretável (múltiplas condições)
+\end{itemize}
+
+\textbf{Mitigação de Overfitting}:
+\begin{itemize}
+    \item \texttt{min\_samples\_leaf} = 50 (mínimo por leaf)
+    \item \texttt{max\_depth} = 3 (limitar complexidade)
+    \item Validação cruzada para robustez
+\end{itemize}
+
+\subsection{Comparação de Estratégias}
+
+\begin{table}[h]
+\centering
+\caption{Comparação das estratégias de slicing}
+\label{tab:strategy_comparison}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Critério} & \textbf{Quantile} & \textbf{Uniform} & \textbf{Tree} \\
+\midrule
+Balanceamento & \cmark & \xmark & \textasciitilde \\
+Interpretabilidade & \cmark & \cmark & \textasciitilde \\
+Interações & \xmark & \xmark & \cmark \\
+Adaptativo & \cmark & \xmark & \cmark \\
+Complexidade & Baixa & Baixa & Média \\
+Overfitting risk & Baixo & Baixo & Médio \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Recomendações}:
+\begin{itemize}
+    \item \textbf{Exploração inicial}: Quantile (robusto, equilibrado)
+    \item \textbf{Features com domínio conhecido}: Uniform (e.g., idade, score de crédito)
+    \item \textbf{Descoberta de interações}: Tree-based
+    \item \textbf{Uso combinado}: Executar todas (framework faz isso por padrão)
+\end{itemize}
+
+\subsection{Classificação de Severidade}
+
+Após detectar slices com degradação, classificamos severidade:
+
+\textbf{Thresholds Padrão}:
+\begin{itemize}
+    \item \textbf{Low}: 5-10\% degradação
+    \item \textbf{Medium}: 10-15\% degradação
+    \item \textbf{High}: 15-20\% degradação
+    \item \textbf{Critical}: > 20\% degradação
+\end{itemize}
+
+\textbf{Ajuste de Thresholds}:
+
+Thresholds podem ser customizados por domínio:
+\begin{itemize}
+    \item \textbf{Saúde}: Mais conservador (Critical > 10\%)
+    \item \textbf{Marketing}: Mais relaxado (Critical > 30\%)
+\end{itemize}
+
+\textbf{Significância Estatística}:
+
+Teste de hipótese:
+\begin{itemize}
+    \item $H_0$: $m(\mathcal{S}) = m(\mathcal{D})$ (sem degradação)
+    \item $H_1$: $m(\mathcal{S}) < m(\mathcal{D})$ (degradação real)
+    \item Teste: Permutation test ou bootstrap
+    \item Threshold: p-value < 0.05
+\end{itemize}
+
+\textbf{Tamanho Mínimo de Amostra}:
+
+Requisito: $|\mathcal{S}| \geq n_{\min}$ (padrão: 30)
+
+\textbf{Rationale}:
+\begin{itemize}
+    \item Evita overfitting a outliers
+    \item Garante poder estatístico
+    \item Foca em problemas impactantes (subgrupos grandes)
+\end{itemize}
+
+\subsection{Feature Interaction Analysis}
+
+\textbf{Motivação}: Weakspots frequentemente ocorrem em combinações de features.
+
+\textbf{Abordagem}:
+\begin{enumerate}
+    \item Ranquear features por degradação individual (top-k)
+    \item Combinar pairwise: $(f_i, f_j)$ para $i, j \in \text{top-k}$
+    \item Para cada combinação, criar grid de slices
+    \item Detectar degradação em células do grid
+\end{enumerate}
+
+\textbf{Exemplo}:
+
+Top-2 features: age, income
+
+Grid 3x3:
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{|c|c|c|c|}
+\hline
+ & Income Low & Income Med & Income High \\
+\hline
+Age Young & \textbf{48\%} & 12\% & 8\% \\
+Age Mid & 9\% & 7\% & 6\% \\
+Age Old & 10\% & 8\% & 7\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Weakspot detectado: (Age Young, Income Low) com 48\% error rate.
+
+\textbf{Filtragem de Redundância}:
+
+Se weakspot multi-dimensional é subset de weakspot individual, remove:
+\begin{itemize}
+    \item Individual: age < 25 (degradação 15\%)
+    \item Multi: age < 25 AND income < \$30K (degradação 18\%)
+    \item Decisão: Manter multi (mais específico + maior degradação)
+\end{itemize}
+
+\textbf{Limite de Complexidade}:
+
+Para escalabilidade, limitamos a:
+\begin{itemize}
+    \item Top-5 features individuais
+    \item Combinações 2-way (não 3-way+)
+    \item Grid 5x5 máximo
+\end{itemize}
+
+Rationale: 3-way+ interactions são raras e difíceis de interpretar.

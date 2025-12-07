@@ -1,0 +1,72 @@
+\section{Trabalhos Relacionados}
+\label{sec:background}
+
+Organizamos trabalhos relacionados em três categorias: slice-based analysis, error analysis e model debugging.
+
+\subsection{Slice-Based Analysis}
+
+\textbf{Slice Finder}~\cite{chung2019slice}: Google desenvolveu técnica para encontrar subgrupos com performance degradada usando árvores de decisão. Limitação: foca apenas em tree-based slicing.
+
+\textbf{Spotlight}~\cite{lakkaraju2017identifying}: Microsoft propôs método para identificar regiões de erro usando clustering. Limitação: requer features pré-selecionadas.
+
+\textbf{Slicing for Fairness}~\cite{chen2019slicing}: Análise de slices para detectar bias em grupos protegidos. Limitação: restrito a atributos protegidos conhecidos.
+
+\textbf{Diferencial}: Nossa abordagem combina múltiplas estratégias (quantile + uniform + tree), não requer pré-seleção de features e detecta interações.
+
+\subsection{Error Analysis}
+
+\textbf{Error Pattern Detection}~\cite{sipple2020interpretable}: Identifica padrões de erro via clustering. Limitação: não fornece ranges específicos.
+
+\textbf{Subgroup Discovery}~\cite{lemmerich2016fast}: Mineração de regras para subgrupos anômalos. Limitação: exponencial em número de features.
+
+\textbf{Data Quality Issues}~\cite{schelter2018automating}: Detecta problemas de qualidade em slices. Limitação: foca em integridade de dados, não performance.
+
+\textbf{Diferencial}: Focamos especificamente em degradação de performance com classificação de severidade.
+
+\subsection{Model Debugging}
+
+\textbf{Influence Functions}~\cite{koh2017understanding}: Identifica amostras influentes. Limitação: não agrupa em regiões.
+
+\textbf{Anchors}~\cite{ribeiro2018anchors}: Regras locais de predição. Limitação: explainability individual, não análise de subgrupos.
+
+\textbf{Testing Tools}:
+\begin{itemize}
+    \item \textbf{Checklist}~\cite{ribeiro2020beyond}: Templates manuais para NLP
+    \item \textbf{Great Expectations}: Validação de dados, não modelos
+    \item \textbf{Deepchecks}: Foca em drift, não weakspots locais
+\end{itemize}
+
+\textbf{Diferencial}: Detecção automática e sistemática de regiões de degradação.
+
+\subsection{Comparação com Ferramentas Existentes}
+
+\begin{table}[h]
+\centering
+\caption{Comparação de abordagens para detecção de degradação}
+\label{tab:related_comparison}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Abordagem} & \textbf{Multi-} & \textbf{Severidade} & \textbf{Interações} & \textbf{Auto-} \\
+ & \textbf{Estratégia} & \textbf{Auto.} &  & \textbf{mático} \\
+\midrule
+Slice Finder & \xmark & \xmark & \xmark & \cmark \\
+Spotlight & \xmark & \xmark & \xmark & \textasciitilde \\
+Subgroup Disc. & \xmark & \xmark & \cmark & \cmark \\
+Manual Analysis & \cmark & \cmark & \xmark & \xmark \\
+\midrule
+\textbf{Este trabalho} & \cmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Posicionamento}
+
+Nosso trabalho \textbf{complementa} ferramentas de fairness e robustness:
+\begin{itemize}
+    \item \textbf{Fairness tools} (AIF360, Fairlearn): Focam em grupos protegidos conhecidos
+    \item \textbf{Robustness tools} (Foolbox, ART): Testam perturbações adversariais
+    \item \textbf{Weakspot detector}: Descobre regiões desconhecidas de degradação
+\end{itemize}
+
+\textbf{Integração}: Weakspot detection é uma das 5 dimensões do DeepBridge (Paper 3), mas pode ser usado standalone.

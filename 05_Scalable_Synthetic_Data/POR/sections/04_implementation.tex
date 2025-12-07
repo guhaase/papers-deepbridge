@@ -1,0 +1,237 @@
+\section{Implementacao}
+\label{sec:implementation}
+
+\subsection{Stack Tecnológico}
+
+\textbf{Core Dependencies}:
+\begin{itemize}
+    \item \textbf{Dask}: Distributed computing (v2023.5+)
+    \item \textbf{NumPy/Pandas}: Numerical operations
+    \item \textbf{SciPy}: Statistical distributions, linear algebra
+    \item \textbf{Scikit-learn}: ML utility evaluation
+\end{itemize}
+
+\textbf{Optional}:
+\begin{itemize}
+    \item \textbf{Parquet/Arrow}: Efficient storage
+    \item \textbf{cuDF}: GPU acceleration (experimental)
+\end{itemize}
+
+\subsection{Algoritmos Memory-Efficient}
+
+\subsubsection{Welford's Online Algorithm}
+
+Compute mean e variance em one pass, $O(1)$ memória:
+
+\begin{lstlisting}[language=Python, caption={Implementacao Welford}]
+class OnlineStats:
+    def __init__(self):
+        self.n = 0
+        self.mean = 0.0
+        self.M2 = 0.0
+
+    def update(self, value):
+        self.n += 1
+        delta = value - self.mean
+        self.mean += delta / self.n
+        delta2 = value - self.mean
+        self.M2 += delta * delta2
+
+    @property
+    def variance(self):
+        return self.M2 / self.n if self.n > 1 else 0.0
+\end{lstlisting}
+
+\subsubsection{Incremental Covariance}
+
+Two-pass algorithm para covariance matriz:
+
+\textbf{Pass 1}: Compute means
+
+\textbf{Pass 2}: Compute $\text{Cov}(X_j, X_k) = E[(X_j - \mu_j)(X_k - \mu_k)]$
+
+\begin{lstlisting}[language=Python, caption=Covariance incremental]
+def incremental_cov(df_chunks, means):
+    cov = np.zeros((d, d))
+    n_total = 0
+
+    for chunk in df_chunks:
+        centered = chunk - means
+        cov += (centered.T @ centered).values
+        n_total += len(chunk)
+
+    return cov / n_total
+\end{lstlisting}
+
+\subsection{Optimizacões}
+
+\textbf{1. Correlation Matrix Sparsification}:
+
+Para datasets com muitas features ($d > 100$), matriz cheia ($d^2$) é grande.
+
+\textbf{Solucao}: Threshold pequenas correlacões:
+\begin{itemize}
+    \item $|\rho_{jk}| < 0.05 \rightarrow \rho_{jk} = 0$
+    \item Store como sparse matrix
+    \item Sampling via Cholesky decomposition em submatrizes
+\end{itemize}
+
+\textbf{2. Parallel Inverse Transform}:
+
+Transformacão $F_j^{-1}$ pode ser paralelizada por feature:
+
+\begin{lstlisting}[language=Python]
+from joblib import Parallel, delayed
+
+def inverse_transform_feature(U_j, marginal_j):
+    return marginal_j.inverse_cdf(U_j)
+
+# Parallel over features
+X = Parallel(n_jobs=-1)(
+    delayed(inverse_transform_feature)(U[:, j], marginals[j])
+    for j in range(d)
+)
+\end{lstlisting}
+
+\textbf{3. Adaptive Chunk Sizing}:
+
+Auto-tune chunk size baseado em memória disponível:
+
+\begin{lstlisting}[language=Python]
+import psutil
+
+available_mem = psutil.virtual_memory().available
+row_size = df.memory_usage(deep=True).sum() / len(df)
+chunk_size = int(0.1 * available_mem / row_size)  # 10% da RAM
+\end{lstlisting}
+
+\subsection{Handling Edge Cases}
+
+\textbf{Constant Features}:
+\begin{itemize}
+    \item $\text{Var}(X_j) = 0 \rightarrow$ Skip correlation, reproduce valor constante
+\end{itemize}
+
+\textbf{Missing Values}:
+\begin{itemize}
+    \item Option 1: Impute antes de fit
+    \item Option 2: Model missingness pattern, reproduce em synthetic
+\end{itemize}
+
+\textbf{Skewed Distributions}:
+\begin{itemize}
+    \item Log-transform antes de fit
+    \item Ou: Fit Gamma/Beta ao invés de Normal
+\end{itemize}
+
+\textbf{Categorical High Cardinality}:
+\begin{itemize}
+    \item Categorias raras: Group como "Other"
+    \item Threshold: freq < 1\%
+\end{itemize}
+
+\subsection{Privacy Enhancements}
+
+\textbf{Differential Privacy Option}:
+
+Adiciona noise Gaussiano à correlation matrix:
+
+\[
+\tilde{\Sigma} = \Sigma + \text{Lap}(0, \Delta / \epsilon)
+\]
+
+onde $\Delta = \text{sensitivity}$ e $\epsilon$ controla privacy-utility trade-off.
+
+\begin{lstlisting}[language=Python, caption=DP-Gaussian Copula]
+def add_dp_noise(Sigma, epsilon=1.0):
+    sensitivity = 2.0  # Bounded data assumption
+    noise_scale = sensitivity / epsilon
+    noise = np.random.laplace(0, noise_scale, Sigma.shape)
+    noise = (noise + noise.T) / 2  # Symmetrize
+    Sigma_dp = Sigma + noise
+    # Ensure positive definite
+    Sigma_dp = nearest_positive_definite(Sigma_dp)
+    return Sigma_dp
+\end{lstlisting}
+
+\textbf{k-Anonymity Enforcement}:
+
+Garante que cada amostra sintética difere de todas amostras reais:
+
+\begin{lstlisting}[language=Python]
+from sklearn.neighbors import NearestNeighbors
+
+def enforce_k_anonymity(synthetic, real, k=5, threshold=0.1):
+    nn = NearestNeighbors(n_neighbors=1)
+    nn.fit(real)
+    distances, _ = nn.kneighbors(synthetic)
+
+    # Re-sample amostras muito próximas
+    too_close = distances.flatten() < threshold
+    while too_close.any():
+        synthetic[too_close] = sample_new(n=too_close.sum())
+        distances, _ = nn.kneighbors(synthetic[too_close])
+        too_close[too_close] = distances.flatten() < threshold
+
+    return synthetic
+\end{lstlisting}
+
+\subsection{Performance Profiling}
+
+Instrumentacão para monitoring:
+
+\begin{lstlisting}[language=Python]
+import time
+from dask.diagnostics import ProgressBar, ResourceProfiler
+
+with ResourceProfiler() as prof, ProgressBar():
+    start = time.time()
+    synthesizer.fit(df)
+    fit_time = time.time() - start
+
+    start = time.time()
+    synthetic = synthesizer.sample(n=1000000)
+    sample_time = time.time() - start
+
+print(f"Fit: {fit_time:.2f}s, Sample: {sample_time:.2f}s")
+prof.visualize()  # Memory/CPU timeline
+\end{lstlisting}
+
+\subsection{API Design}
+
+\textbf{Princípios}:
+\begin{itemize}
+    \item \textbf{Scikit-learn compatible}: \texttt{fit()}, \texttt{sample()}
+    \item \textbf{Sensible defaults}: Funciona out-of-the-box
+    \item \textbf{Configurável}: Expõe opções avançadas
+\end{itemize}
+
+\textbf{Exemplo Completo}:
+
+\begin{lstlisting}[language=Python, caption=API completa]
+from deepbridge.synthetic import GaussianCopulaSynthesizer
+
+synth = GaussianCopulaSynthesizer(
+    chunk_size='100MB',          # Auto-tuned se None
+    correlation_threshold=0.05,  # Sparsify
+    enforce_privacy=True,        # k-anonymity check
+    epsilon=1.0,                 # DP noise (None = sem DP)
+    random_state=42
+)
+
+# Fit em Dask DataFrame
+synth.fit(df)
+
+# Sample
+synthetic = synth.sample(
+    n_rows=1000000,
+    batch_size=10000  # Generate em batches
+)
+
+# Save fitted model
+synth.save('model.pkl')
+
+# Evaluate
+report = synth.evaluate(df, synthetic)
+print(report.summary())
+\end{lstlisting}

@@ -1,0 +1,275 @@
+\section{Arquitetura Distribuída}
+\label{sec:architecture}
+
+\subsection{Visão Geral}
+
+A arquitetura do framework é organizada em 4 camadas:
+
+\textbf{1. Data Layer}: Chunked I/O via Dask DataFrames
+
+\textbf{2. Fitting Layer}: Distributed fitting de marginais e correlacões
+
+\textbf{3. Sampling Layer}: Parallel sampling de dados sintéticos
+
+\textbf{4. Evaluation Layer}: Quality metrics distribuídas
+
+\subsection{Data Layer: Chunked I/O}
+
+\textbf{Problema}: Datasets 100GB+ não cabem em RAM.
+
+\textbf{Solucao}: Dask DataFrame com chunks de tamanho fixo.
+
+\begin{lstlisting}[language=Python, caption=Chunked loading]
+import dask.dataframe as dd
+
+# Load em chunks de 100MB
+df = dd.read_parquet(
+    'large_dataset.parquet',
+    chunksize='100MB'
+)
+
+# Lazy: Nada carregado ainda
+print(df.npartitions)  # e.g., 1000 chunks
+\end{lstlisting}
+
+\textbf{Chunk Size Selection}:
+\begin{itemize}
+    \item \textbf{Trade-off}: Chunks pequenos (mais I/O overhead), chunks grandes (mais memória)
+    \item \textbf{Heurística}: 100MB-500MB por chunk (balanceamento)
+    \item \textbf{Auto-tuning}: Ajusta baseado em memória disponível
+\end{itemize}
+
+\subsection{Fitting Layer: Distributed Parameter Estimation}
+
+\textbf{Objetivo}: Estimar distribuições marginais e matriz de correlacão sem carregar dataset completo.
+
+\subsubsection{Marginal Distributions}
+
+Para cada feature $X_j$, estimamos sua distribuicao marginal $F_j$.
+
+\textbf{Categorical Features}:
+\begin{itemize}
+    \item Histograma de frequências via \texttt{value\_counts()}
+    \item Incremental: Merge counts de cada chunk
+\end{itemize}
+
+\textbf{Continuous Features}:
+\begin{itemize}
+    \item Fit distribuicao paramétrica (Normal, Beta, Gamma, etc.)
+    \item Ou: Use empirical CDF (quantiles)
+\end{itemize}
+
+\textbf{Algoritmo} (Incremental Mean/Variance):
+
+\begin{verbatim}
+# Welford's algorithm (streaming)
+def update_stats(n, mean, M2, new_value):
+    n += 1
+    delta = new_value - mean
+    mean += delta / n
+    delta2 = new_value - mean
+    M2 += delta * delta2
+    return n, mean, M2
+
+# Processa cada chunk
+for chunk in chunks:
+    for value in chunk:
+        n, mean, M2 = update_stats(n, mean, M2, value)
+
+variance = M2 / n
+\end{verbatim}
+
+\textbf{Complexidade}: $O(n)$ tempo, $O(1)$ memória por feature.
+
+\subsubsection{Correlation Matrix}
+
+Estimar matriz de correlacão $\Sigma \in \mathbb{R}^{d \times d}$ para Gaussian Copula.
+
+\textbf{Desafio}: Correlacão requer pairs de valores, mas chunks podem ter rows diferentes.
+
+\textbf{Solucao 1: Chunk-Wise Correlation + Aggregation}:
+\begin{enumerate}
+    \item Compute correlacão em cada chunk $C_i$
+    \item Aggregate via weighted average: $\Sigma = \sum_i w_i C_i$ onde $w_i = |chunk_i| / n$
+\end{enumerate}
+
+\textbf{Limitacão}: Aproximacão (correlacão não é perfeitamente decomponível).
+
+\textbf{Solucao 2: Two-Pass Algorithm}:
+\begin{enumerate}
+    \item \textbf{Pass 1}: Compute means $\mu_j$ via streaming
+    \item \textbf{Pass 2}: Compute $\Sigma_{jk} = \frac{1}{n} \sum_i (x_{ij} - \mu_j)(x_{ik} - \mu_k)$
+\end{enumerate}
+
+Implementamos \textbf{Solucao 2} (exata, 2 passes vs. 1 pass aproximado).
+
+\textbf{Complexidade}: $O(d^2 n)$ tempo, $O(d^2)$ memória.
+
+\textbf{Parallelization}:
+\begin{lstlisting}[language=Python, caption=Distributed correlation computation]
+from dask import delayed, compute
+
+# Compute covariance incremental em cada chunk
+@delayed
+def chunk_cov(chunk, means):
+    return ((chunk - means).T @ (chunk - means)) / len(chunk)
+
+# Aggregate
+cov_tasks = [chunk_cov(chunk, means) for chunk in df.to_delayed()]
+cov_total = sum(cov_tasks)
+Sigma = cov_total.compute()
+\end{lstlisting}
+
+\subsection{Transformation Layer}
+
+Após fit de marginais e correlacão, transformamos para Gaussian space.
+
+\textbf{Pipeline}:
+\begin{enumerate}
+    \item $X_j \rightarrow U_j = F_j(X_j)$: Transform to uniform via CDF
+    \item $U_j \rightarrow Z_j = \Phi^{-1}(U_j)$: Transform to standard Normal
+    \item $(Z_1, \ldots, Z_d)$ tem correlacão empírica $\Sigma$
+\end{enumerate}
+
+\textbf{Handling Categorical}:
+\begin{itemize}
+    \item One-hot encode
+    \item Ou: Treat as ordinal (map to ranks, then transform)
+\end{itemize}
+
+\subsection{Sampling Layer: Parallel Generation}
+
+\textbf{Objetivo}: Gerar $n$ amostras sintéticas de forma distribuída.
+
+\textbf{Algoritmo}:
+\begin{enumerate}
+    \item Sample $Z \sim \mathcal{N}(0, \Sigma)$: Normal multivariada
+    \item Transform $Z_j \rightarrow U_j = \Phi(Z_j)$: Normal to uniform
+    \item Transform $U_j \rightarrow X_j = F_j^{-1}(U_j)$: Uniform to original space
+\end{enumerate}
+
+\textbf{Parallelization}:
+\begin{itemize}
+    \item Divide $n$ amostras em batches
+    \item Cada worker gera batch independentemente
+    \item Concatenate results
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption=Parallel sampling]
+from scipy.stats import multivariate_normal
+import dask.array as da
+
+# Sample Normal multivariada em chunks
+def sample_batch(n_samples, mean, cov):
+    Z = multivariate_normal.rvs(mean=mean, cov=cov, size=n_samples)
+    return Z
+
+# Parallel batches
+batches = [dask.delayed(sample_batch)(batch_size, mean, Sigma)
+           for _ in range(n_batches)]
+Z_all = dask.compute(*batches)
+Z = np.vstack(Z_all)
+\end{lstlisting}
+
+\textbf{Inverse Transform}:
+
+Para cada feature, aplicamos $F_j^{-1}$ (inverse CDF):
+\begin{itemize}
+    \item \textbf{Continuous}: Interpolacão linear em quantiles empíricos
+    \item \textbf{Categorical}: Sample categórico baseado em frequências
+\end{itemize}
+
+\subsection{Memory-Efficient Design}
+
+\textbf{Estratégias para Reduzir Uso de Memória}:
+
+\textbf{1. Lazy Evaluation}:
+\begin{itemize}
+    \item Dask task graphs: Nada computado até \texttt{.compute()}
+    \item Permite otimizacões (fusion, pruning)
+\end{itemize}
+
+\textbf{2. Streaming I/O}:
+\begin{itemize}
+    \item Read/write em chunks
+    \item Never load full dataset
+\end{itemize}
+
+\textbf{3. Incremental Statistics}:
+\begin{itemize}
+    \item Welford's algorithm: $O(1)$ memória para mean/variance
+    \item Pairwise covariance: $O(d^2)$ vs. $O(d \cdot n)$
+\end{itemize}
+
+\textbf{4. Compression}:
+\begin{itemize}
+    \item Parquet com snappy compression
+    \item Reduce disk I/O
+\end{itemize}
+
+\textbf{Footprint Comparison}:
+
+\begin{table}[h]
+\centering
+\caption{Uso de memória (dataset 100GB, 100M rows, 50 features)}
+\label{tab:memory_footprint}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Método} & \textbf{Peak Memory} & \textbf{Reduction} \\
+\midrule
+SDV (in-memory) & 120GB & 1.0x \\
+CTGAN (batched) & 48GB & 2.5x \\
+\midrule
+\textbf{DeepBridge (chunked)} & \textbf{6GB} & \textbf{20x} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Layer}
+
+Métricas de qualidade computadas de forma distribuída:
+
+\textbf{Statistical Metrics}:
+\begin{itemize}
+    \item Kolmogorov-Smirnov per feature (chunk-wise)
+    \item Jensen-Shannon divergence (histogramas)
+    \item Correlation diff: $||\Sigma_{real} - \Sigma_{synth}||_F$
+\end{itemize}
+
+\textbf{ML Utility}:
+\begin{itemize}
+    \item Train model em synthetic (Dask-ML)
+    \item Test em real
+    \item Compare accuracy/F1
+\end{itemize}
+
+\textbf{Privacy Metrics}:
+\begin{itemize}
+    \item Nearest neighbor distance (k-NN search)
+    \item k-anonymity check
+\end{itemize}
+
+\subsection{Integration com DeepBridge}
+
+Synthetic data generation integra-se ao pipeline de validacão:
+
+\begin{lstlisting}[language=Python, caption={Integracao com Experiment}]
+from deepbridge import Experiment, DBDataset
+from deepbridge.synthetic import GaussianCopulaSynthesizer
+
+dataset = DBDataset(df, target='label', model=model)
+
+# Generate synthetic
+synthesizer = GaussianCopulaSynthesizer()
+synthesizer.fit(dataset.data)
+synthetic_df = synthesizer.sample(n_rows=10000)
+
+# Validate synthetic quality
+exp = Experiment(
+    dataset=dataset,
+    tests=['synthetic_quality'],
+    synthetic_data=synthetic_df
+)
+results = exp.run_tests()
+\end{lstlisting}

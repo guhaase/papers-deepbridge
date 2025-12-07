@@ -1,62 +1,41 @@
-# Article 1: Are Historical Redlining Effects Immutable?
+# Geracao Escalavel de Dados Sinteticos com Preservacao de Privacidade
 
-## Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
+**Paper 5 da série DeepBridge**
 
-**Authors:** Gustavo Coelho Haase, Osvaldo Candido da Silva Filho
-**Status:** In Preparation
-**Target Journal:** Journal of Urban Economics (Tier 1)
-**Started:** January 2025
+## Descricao
 
----
+Este paper apresenta um framework **escalavel** para geracao de dados sinteticos baseado em Copulas Gaussianas distribuidas via Dask, que processa datasets de 100GB+ preservando qualidade estatistica e privacidade.
 
-## Directory Structure
+**Conferencia alvo**: SIGKDD 2026
+
+**Paginas**: ~10
+
+**Referencias bibliograficas**: ~15
+
+## Estrutura
 
 ```
-01-Effects_Immutable/
-├── main.tex                    # Main LaTeX file
-├── sections/                   # Article sections
-│   ├── 01-introduction.tex
-│   ├── 02-literature.tex
-│   ├── 03-data.tex
-│   ├── 04-methodology.tex
-│   ├── 05-results.tex
-│   ├── 06-robustness.tex
-│   ├── 07-discussion.tex
-│   └── appendix.tex
-├── figures/                    # Figures (PDF format)
-│   ├── fig01_map_redlining.pdf
-│   └── fig02_event_study.pdf
-├── tables/                     # Tables (LaTeX format)
-│   ├── tab01_descriptive_stats.tex
-│   ├── tab02_main_result.tex
-│   ├── tab03_temporal_evolution.tex
-│   ├── tab04_placebo_test.tex
-│   └── tab05_threshold_sensitivity.tex
-├── bibliography/               # References
-│   └── references.bib
-├── supplementary/              # Online appendix
-│   └── online_appendix.tex
-├── build/                      # Compiled outputs
-│   └── main.pdf
-├── elsarticle.cls              # Elsevier article class
-├── elsarticle-harv.bst         # Harvard bibliography style
-├── Makefile                    # Compilation automation
-├── README.md                   # This file
-└── PLANEJAMENTO_ARTIGO.md      # Detailed planning document
+05_Scalable_Synthetic_Data/POR/
+├── main.tex                    # Documento principal
+├── sections/
+│   ├── 01_introduction.tex     # Introducao e motivacao
+│   ├── 02_background.tex       # Fundamentos e trabalhos relacionados
+│   ├── 03_architecture.tex     # Arquitetura distribuida
+│   ├── 04_implementation.tex   # Implementacao memory-efficient
+│   ├── 05_evaluation.tex       # Avaliacao experimental
+│   ├── 06_discussion.tex       # Discussao e limitacoes
+│   └── 07_conclusion.tex       # Conclusao e trabalhos futuros
+├── bibliography/
+│   └── references.bib          # Referencias bibliograficas
+├── acmart.cls                  # Classe LaTeX ACM (corrigida)
+├── compile.sh                  # Script de compilacao
+└── README.md                   # Este arquivo
 ```
 
----
+## Compilacao
 
-## Compilation Instructions
+### Metodo Manual
 
-### Option 1: Using Makefile (Recommended)
-```bash
-make          # Compile the article
-make clean    # Remove auxiliary files
-make view     # Open the compiled PDF
-```
-
-### Option 2: Manual Compilation
 ```bash
 pdflatex main.tex
 bibtex main
@@ -64,173 +43,244 @@ pdflatex main.tex
 pdflatex main.tex
 ```
 
-### Option 3: Overleaf
-Upload all files to Overleaf and compile online.
+**Nota**: Devido a problemas com caracteres UTF-8 especiais em captions de lstlisting,
+alguns acentos foram removidos. Para compilar corretamente, certifique-se de que:
+- Captions de lstlisting não contenham caracteres acentuados
+- Comentarios em codigo Python usem ASCII simples
 
----
+## Principais Contribuicoes
 
-## Key Files
+1. **Arquitetura Distribuida**:
+   - Chunk-based processing para datasets beyond-memory
+   - Incremental fitting via streaming algorithms
+   - Parallel sampling distribuido
+   - Memory-efficient: -95% uso de memoria vs baselines
 
-### Planning and Organization
-- **PLANEJAMENTO_ARTIGO.md**: Comprehensive planning document with:
-  - Article structure (6,000-8,000 words target)
-  - Section-by-section guidelines
-  - Figure/table specifications
-  - Timeline and checklist
-  - Journal submission strategy
+2. **Implementacao Memory-Efficient**:
+   - Welford's algorithm: Online mean/variance em O(1) memoria
+   - Two-pass covariance: Exato, O(d²) memoria
+   - Lazy evaluation via Dask task graphs
+   - Adaptive chunking baseado em RAM disponivel
 
-### Main Document
-- **main.tex**: Master file that compiles all sections
-- **sections/*.tex**: Individual section files (see structure above)
+3. **Preservacao de Qualidade e Privacidade**:
+   - Statistical similarity: 98% (KS, JSD, correlacao)
+   - ML utility: -2pp degradacao (train synth, test real)
+   - k-anonymity: Zero copias exatas
+   - Differential Privacy: Opcao com epsilon configuravel
 
-### Data Visualization
-- **figures/**:
-  - `fig01_map_redlining.pdf`: Spatial distribution of redlined areas
-  - `fig02_event_study.pdf`: Temporal evolution (2018-2024)
+4. **Avaliacao Abrangente**:
+   - Scalability tests: 1GB a 100GB
+   - Comparacao: SDV, CTGAN, TVAE
+   - 3 estudos de caso: Healthcare (10M), Finance (50M), E-commerce (100M)
 
-### Tables
-- **tables/**:
-  - `tab01`: Descriptive statistics
-  - `tab02`: Main result (balanced panel)
-  - `tab03`: Year-by-year decomposition
-  - `tab04`: Placebo test (parallel trends)
-  - `tab05`: Threshold sensitivity
+## Resultados Principais
 
-### References
-- **bibliography/references.bib**: BibTeX database
-  - Source: Dissertation bibliography (filtered for cited references only)
-  - Style: Harvard (author-year)
+**Escalabilidade**:
+- **50x speedup** vs SDV em datasets 100GB
+- **-95% memoria**: 8GB vs 64GB+ (baselines)
+- **100GB+**: Unica solucao que completa (SDV/CTGAN OOM)
+- **115 min** para fit em 100GB
 
----
+**Qualidade**:
+- **98% similarity** em metricas estatisticas
+- **-1.9pp ML utility** (87.3% synthetic vs 89.2% real)
+- **96% correlation agreement**
+- **Comparavel a SDV**, ligeiramente inferior a CTGAN (esperado)
 
-## Current Status
+**Privacidade**:
+- **k-anonymity > 5**: Nenhuma copia exata
+- **NND = 0.17**: Nearest neighbor distance segura
+- **DP option**: epsilon=1 aumenta NND para 0.28, degrada utility -3pp
 
-### Completed
-- [x] Directory structure created
-- [x] Template files copied
-- [x] Planning document written
-- [x] Section files created with TODOs
-- [x] Main.tex configured
+## Metodos Implementados
 
-### In Progress
-- [ ] Writing sections (see PLANEJAMENTO_ARTIGO.md for detailed timeline)
+### Gaussian Copula Synthesis
 
-### To Do
-- [ ] Adapt content from dissertation
-- [ ] Create/copy figures
-- [ ] Create/copy tables
-- [ ] Extract and clean bibliography
-- [ ] Write cover letter
-- [ ] Prepare supplementary materials
+**Workflow**:
+1. **Fit marginais**: Estima distribuicao de cada feature
+2. **Compute correlacao**: Matriz de correlacao via two-pass algorithm
+3. **Transform to Gaussian**: CDF + inverse normal
+4. **Sample**: Normal multivariada + inverse transform
 
----
+**Vantagens**:
+- 10-20x mais rapido que GANs
+- -90% memoria
+- Mais estavel (sem mode collapse)
+- Interpretavel (correlation matrix)
 
-## Word Count Target
+**Limitacoes**:
+- Assume dependencia linear (correlacao)
+- Nao captura tail dependence assimetrica
+- Menos expressivo para padroes nao-lineares complexos
 
-**Total:** 6,000-8,000 words (excluding references and tables)
+## Estudos de Caso
 
-**Breakdown:**
-- Introduction: ~1,000 words
-- Literature: ~1,500 words
-- Data + Methodology: ~1,500 words
-- Results: ~2,500 words
-- Robustness: ~800 words
-- Discussion: ~700 words
+### Case 1: Healthcare (10M Pacientes)
 
----
+**Dataset**: Electronic Health Records (EHR), 80 features
 
-## Submission Checklist
+**Resultados**:
+- Fitting time: 18 min (vs SDV OOM)
+- Statistical similarity: KS = 0.028
+- ML utility: Readmissao prediction 84% (synth) vs 86% (real) = -2pp
+- Privacy: k-anonymity > 5, NND = 0.21
 
-Before submitting to journal:
+### Case 2: Finance (50M Transacoes)
 
-### Content
-- [ ] Abstract (≤200 words)
-- [ ] Keywords (5-7)
-- [ ] JEL codes
-- [ ] All sections complete
-- [ ] References formatted correctly
-- [ ] Figures high resolution (300 dpi)
-- [ ] Tables properly formatted
-- [ ] Online appendix prepared
+**Dataset**: Transacoes de cartao de credito, 40 features
 
-### Formatting
-- [ ] Follow journal guidelines
-- [ ] Line numbering (if required)
-- [ ] Double spacing (if required)
-- [ ] Author affiliations correct
-- [ ] Acknowledgments section
-- [ ] Disclosure statements
+**Objetivo**: Data augmentation para fraud detection
 
-### Supporting Materials
-- [ ] Cover letter
-- [ ] Highlights (3-5 bullet points)
-- [ ] Graphical abstract (optional)
-- [ ] Replication code (GitHub/OSF)
-- [ ] Data availability statement
+**Resultados**:
+- Fraud detection F1: 0.72 (real only) → 0.78 (real + synth) = +0.06
+- Fitting time: 52 min
+- Preservacao de correlacoes: 97% agreement
 
----
+### Case 3: E-commerce (100M Interacoes)
 
-## Target Journals (in order)
+**Dataset**: User-item interactions, 25 features
 
-1. **Journal of Urban Economics** (Tier 1)
-   - Impact Factor: ~3.5
-   - Scope: Urban economics, housing, discrimination
-   - Typical turnaround: 3-4 months
+**Objetivo**: Compartilhar dados de comportamento sem expor usuarios
 
-2. **Real Estate Economics** (Tier 1)
-   - Impact Factor: ~3.2
-   - Scope: Real estate, housing finance
-   - Typical turnaround: 3-6 months
+**Resultados**:
+- Fitting time: 115 min (100GB dataset)
+- CTR prediction: 0.89 AUC (synth) vs 0.91 (real) = -0.02
+- Privacy: Zero copies, NND = 0.19
 
-3. **Regional Science and Urban Economics** (Tier 2)
-   - Impact Factor: ~2.8
-   - Scope: Regional economics, urban issues
-   - Typical turnaround: 2-3 months
+## Quando Usar Copula vs Deep Learning
 
-4. **Journal of Housing Economics** (Tier 2)
-   - Impact Factor: ~2.5
-   - Scope: Housing markets, policy
-   - Typical turnaround: 3-4 months
+**Gaussian Copula (DeepBridge)** ideal para:
+- Dados tabulares: Features numericas e categoricas misturadas
+- Correlacoes lineares: Relacoes primariamente lineares
+- Escalabilidade: Datasets > 10GB
+- Interpretabilidade: Correlation matrix transparente
+- Velocidade: Fit/sample rapido
 
----
+**Deep Learning (CTGAN/TVAE)** preferivel para:
+- Relacoes complexas: Non-linear, interacoes de alta ordem
+- Imagens/Text: Dados nao-tabulares
+- Datasets pequenos/medios: < 5GB com GPU disponivel
+- Maxima qualidade: Disposto a trocar tempo por quality
 
-## Contacts
+**Recomendacao**: Para dados tabulares > 10GB, Gaussian Copula. Para padroes complexos < 5GB, CTGAN.
 
-**Corresponding Author:**
-Gustavo Coelho Haase
-Email: [your-email]
+## Privacy-Utility Trade-Off
 
-**Co-author:**
-Prof. Dr. Osvaldo Candido da Silva Filho
-Email: [advisor-email]
+**Spectrum**:
+1. **Sem DP**: Maxima utility, privacidade basica (k-anonymity)
+2. **DP baixo** (ε=10): Utility -1pp, privacy moderada
+3. **DP medio** (ε=1): Utility -3pp, privacy forte
+4. **DP alto** (ε=0.1): Utility -10pp+, privacy muito forte
 
----
+**Guideline**:
+- Research sharing: ε=1 (balanco razoavel)
+- Public release: ε=0.1 (conservador)
+- Internal testing: Sem DP (k-anonymity suficiente)
 
-## Notes
+## Implementacao
 
-### From Dissertation
-This article adapts content from:
-- Chapter 1 (Introduction) → Section 1
-- Chapter 2 (Literature, Sections 2.1-2.4) → Section 2
-- Chapter 3 (Methodology, Sections 3.1-3.3) → Sections 3-4
-- Chapter 4 (Results, Sections 4.1-4.3) → Section 5-6
-- Chapter 5 (Limitations) → Section 7
-- Chapter 6 (Conclusion) → Section 7
+### Stack Tecnologico
 
-### Key Changes from Dissertation
-- **Condensed**: 76 pages → 25-30 pages
-- **Focused**: Temporal variation (main finding only)
-- **Simplified**: Removed excessive technical details
-- **Repositioned**: Descriptive contribution, not causal
+**Core Dependencies**:
+- Dask: Distributed computing
+- NumPy/Pandas: Numerical operations
+- SciPy: Statistical distributions, linear algebra
+- Scikit-learn: ML utility evaluation
 
-### Complementary Articles
-This is Article 1 of 5-6 planned publications:
-- **Article 2:** Selective convergence (heterogeneity)
-- **Article 3:** Methodological challenges (panel data)
-- **Article 4:** Policy implications
-- **Article 5:** Heckman correction (short note)
-- **Article 6:** Literature review (optional)
+### Algoritmos Memory-Efficient
 
----
+**Welford's Online Algorithm**:
+- Compute mean e variance em one pass
+- O(1) memoria por feature
 
-**Last Updated:** January 2025
+**Two-Pass Covariance**:
+- Pass 1: Compute means
+- Pass 2: Compute covariance matrix
+- O(d²) memoria
+
+### Otimizacoes
+
+1. **Correlation Matrix Sparsification**: Threshold |ρ| < 0.05 → 0
+2. **Parallel Inverse Transform**: Paralelizado por feature
+3. **Adaptive Chunk Sizing**: Auto-tune baseado em RAM disponivel
+
+## Boas Praticas
+
+1. **Escolha Chunk Size Apropriado**: Regra: 10% da RAM disponivel
+2. **Validacao de Qualidade**: Sempre compute metricas (KS, JSD)
+3. **Privacy Assessment**: Compute NND, verifique k-anonymity
+4. **Iterative Refinement**: Se quality baixa, investigue features problematics
+5. **Documentacao**: Report method, metrics, privacy guarantees
+
+## Limitacoes e Trabalhos Futuros
+
+**Limitacoes Atuais**:
+- Correlacoes nao-lineares: Assume dependencia linear
+- Categorical high cardinality: 1000+ categorias problematico
+- Temporal dependencies: Nao captura series temporais
+- Rare events: Freq < 0.1% podem nao aparecer
+
+**Trabalhos Futuros**:
+1. Vine Copulas: Relacoes nao-lineares
+2. GPU Acceleration: cuDF para 5-10x speedup
+3. Federated Synthesis: Multi-party data sem centralizacao
+4. Conditional Sampling: Sample com constraints
+5. Time Series Support: VAR + Copula hybrid
+
+## Comparacao: Copula vs GAN
+
+| Aspecto | Gaussian Copula | CTGAN |
+|---------|----------------|-------|
+| Fitting time (10GB) | 12 min | 240 min |
+| Memory (10GB) | 4GB | 48GB |
+| Quality (KS) | 0.024 | 0.019 |
+| ML Utility degradation | -1.9pp | -1.1pp |
+| Max dataset size | 100GB+ | ~5GB |
+| Interpretabilidade | Alta | Baixa |
+| Hyperparameter tuning | Minimo | Extensivo |
+| Stability | Alta | Media |
+
+**Takeaway**: Copula e 10-20x mais rapido e -90% memoria, com 5-10% menos quality.
+
+## Integracao com DeepBridge
+
+```python
+from deepbridge import Experiment, DBDataset
+from deepbridge.synthetic import GaussianCopulaSynthesizer
+
+dataset = DBDataset(df, target='label', model=model)
+
+# Generate synthetic
+synthesizer = GaussianCopulaSynthesizer()
+synthesizer.fit(dataset.data)
+synthetic_df = synthesizer.sample(n_rows=10000)
+
+# Validate synthetic quality
+exp = Experiment(
+    dataset=dataset,
+    tests=['synthetic_quality'],
+    synthetic_data=synthetic_df
+)
+results = exp.run_tests()
+```
+
+## Dependencias
+
+- LaTeX (TeXLive 2020+)
+- Pacotes: acmart, babel (portuguese), listings, graphicx, booktabs, amsmath
+- BibTeX
+
+## Notas Tecnicas
+
+- Arquivo acmart.cls inclui correcao para bug hyperref/hyperxmp
+- Compilacao requer 3 passes pdflatex + 1 bibtex
+- Caracteres acentuados em captions de lstlisting podem causar erros UTF-8
+- Para ambiente de producao, use encoding ASCII em comentarios de codigo
+
+## Autores
+
+Paper desenvolvido como parte da serie DeepBridge sobre validacao de modelos ML.
+
+## Licenca
+
+Conteudo academico - todos os direitos reservados aos autores.

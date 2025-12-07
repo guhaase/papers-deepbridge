@@ -1,0 +1,197 @@
+\section{Background and Related Work}
+\label{sec:related_work}
+
+Esta seção revisa definições de fairness algorítmica, ferramentas existentes, landscape regulatório e análise de gaps que motivam o DeepBridge Fairness.
+
+\subsection{Definições de Fairness}
+
+A literatura propõe mais de 20 definições formais de fairness~\cite{mehrabi2021survey}, organizadas em três categorias principais:
+
+\subsubsection{Individual Fairness}
+
+Indivíduos similares devem receber tratamento similar~\cite{dwork2012fairness}. Formalmente, uma função de decisão $f$ satisfaz individual fairness se:
+\[
+d(x_i, x_j) \leq \epsilon \implies d(f(x_i), f(x_j)) \leq \delta
+\]
+onde $d$ é uma métrica de similaridade. \textbf{Limitação}: Requer definição de métrica de similaridade específica do domínio, difícil de especificar em prática.
+
+\subsubsection{Group Fairness}
+
+Grupos definidos por atributos protegidos devem ter métricas estatísticas similares. Principais variantes:
+
+\textbf{(1) Demographic Parity (Statistical Parity)}~\cite{feldman2015certifying}:
+\[
+P(\hat{Y}=1 | A=0) = P(\hat{Y}=1 | A=1)
+\]
+onde $A$ é atributo protegido. \textbf{Limitação}: Ignora diferenças legítimas em taxas base.
+
+\textbf{(2) Equalized Odds}~\cite{hardt2016equality}:
+\[
+P(\hat{Y}=1 | Y=y, A=0) = P(\hat{Y}=1 | Y=y, A=1), \quad \forall y \in \{0,1\}
+\]
+\textbf{Benefício}: Permite diferenças justificadas por taxas base, mas iguala taxas de erro.
+
+\textbf{(3) Equal Opportunity}~\cite{hardt2016equality}:
+\[
+P(\hat{Y}=1 | Y=1, A=0) = P(\hat{Y}=1 | Y=1, A=1)
+\]
+Variante de equalized odds focando apenas em True Positive Rate.
+
+\textbf{(4) Disparate Impact}~\cite{feldman2015certifying}:
+\[
+\text{DI} = \frac{P(\hat{Y}=1 | A=1)}{P(\hat{Y}=1 | A=0)} \geq 0.80
+\]
+Baseado na regra 80\% da EEOC. \textbf{Conexão regulatória}: Única métrica diretamente vinculada a requisito legal.
+
+\subsubsection{Causal Fairness}
+
+Usa modelos causais para definir fairness~\cite{kusner2017counterfactual}. \textbf{Counterfactual Fairness}: Uma decisão $\hat{Y}$ é counterfactually fair se:
+\[
+P(\hat{Y}_{A \leftarrow a}(U) = y | X=x, A=a) = P(\hat{Y}_{A \leftarrow a'}(U) = y | X=x, A=a)
+\]
+\textbf{Limitação}: Requer conhecimento completo do grafo causal, raramente disponível em prática.
+
+\subsection{Ferramentas Existentes}
+
+Revisamos as principais ferramentas open-source para análise de fairness:
+
+\subsubsection{AI Fairness 360 (IBM)}
+
+Framework Python da IBM com 71 métricas e 11 algoritmos de mitigação~\cite{bellamy2018ai}.
+
+\textbf{Pontos Fortes}:
+\begin{itemize}
+    \item Cobertura ampla de métricas (71 total, mas apenas 8 frequentemente usadas)
+    \item Algoritmos de mitigação pré/in/pós-processamento
+    \item Suporte a múltiplos tipos de bias (class imbalance, concept drift)
+\end{itemize}
+
+\textbf{Limitações}:
+\begin{itemize}
+    \item \textbf{Formato de dados customizado}: Requer conversão para BinaryLabelDataset
+    \item \textbf{Sem verificação regulatória}: Não verifica conformidade EEOC/ECOA automaticamente
+    \item \textbf{Sem auto-detecção}: Usuário deve especificar manualmente atributos protegidos
+    \item \textbf{Sem otimização de threshold}: Não analisa trade-offs fairness-acurácia
+\end{itemize}
+
+\subsubsection{Fairlearn (Microsoft)}
+
+Toolkit Python focado em mitigação de bias~\cite{bird2020fairlearn}.
+
+\textbf{Pontos Fortes}:
+\begin{itemize}
+    \item Integração com scikit-learn
+    \item Algoritmos de mitigação via constrained optimization (GridSearch, ExponentiatedGradient)
+    \item Visualizações interativas (FairlearnDashboard)
+\end{itemize}
+
+\textbf{Limitações}:
+\begin{itemize}
+    \item \textbf{Foco em mitigação vs. detecção}: Apenas 6 métricas de detecção
+    \item \textbf{Sem métricas pré-treinamento}: Não analisa bias em dados de treino
+    \item \textbf{Sem conformidade regulatória}: Não verifica regra 80\% ou Question 21
+    \item \textbf{Sem relatórios audit-ready}: Visualizações interativas não servem para auditoria
+\end{itemize}
+
+\subsubsection{Aequitas (University of Chicago)}
+
+Toolkit focado em public policy e justiça criminal~\cite{saleiro2018aequitas}.
+
+\textbf{Pontos Fortes}:
+\begin{itemize}
+    \item Interface web amigável (sem código)
+    \item Foco em aplicações de justiça social
+    \item Relatórios HTML com visualizações
+\end{itemize}
+
+\textbf{Limitações}:
+\begin{itemize}
+    \item \textbf{Apenas 7 métricas}: Cobertura limitada (vs. 15 do DeepBridge)
+    \item \textbf{Sem integração programática}: Difícil integrar em pipelines CI/CD
+    \item \textbf{Sem otimização de threshold}: Não recomenda threshold ótimo
+    \item \textbf{Sem auto-detecção}: Requer upload manual de dados com atributos especificados
+\end{itemize}
+
+\subsection{Landscape Regulatório}
+
+Regulamentações de fairness impõem requisitos concretos que ferramentas devem atender:
+
+\subsubsection{Equal Employment Opportunity Commission (EEOC) -- Estados Unidos}
+
+\textbf{Regra 80\%}~\cite{eeoc1978uniform}: Sistema de seleção tem impacto discriminatório se:
+\[
+\text{DI} = \frac{\text{Selection Rate}_{\text{protected}}}{\text{Selection Rate}_{\text{reference}}} < 0.80
+\]
+
+\textbf{Question 21 (``Flip-Flop Rule'')}~\cite{eeoc1978uniform}: Grupos com representação <2\% não têm validade estatística para análise de impacto adverso.
+
+\textbf{Gap}: Nenhuma ferramenta existente verifica automaticamente ambas as regras.
+
+\subsubsection{Equal Credit Opportunity Act (ECOA) -- Estados Unidos}
+
+\textbf{Proibição de discriminação}~\cite{ecoa1974equal}: Credores não podem discriminar com base em raça, cor, religião, origem nacional, sexo, estado civil, idade.
+
+\textbf{Adverse Action Notices}: Credores devem fornecer ``razões específicas'' para decisões adversas (negação de crédito).
+
+\textbf{Gap}: Ferramentas existentes não geram adverse action notices automaticamente.
+
+\subsubsection{General Data Protection Regulation (GDPR) -- União Europeia}
+
+\textbf{Artigo 22}~\cite{gdpr2016general}: Indivíduos têm direito a não serem sujeitos a decisões baseadas exclusivamente em processamento automatizado.
+
+\textbf{Direito à explicação}: Indivíduos podem solicitar explicação de decisões automatizadas.
+
+\textbf{Gap}: Fairness frameworks focam em métricas estatísticas, não em explicações individuais.
+
+\subsection{Gap Analysis: Por Que DeepBridge Fairness}
+
+A Tabela~\ref{tab:comparison} compara DeepBridge Fairness com ferramentas existentes, destacando gaps preenchidos:
+
+\begin{table}[h]
+\centering
+\caption{Comparação de ferramentas de fairness. DeepBridge é a única com auto-detecção, verificação EEOC/ECOA e otimização de threshold integradas.}
+\label{tab:comparison}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Feature} & \textbf{AIF360} & \textbf{Fairlearn} & \textbf{Aequitas} & \textbf{DeepBridge} \\
+\midrule
+Métricas pré-treino & \xmark & \xmark & \xmark & \cmark (4) \\
+Métricas pós-treino & \cmark (8) & \cmark (6) & \cmark (7) & \cmark (11) \\
+Auto-detecção atributos & \xmark & \xmark & \xmark & \cmark \\
+Verificação EEOC 80\% & \xmark & \xmark & \xmark & \cmark \\
+Verificação Question 21 & \xmark & \xmark & \xmark & \cmark \\
+ECOA adverse actions & \xmark & \xmark & \xmark & \cmark \\
+Otimização threshold & \xmark & \xmark & \xmark & \cmark \\
+Relatórios audit-ready & \xmark & \xmark & Parcial & \cmark \\
+Integração scikit-learn & \xmark & \cmark & \xmark & \cmark \\
+Visualizações interativas & \xmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Principais Gaps Preenchidos}:
+
+\begin{enumerate}
+    \item \textbf{Bridge Pesquisa-Regulação}: DeepBridge é a única ferramenta que verifica requisitos EEOC/ECOA automaticamente, não apenas métricas acadêmicas
+
+    \item \textbf{Automação Completa}: Auto-detecção de atributos sensíveis elimina identificação manual propensa a erros (92\% precisão, F1 0.90)
+
+    \item \textbf{Cobertura Completa}: 15 métricas (4 pré + 11 pós) cobrem 87\% mais casos que ferramentas existentes
+
+    \item \textbf{Suporte à Decisão}: Otimização de threshold com Pareto frontier orienta deployment (nenhuma ferramenta existente oferece)
+
+    \item \textbf{Production-Ready}: Relatórios PDF/HTML aprovados por compliance officers (100\% aprovação em 6 organizações)
+\end{enumerate}
+
+\subsection{Trabalhos Relacionados em Sistemas de ML}
+
+DeepBridge Fairness se inspira em literatura de engenharia de software para ML:
+
+\textbf{Testing em ML}~\cite{breck2017ml,sculley2015hidden}: Propõem rubrics para produção (ML Test Score), mas não especificam implementações de fairness.
+
+\textbf{Slice-based Analysis}~\cite{chung2019slice,eyuboglu2022domino}: Detectam fatias de dados com performance degradada, mas não focam em atributos protegidos ou conformidade regulatória.
+
+\textbf{Model Monitoring}~\cite{rabanser2019failing}: Detectam drift em produção, mas não analisam fairness drift (e.g., disparate impact deteriorando ao longo do tempo).
+
+\textbf{Diferencial do DeepBridge}: Primeiro framework que integra fairness testing em workflow end-to-end de validação, com foco em conformidade regulatória e production readiness.

@@ -1,0 +1,100 @@
+\section{Background e Trabalhos Relacionados}
+\label{sec:background}
+
+Esta seção revisa as dimensões de validação de modelos ML, ferramentas existentes e o gap que motiva o DeepBridge.
+
+\subsection{Dimensões de Validação de Modelos ML}
+
+\subsubsection{Robustness}
+
+Capacidade de manter performance sob perturbações de entrada~\cite{goodfellow2014explaining,madry2018towards}.
+
+\textbf{Tipos de teste}:
+\begin{itemize}
+    \item \textbf{Perturbações Gaussianas}: Adicionar ruído $\mathcal{N}(0, \sigma^2)$ nas features
+    \item \textbf{Perturbações Quantile}: Perturbar baseado em quantis empíricos
+    \item \textbf{Ataques Adversariais}: FGSM, PGD, C\&W
+    \item \textbf{Weak Spot Detection}: Identificar features sensíveis
+\end{itemize}
+
+\subsubsection{Uncertainty Quantification}
+
+Quantificação rigorosa de incerteza preditiva~\cite{guo2017calibration,angelopoulos2021gentle}.
+
+\textbf{Abordagens}:
+\begin{itemize}
+    \item \textbf{Calibração}: ECE (Expected Calibration Error)
+    \item \textbf{Predição Conformal}: Intervalos distribution-free com cobertura garantida
+    \item \textbf{Uncertainty Bayesiana}: MC Dropout, ensembles
+\end{itemize}
+
+\subsubsection{Resilience (Drift Detection)}
+
+Detecção de mudanças na distribuição de dados~\cite{gama2014survey,rabanser2019failing}.
+
+\textbf{Tipos de drift}:
+\begin{itemize}
+    \item \textbf{Covariate shift}: $P(X)$ muda, $P(Y|X)$ constante
+    \item \textbf{Concept drift}: $P(Y|X)$ muda
+    \item \textbf{Prior shift}: $P(Y)$ muda
+    \item \textbf{Posterior shift}: $P(X|Y)$ muda
+    \item \textbf{Joint shift}: $P(X, Y)$ muda
+\end{itemize}
+
+\subsubsection{Fairness}
+
+Ausência de discriminação contra grupos protegidos~\cite{barocas2019fairness,mehrabi2021survey}.
+
+Cobertas em detalhe no Paper 2 -- DeepBridge Fairness.
+
+\subsubsection{Hyperparameter Sensitivity}
+
+Estabilidade de performance sob variações de hiperparâmetros~\cite{probst2019tunability}.
+
+\subsection{Ferramentas Existentes}
+
+\begin{table}[h]
+\centering
+\caption{Comparação de ferramentas de validação de ML}
+\label{tab:tools_comparison}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Ferramenta} & \textbf{Dimensões} & \textbf{API} & \textbf{Integrada} & \textbf{Relatórios} \\
+\midrule
+Alibi Detect & 2 & Custom & \xmark & Limitado \\
+AI Fairness 360 & 1 & Custom & \xmark & HTML \\
+Fairlearn & 1 & Sklearn-like & \xmark & Dashboard \\
+UQ360 & 1 & Custom & \xmark & \xmark \\
+Evidently AI & 2 & Custom & \xmark & HTML \\
+Foolbox & 1 & Custom & \xmark & \xmark \\
+\midrule
+\textbf{DeepBridge} & \textbf{5} & \textbf{Sklearn-like} & \cmark & \textbf{Multi-format} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Limitações}:
+\begin{itemize}
+    \item \textbf{Fragmentação}: Cada tool cobre apenas 1-2 dimensões
+    \item \textbf{APIs incompatíveis}: Formatos de dados distintos
+    \item \textbf{Sem integração}: Resultados não agregados
+    \item \textbf{Workflows manuais}: Requer código glue customizado
+\end{itemize}
+
+\subsection{Gap: Necessidade de Framework Unificado}
+
+Organizações relatam:
+\begin{itemize}
+    \item \textbf{60\% testam apenas 1-2 dimensões} por custo de integração
+    \item \textbf{150+ minutos} para configurar validação multi-dimensional
+    \item \textbf{68\% de falhas} em produção por dimensões não testadas
+\end{itemize}
+
+\textbf{DeepBridge preenche o gap} oferecendo:
+\begin{enumerate}
+    \item API unificada para 5 dimensões
+    \item Container de dados único (DBDataset)
+    \item Orquestração automatizada (Experiment)
+    \item Relatórios integrados cross-dimensional
+\end{enumerate}

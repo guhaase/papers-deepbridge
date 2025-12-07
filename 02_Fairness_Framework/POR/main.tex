@@ -1,107 +1,119 @@
-%%
-%% Article 1: Are Historical Redlining Effects Immutable?
-%% Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
-%%
-%% Author: Gustavo Coelho Haase
-%% Advisor: Prof. Dr. Osvaldo Candido da Silva Filho
-%% Date: January 2025
-%%
+\documentclass[sigconf,anonymous]{acmart}
 
-\documentclass[preprint,12pt,authoryear]{elsarticle}
-
-%% Packages
-\usepackage{amssymb}
-\usepackage{amsmath}
-\usepackage{graphicx}
-\usepackage{booktabs}
+\usepackage[brazilian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{multirow}
-\usepackage{threeparttable}
-\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{enumerate}
+\usepackage{subfig}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
 \usepackage{xcolor}
-\usepackage{setspace}
+\usepackage{pifont}
 
-%% Line numbering for review (comment out for final)
-% \usepackage{lineno}
-% \linenumbers
+% Define checkmark and xmark
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
 
-%% Journal name
-\journal{Journal of Urban Economics}
-
-%% Document
-\begin{document}
-
-\begin{frontmatter}
-
-%% Title
-\title{Are Historical Redlining Effects Immutable? Evidence of Temporal Variation in Mortgage Credit Access 2018-2024}
-
-%% Authors
-\author[ucb]{Gustavo Coelho Haase\corref{cor1}}
-\ead{gustavohaase@example.com}
-
-\author[ucb]{Osvaldo Candido da Silva Filho}
-\ead{osvaldo@ucb.edu.br}
-
-%% Affiliations
-\affiliation[ucb]{
-    organization={Universidade Cat\'olica de Bras\'ilia},
-    addressline={Campus I - QS 07 Lote 01 EPCT},
-    city={Bras\'ilia},
-    postcode={71966-700},
-    state={DF},
-    country={Brazil}
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    language=Python,
+    showstringspaces=false,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    inputencoding=utf8,
+    extendedchars=true,
+    literate=
+        {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+        {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+        {à}{{\`a}}1 {è}{{\`e}}1 {ì}{{\`i}}1 {ò}{{\`o}}1 {ù}{{\`u}}1
+        {À}{{\`A}}1 {È}{{\'E}}1 {Ì}{{\`I}}1 {Ò}{{\`O}}1 {Ù}{{\`U}}1
+        {ä}{{\"a}}1 {ë}{{\"e}}1 {ï}{{\"i}}1 {ö}{{\"o}}1 {ü}{{\"u}}1
+        {Ä}{{\"A}}1 {Ë}{{\"E}}1 {Ï}{{\"I}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1
+        {â}{{\^a}}1 {ê}{{\^e}}1 {î}{{\^i}}1 {ô}{{\^o}}1 {û}{{\^u}}1
+        {Â}{{\^A}}1 {Ê}{{\^E}}1 {Î}{{\^I}}1 {Ô}{{\^O}}1 {Û}{{\^U}}1
+        {ã}{{\~a}}1 {õ}{{\~o}}1 {Ã}{{\~A}}1 {Õ}{{\~O}}1
+        {ç}{{\c c}}1 {Ç}{{\c C}}1 {ø}{{\o}}1 {å}{{\r a}}1 {Å}{{\r A}}1
+        {€}{{\euro}}1 {£}{{\pounds}}1 {ñ}{{\~n}}1
 }
 
-%% Corresponding author
-\cortext[cor1]{Corresponding author}
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
 
-%% Abstract
+\setcopyright{acmlicensed}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmConference{FAccT}{2026}{Conference}
+
+\begin{document}
+
+\title{DeepBridge Fairness: Da Pesquisa à Regulação -- Um Framework Pronto para Produção para Teste de Fairness Algorítmica}
+
+\author{Nome do Autor}
+\email{autor@email.com}
+\affiliation{%
+  \institution{Nome da Instituição}
+  \country{País}
+}
+
+\renewcommand{\shortauthors}{Anônimo}
+
 \begin{abstract}
-Historical redlining --- the systematic denial of mortgages in minority neighborhoods by federal agencies in the 1930s-1940s --- continues to affect mortgage credit access today. While extensive literature documents the persistence of these effects, all prior studies treat them as static and immutable. We provide the first systematic evidence that redlining effects vary temporally in response to economic and institutional changes. Using panel data covering 10,562 urban census tracts during 2018-2024, we find that areas historically classified as ``hazardous'' (Grade D) received 6-11\% fewer mortgage approvals during 2018-2021. However, this gap converged modestly by 4.5 percentage points after 2021 (p$<$0.001). A two-way fixed effects design with tract and year fixed effects, validated through placebo tests confirming parallel pre-trends, documents that 79\% of the original disparity remains. Our findings are robust to propensity score matching, alternative sample thresholds, and corrections for non-random sample selection. While multiple concurrent changes prevent causal identification of specific mechanisms, our descriptive evidence suggests that historical legacies, though persistent, may not be completely immutable. Results generalize to active urban mortgage markets (12.5\% of US census tracts), not to rural or sparse markets.
+Sistemas de Machine Learning (ML) em domínios regulados (crédito, contratação, saúde) requerem verificação rigorosa de fairness para conformidade com EEOC, ECOA e GDPR. Ferramentas existentes apresentam lacunas críticas: \textbf{(1) Foco acadêmico vs. regulatório} -- métricas de pesquisa não mapeiam diretamente para requisitos legais (regra 80\% EEOC, ECOA adverse actions); \textbf{(2) Identificação manual de atributos} -- cientistas de dados devem manualmente especificar atributos sensíveis em cada análise; \textbf{(3) Fragmentação de métricas} -- ferramentas cobrem subconjuntos distintos (AI Fairness 360: 8 métricas, Fairlearn: 6, Aequitas: 7) sem cobertura completa; \textbf{(4) Ausência de otimização de threshold} -- não orientam decisões de deployment sobre trade-offs fairness-acurácia.
+
+Apresentamos o \textbf{DeepBridge Fairness}, o primeiro framework que integra métricas de fairness com verificação automática de conformidade regulatória para produção. DeepBridge Fairness oferece: \textbf{(i) 15 métricas integradas} cobrindo pré-treinamento (4) e pós-treinamento (11), \textbf{(ii) auto-detecção de atributos sensíveis} via fuzzy matching (gênero, raça, idade, religião, deficiência, nacionalidade), \textbf{(iii) verificação EEOC/ECOA automatizada} (regra 80\%, representação mínima 2\%, adverse action notices), \textbf{(iv) otimização de threshold} analisando trade-offs fairness-acurácia em range 10-90\%, e \textbf{(v) visualizações abrangentes} com 6 tipos de gráficos e relatórios prontos para auditoria.
+
+Através de 4 estudos de caso (COMPAS, German Credit, Adult Income, Healthcare) demonstramos que DeepBridge Fairness: \textbf{detecta automaticamente violações} com 100\% de precisão (10/10 atributos sensíveis vs. 2/10 de ferramentas manuais), \textbf{cobre 87\% mais métricas} que ferramentas existentes (15 vs. 8 métricas), \textbf{reduz tempo de análise em 73\%} (8 min vs. 30 min), e \textbf{identifica thresholds ótimos} balanceando fairness e acurácia. Estudo de usabilidade com 20 practitioners mostra SUS score 85.2 (top 15\%, ``excelente''), 95\% de taxa de sucesso, e tempo médio de 10 minutos para primeira análise.
+
+DeepBridge Fairness está em produção em organizações financeiras e de saúde, é open-source sob licença MIT em \url{https://github.com/DeepBridge-Validation/DeepBridge}.
 \end{abstract}
 
-%% Keywords
-\begin{keyword}
-Historical Redlining \sep Mortgage Credit \sep Temporal Persistence \sep Panel Data \sep Fixed Effects \sep Urban Economics \sep Discrimination
-%% JEL codes
-\JEL{R21 \sep R23 \sep R31 \sep J15 \sep C23}
-\end{keyword}
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10010147.10010257</concept_id>
+<concept_desc>Computing methodologies~Machine learning</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10003120.10003130</concept_id>
+<concept_desc>Human-centered computing~Collaborative and social computing</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+<concept>
+<concept_id>10002950.10003624.10003633</concept_id>
+<concept_desc>Mathematics of computing~Statistical paradigms</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
 
-\end{frontmatter}
+\ccsdesc[500]{Computing methodologies~Machine learning}
+\ccsdesc[300]{Human-centered computing~Collaborative and social computing}
+\ccsdesc[300]{Mathematics of computing~Statistical paradigms}
 
-%% Main Text
+\keywords{Algorithmic Fairness, Responsible AI, Regulatory Compliance, EEOC, ECOA, Bias Detection, ML Production, MLOps, Automated Testing}
 
-%% 1. Introduction
-\input{sections/01-introduction}
+\maketitle
 
-%% 2. Literature Review
-\input{sections/02-literature}
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_architecture}
+\input{sections/04_case_studies}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
 
-%% 3. Data
-\input{sections/03-data}
-
-%% 4. Methodology
-\input{sections/04-methodology}
-
-%% 5. Results
-\input{sections/05-results}
-
-%% 6. Robustness
-\input{sections/06-robustness}
-
-%% 7. Discussion and Conclusion
-\input{sections/07-discussion}
-
-%% Acknowledgments (optional)
-\section*{Acknowledgments}
-We thank [names] for helpful comments and suggestions. All errors remain our own. This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
-
-%% References
-\bibliographystyle{elsarticle-harv}
+\bibliographystyle{plain}
 \bibliography{bibliography/references}
-
-%% Appendices (if needed)
-% \appendix
-% \input{sections/appendix}
 
 \end{document}

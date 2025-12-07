@@ -1,0 +1,138 @@
+\section{Background e Trabalhos Relacionados}
+\label{sec:background}
+
+\subsection{Lazy Evaluation}
+
+\textbf{Definicao}: Adiar computacao ate que resultado seja efetivamente necessario.
+
+\textbf{Exemplos}:
+\begin{itemize}
+    \item \textbf{Haskell}: Lazy by default (thunks)
+    \item \textbf{Python generators}: yield adia producao de valores
+    \item \textbf{Pandas/Dask}: Query optimization via lazy evaluation
+    \item \textbf{TensorFlow}: Static graphs executam sob demanda
+\end{itemize}
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Evita computacao desnecessaria
+    \item Reduz uso de memoria (valores nao materializados)
+    \item Permite optimizacoes (fusion, pruning)
+\end{itemize}
+
+\textbf{Desvantagens}:
+\begin{itemize}
+    \item Overhead de bookkeeping (thunks, promises)
+    \item Debugging mais dificil (stack traces confusos)
+    \item Pode adiar deteccao de erros
+\end{itemize}
+
+\subsection{Caching Strategies}
+
+\textbf{LRU (Least Recently Used)}:
+\begin{itemize}
+    \item Evict item menos recentemente usado quando cache cheio
+    \item Implementacao: OrderedDict em Python
+    \item Bom para access patterns temporais
+\end{itemize}
+
+\textbf{LFU (Least Frequently Used)}:
+\begin{itemize}
+    \item Evict item menos frequentemente usado
+    \item Bom para workloads com hot items
+\end{itemize}
+
+\textbf{TTL (Time To Live)}:
+\begin{itemize}
+    \item Items expiram apos tempo
+    \item Bom para dados que ficam stale
+\end{itemize}
+
+\textbf{Nossa Escolha}: LRU + weak references (Python weakref).
+
+\textbf{Rationale}:
+\begin{itemize}
+    \item LRU: Access patterns de testes sao temporalmente locais
+    \item Weak refs: Permite garbage collector limpar automaticamente
+    \item Simples de implementar e raciocinar
+\end{itemize}
+
+\subsection{Trabalhos Relacionados em ML Systems}
+
+\textbf{TensorFlow}:
+\begin{itemize}
+    \item Static computation graphs (lazy)
+    \item Execucao apenas quando session.run() chamado
+    \item Limitacao: Grafo fixo, nao dinamico
+\end{itemize}
+
+\textbf{PyTorch}:
+\begin{itemize}
+    \item Eager execution por padrao
+    \item TorchScript: Compilacao lazy opcional
+    \item Trade-off: Flexibilidade vs performance
+\end{itemize}
+
+\textbf{Dask}:
+\begin{itemize}
+    \item Task graphs lazy
+    \item compute() materializa resultados
+    \item Otimizacoes: fusion, load balancing
+\end{itemize}
+
+\textbf{MLflow}:
+\begin{itemize}
+    \item Experiment tracking
+    \item Nao implementa lazy loading de modelos
+    \item Foco em logging, nao optimizacao
+\end{itemize}
+
+\textbf{Scikit-learn Pipeline}:
+\begin{itemize}
+    \item Eager: fit() carrega tudo
+    \item Nao suporta lazy loading
+\end{itemize}
+
+\textbf{Gap}: Nenhum framework de validacao ML implementa lazy loading sistematico para testes e recursos.
+
+\subsection{Python Lazy Loading Patterns}
+
+\textbf{1. Properties}:
+\begin{lstlisting}[language=Python]
+class LazyModel:
+    @property
+    def predictions(self):
+        if self._predictions is None:
+            self._predictions = self.model.predict(self.X)
+        return self._predictions
+\end{lstlisting}
+
+\textbf{2. Descriptors}:
+\begin{lstlisting}[language=Python]
+class LazyAttribute:
+    def __get__(self, obj, objtype=None):
+        if obj is None: return self
+        if not hasattr(obj, '_cache'):
+            obj._cache = self.compute(obj)
+        return obj._cache
+\end{lstlisting}
+
+\textbf{3. functools.lru\_cache}:
+\begin{lstlisting}[language=Python]
+from functools import lru_cache
+
+@lru_cache(maxsize=128)
+def expensive_function(x):
+    return heavy_computation(x)
+\end{lstlisting}
+
+\textbf{4. Weak References}:
+\begin{lstlisting}[language=Python]
+import weakref
+
+class ResourceManager:
+    def __init__(self):
+        self._cache = weakref.WeakValueDictionary()
+\end{lstlisting}
+
+\textbf{Nossa Implementacao}: Combina properties + descriptors + weak refs + LRU.

@@ -1,0 +1,184 @@
+\section{Discussão}
+\label{sec:discussion}
+
+Esta seção discute quando usar DeepBridge, limitações, lições aprendidas e direções futuras.
+
+\subsection{Quando Usar DeepBridge}
+
+\textbf{Casos Ideais}:
+\begin{itemize}
+    \item \textbf{Modelos tabulares}: XGBoost, Random Forest, Logistic Regression
+    \item \textbf{Binary/multiclass classification}: Suporte completo
+    \item \textbf{Deployment crítico}: Finanças, saúde, justiça (alto risco)
+    \item \textbf{Validação recorrente}: CI/CD, re-training periódico
+\end{itemize}
+
+\textbf{Benefícios}:
+\begin{itemize}
+    \item Economia de tempo: 89\% redução (17 min vs. 150 min)
+    \item Cobertura completa: 5 dimensões vs. 1-2 típico
+    \item Relatórios integrados: Dashboard único vs. múltiplos relatórios
+\end{itemize}
+
+\subsection{Quando NÃO Usar}
+
+\textbf{Limitações Atuais}:
+\begin{itemize}
+    \item \textbf{Deep Learning}: Suporte limitado (ONNX only)
+    \item \textbf{NLP/Computer Vision}: Otimizado para dados tabulares
+    \item \textbf{Regressão}: Suporte básico (menos métricas)
+    \item \textbf{Séries temporais}: Drift detection limitada
+\end{itemize}
+
+\textbf{Alternativas}:
+\begin{itemize}
+    \item DL: TensorBoard + Captum (explainability)
+    \item NLP: Checklist, TextAttack
+    \item Computer Vision: Foolbox, ART
+\end{itemize}
+
+\subsection{Lições Aprendidas}
+
+\subsubsection{Design Trade-offs}
+
+\textbf{1. Generalidade vs. Performance}
+
+Decisão: Otimizar para modelos tabulares, não tentar cobrir tudo.
+
+\textbf{Rationale}: 70\% dos modelos em produção são tabulares (survey interno).
+
+\textbf{Trade-off}: Sacrificamos generalidade DL para ganhar performance em tabulares.
+
+\textbf{2. API Consistency vs. Feature Richness}
+
+Decisão: API simples e consistente > features avançadas específicas.
+
+\textbf{Exemplo}: Não expor todos parâmetros de cada teste individual, usar presets.
+
+\textbf{Benefício}: Curva de aprendizado menor (12 min vs. 45 min).
+
+\textbf{3. Lazy Loading vs. Precomputação}
+
+Decisão: Lazy loading por padrão.
+
+\textbf{Benefício}: -42\% uso de memória, -30s em experimentos.
+
+\textbf{Trade-off}: Primeira execução mais lenta (+5s), mas amortiza em múltiplos testes.
+
+\subsubsection{Feedback de Produção}
+
+DeepBridge está em produção em 8 organizações. Insights:
+
+\textbf{1. Presets são críticos}
+
+Users queriam controle fino, mas não queriam configurar 50+ parâmetros.
+
+\textbf{Solução}: Presets (quick/medium/full) + override manual opcional.
+
+\textbf{2. Relatórios devem ser stakeholder-friendly}
+
+Engineers queriam JSON, mas stakeholders queriam dashboards visuais.
+
+\textbf{Solução}: Multi-format (JSON programático, HTML para stakeholders).
+
+\textbf{3. CI/CD requer modo "quick"}
+
+Validação completa (30-60 min) muito lenta para CI.
+
+\textbf{Solução}: Preset "quick" (2-5 min) com amostragem 10\%.
+
+\subsection{Limitações}
+
+\subsubsection{Cobertura de Modelos}
+
+\textbf{Limitação}: Foco em modelos tabulares.
+
+\textbf{Impacto}: 30\% dos modelos (DL, NLP, CV) não cobertos.
+
+\textbf{Mitigação futura}: Plugin system para suítes customizadas.
+
+\subsubsection{Métricas de Drift}
+
+\textbf{Limitação}: Drift detection assume IID temporal.
+
+\textbf{Impacto}: Não detecta sazonalidade ou trends.
+
+\textbf{Mitigação futura}: Testes específicos para séries temporais.
+
+\subsubsection{Escalabilidade}
+
+\textbf{Limitação}: Datasets > 1M amostras requerem amostragem.
+
+\textbf{Impacto}: Trade-off entre tempo e cobertura.
+
+\textbf{Mitigação atual}: Preset "quick" amostra 10\%.
+
+\subsection{Direções Futuras}
+
+\subsubsection{1. Suporte a Deep Learning}
+
+\textbf{Proposta}: Integração com PyTorch/TensorFlow.
+
+\textbf{Desafios}:
+\begin{itemize}
+    \item Robustness: Ataques adversariais específicos para DL
+    \item Uncertainty: Bayesian NN, MC Dropout
+    \item Performance: Modelos grandes (GB de parâmetros)
+\end{itemize}
+
+\subsubsection{2. Monitoramento Contínuo}
+
+\textbf{Proposta}: DeepBridge Monitor para produção.
+
+\textbf{Features}:
+\begin{itemize}
+    \item Streaming validation (Apache Kafka integration)
+    \item Real-time alerts (Slack, PagerDuty)
+    \item Dashboards históricos (Grafana integration)
+\end{itemize}
+
+\subsubsection{3. AutoML Integration}
+
+\textbf{Proposta}: Validação automática em hyperparameter tuning.
+
+\textbf{Workflow}:
+\begin{enumerate}
+    \item Optuna/Ray Tune gera candidatos
+    \item DeepBridge valida cada candidato
+    \item Filtra candidatos com issues críticos
+    \item Seleciona baseado em fairness+accuracy
+\end{enumerate}
+
+\subsubsection{4. Cloud-Native Deployment}
+
+\textbf{Proposta}: DeepBridge as a Service.
+
+\textbf{Features}:
+\begin{itemize}
+    \item API REST para validação
+    \item Containers pré-configurados
+    \item Serverless execution (AWS Lambda, GCP Functions)
+\end{itemize}
+
+\subsection{Boas Práticas}
+
+\textbf{1. Use presets apropriados}:
+\begin{itemize}
+    \item CI/CD: \texttt{quick}
+    \item Desenvolvimento: \texttt{medium}
+    \item Pré-deployment: \texttt{full}
+\end{itemize}
+
+\textbf{2. Priorize issues por severidade}:
+\begin{itemize}
+    \item \textbf{Critical}: Fairness violations, high robustness failure rate
+    \item \textbf{High}: Miscalibration, drift detected
+    \item \textbf{Medium}: Hyperparameter instability
+\end{itemize}
+
+\textbf{3. Valide regularmente}:
+\begin{itemize}
+    \item Após re-training
+    \item Mensalmente em produção
+    \item Quando drift detectado
+\end{itemize}

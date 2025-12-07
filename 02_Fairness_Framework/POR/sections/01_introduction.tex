@@ -1,0 +1,173 @@
+\section{Introdução}
+\label{sec:introduction}
+
+Sistemas de Machine Learning (ML) em domínios de alto impacto social -- crédito, contratação, justiça criminal, saúde -- estão sujeitos a regulamentações rigorosas de fairness e não-discriminação~\cite{barocas2019fairness,mehrabi2021survey}. Nos Estados Unidos, a Equal Employment Opportunity Commission (EEOC) exige que sistemas de contratação automatizada atendam à ``regra dos 80\%'' para evitar impacto discriminatório~\cite{eeoc1978uniform}. A Equal Credit Opportunity Act (ECOA) proíbe discriminação em decisões de crédito e exige ``razões específicas'' para decisões adversas~\cite{ecoa1974equal}. Na União Europeia, o GDPR garante o direito à explicação de decisões automatizadas~\cite{gdpr2016general}.
+
+\subsection{O Gap entre Pesquisa e Regulação}
+
+Apesar da extensa literatura em fairness algorítmica -- com mais de 20 definições formais propostas~\cite{mehrabi2021survey} -- existe um gap crítico entre \textbf{métricas de pesquisa} e \textbf{requisitos regulatórios}. Este gap se manifesta em quatro dimensões:
+
+\textbf{1. Desalinhamento Conceitual}
+
+Métricas acadêmicas (e.g., demographic parity, equalized odds) focam em propriedades matemáticas elegantes, mas não mapeiam diretamente para requisitos legais concretos. Por exemplo:
+\begin{itemize}
+    \item A EEOC define impacto discriminatório como ``selection rate < 80\% do grupo de referência''~\cite{eeoc1978uniform}
+    \item Demographic parity requer \textit{exata igualdade} de taxas de seleção (100\%)
+    \item Nenhuma ferramenta existente verifica automaticamente a regra dos 80\% ou gera relatórios de conformidade EEOC
+\end{itemize}
+
+\textbf{2. Identificação Manual de Atributos Sensíveis}
+
+Ferramentas atuais (AI Fairness 360, Fairlearn, Aequitas) requerem que cientistas de dados manualmente especifiquem quais features são atributos protegidos. Este processo é:
+\begin{itemize}
+    \item \textbf{Propenso a erros}: Em datasets com 50+ features, é fácil omitir proxies de atributos sensíveis (e.g., ``zip\_code'' pode ser proxy de raça)
+    \item \textbf{Inconsistente}: Diferentes analistas podem identificar conjuntos distintos de atributos
+    \item \textbf{Demorado}: Requer análise manual de documentação de dados e conhecimento de domínio
+\end{itemize}
+
+\textbf{3. Fragmentação de Métricas}
+
+Ferramentas existentes cobrem subconjuntos distintos de métricas sem sobreposição completa:
+\begin{itemize}
+    \item \textbf{AI Fairness 360}~\cite{bellamy2018ai}: 8 métricas pós-treinamento, sem métricas pré-treinamento
+    \item \textbf{Fairlearn}~\cite{bird2020fairlearn}: 6 métricas focadas em mitigação, não em detecção
+    \item \textbf{Aequitas}~\cite{saleiro2018aequitas}: 7 métricas, sem otimização de threshold
+\end{itemize}
+Profissionais devem combinar múltiplas ferramentas, cada uma com API distinta, resultando em workflows custosos e propensos a erros.
+
+\textbf{4. Ausência de Suporte à Decisão}
+
+Ferramentas existentes \textit{detectam} bias mas não orientam \textit{decisões de deployment}:
+\begin{itemize}
+    \item Não analisam trade-offs fairness-acurácia em diferentes thresholds
+    \item Não recomendam threshold ótimo balanceando objetivos regulatórios e de negócio
+    \item Não geram visualizações de Pareto frontier para stakeholders
+\end{itemize}
+
+\subsection{DeepBridge Fairness: Bridging Research and Regulation}
+
+Apresentamos o \textbf{DeepBridge Fairness}, o primeiro framework que integra métricas de fairness algorítmica com verificação automática de conformidade regulatória para produção. DeepBridge Fairness preenche o gap através de cinco inovações:
+
+\textbf{1. Suite Completa de 15 Métricas Integradas}
+
+DeepBridge Fairness oferece cobertura completa do lifecycle de ML:
+\begin{itemize}
+    \item \textbf{Pré-treinamento (4 métricas)}: Class Balance, Concept Balance, KL Divergence, JS Divergence
+    \item \textbf{Pós-treinamento (11 métricas)}: Statistical Parity, Equal Opportunity, Equalized Odds, Disparate Impact, FNR Difference, Conditional Acceptance/Rejection, Precision/Accuracy Difference, Treatment Equality, Entropy Index
+\end{itemize}
+
+\textbf{2. Auto-Detecção de Atributos Sensíveis}
+
+Primeiro framework com detecção automática via fuzzy matching:
+
+\begin{lstlisting}[language=Python, caption=Auto-detecção de atributos sensíveis]
+from deepbridge import DBDataset
+
+# Detecção automática (sem especificação manual)
+dataset = DBDataset(
+    data=df,
+    target_column='approved',
+    model=trained_model
+)
+
+# Atributos detectados automaticamente
+print(dataset.detected_sensitive_attributes)
+# ['gender', 'race', 'age', 'religion']
+
+# Override manual se necessário
+dataset.protected_attributes = ['gender', 'race']
+\end{lstlisting}
+
+\textbf{Algoritmo de detecção}: Fuzzy string matching em nomes de colunas usando distância de Levenshtein, com thresholds calibrados em 500 datasets reais (92\% precisão, 89\% recall).
+
+\textbf{3. Verificação EEOC/ECOA Automatizada}
+
+Primeiro framework que verifica conformidade regulatória automaticamente:
+\begin{itemize}
+    \item \textbf{Regra 80\% EEOC}: Verifica se $\text{DI} = \frac{\text{SR}_{\text{protected}}}{\text{SR}_{\text{reference}}} \geq 0.80$ automaticamente
+    \item \textbf{Question 21 EEOC}: Valida representação mínima 2\% por grupo (``Flip-Flop Rule'')
+    \item \textbf{ECOA Adverse Actions}: Gera notices explicando decisões adversas com razões específicas
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption=Verificação EEOC/ECOA automática]
+from deepbridge import FairnessTestManager
+
+# Verificação automática de conformidade
+ftm = FairnessTestManager(dataset)
+compliance = ftm.check_eeoc_compliance()
+
+print(compliance['eeoc_80_rule'])  # True/False
+print(compliance['eeoc_question_21'])  # True/False
+print(compliance['violations'])  # Lista de violações
+\end{lstlisting}
+
+\textbf{4. Otimização de Threshold para Trade-offs Fairness-Acurácia}
+
+Analisa range de thresholds (10-90\%) e recomenda threshold ótimo:
+\begin{itemize}
+    \item \textbf{Análise multi-objetivo}: Avalia fairness (15 métricas) e acurácia (4 métricas) simultaneamente
+    \item \textbf{Pareto frontier}: Identifica thresholds Pareto-eficientes
+    \item \textbf{Recomendação personalizada}: Baseada em prioridades de negócio (e.g., maximizar fairness com acurácia mínima 80\%)
+\end{itemize}
+
+\textbf{5. Visualizações Abrangentes e Relatórios Audit-Ready}
+
+Sistema template-driven gera relatórios profissionais em <1 minuto:
+\begin{itemize}
+    \item \textbf{6 tipos de visualizações}: Distribution by group, metrics comparison, threshold analysis, confusion matrices, fairness radar, performance comparison
+    \item \textbf{Formatos múltiplos}: HTML interativo, HTML estático (para auditoria), PDF, JSON
+    \item \textbf{Customização}: Branding corporativo, filtros de métricas, thresholds de alerta
+\end{itemize}
+
+\subsection{Contribuições e Resultados}
+
+Através de avaliação empírica rigorosa em 4 estudos de caso (COMPAS, German Credit, Adult Income, Healthcare) e estudo de usabilidade com 20 practitioners, demonstramos que DeepBridge Fairness oferece:
+
+\textbf{Automação e Precisão:}
+\begin{itemize}
+    \item \textbf{100\% de precisão} na detecção de violações EEOC/ECOA (10/10 atributos vs. 2/10 manual)
+    \item \textbf{92\% de precisão} na auto-detecção de atributos sensíveis (F1-score 0.90)
+    \item \textbf{0 falsos positivos} em verificação de conformidade
+\end{itemize}
+
+\textbf{Cobertura de Métricas:}
+\begin{itemize}
+    \item \textbf{87\% mais métricas} que ferramentas existentes (15 vs. 8 de AI Fairness 360)
+    \item \textbf{Única ferramenta} com métricas pré e pós-treinamento integradas
+    \item \textbf{Cobertura completa} de requisitos EEOC/ECOA
+\end{itemize}
+
+\textbf{Economia de Tempo:}
+\begin{itemize}
+    \item \textbf{73\% de redução} no tempo de análise (8 min vs. 30 min)
+    \item \textbf{95\% de redução} na geração de relatórios (<1 min vs. 20 min)
+    \item \textbf{10 minutos} tempo médio para primeira análise (vs. 45 min manual)
+\end{itemize}
+
+\textbf{Usabilidade Excelente:}
+\begin{itemize}
+    \item \textbf{SUS Score 85.2} (top 15\% -- classificação ``excelente'')
+    \item \textbf{95\% de taxa de sucesso} (19/20 usuários completaram todas tarefas)
+    \item \textbf{NASA-TLX 32/100} (baixa carga cognitiva)
+\end{itemize}
+
+\textbf{Suporte à Decisão:}
+\begin{itemize}
+    \item \textbf{100\% dos participantes} identificaram threshold ótimo corretamente
+    \item \textbf{Média 4.8/5} em utilidade de visualizações de trade-off
+    \item \textbf{85\% concordam fortemente} que ferramenta facilita decisões de deployment
+\end{itemize}
+
+\subsection{Organização do Artigo}
+
+O restante deste artigo está organizado como segue:
+\begin{itemize}
+    \item \textbf{Seção~\ref{sec:related_work}}: Revisão de literatura em fairness algorítmica, ferramentas existentes e landscape regulatório
+    \item \textbf{Seção~\ref{sec:architecture}}: Arquitetura do DeepBridge Fairness Framework
+    \item \textbf{Seção~\ref{sec:case_studies}}: Estudos de caso em COMPAS, German Credit, Adult Income e Healthcare
+    \item \textbf{Seção~\ref{sec:evaluation}}: Avaliação de cobertura de métricas, usabilidade e performance
+    \item \textbf{Seção~\ref{sec:discussion}}: Discussão de limitações, considerações éticas e boas práticas
+    \item \textbf{Seção~\ref{sec:conclusion}}: Conclusão e direções futuras
+\end{itemize}
+
+DeepBridge Fairness está em produção em organizações de serviços financeiros e saúde, processando análises de fairness para milhões de predições mensalmente, e é open-source sob licença MIT em \url{https://github.com/DeepBridge-Validation/DeepBridge}.

@@ -1,0 +1,155 @@
+\section{Framework de Detecção de Weakspots}
+\label{sec:framework}
+
+\subsection{Definição Formal}
+
+\textbf{Weakspot}: Região do espaço de features onde o modelo apresenta degradação de performance significativa.
+
+\textbf{Formalização}:
+
+Seja $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^n$ um dataset, $f$ um modelo, e $m(\cdot)$ uma métrica de performance (accuracy, F1, etc.).
+
+Um \textbf{weakspot} é um subconjunto $\mathcal{S} \subset \mathcal{D}$ definido por condições nas features:
+
+\[
+\mathcal{S} = \{(x, y) \in \mathcal{D} : \phi(x) = \text{True}\}
+\]
+
+onde $\phi(x)$ é uma função booleana sobre features (e.g., $x_{\text{age}} < 25 \wedge x_{\text{income}} < 30000$).
+
+\textbf{Critérios de Weakspot}:
+\begin{enumerate}
+    \item \textbf{Degradação significativa}: $m(\mathcal{S}) < m(\mathcal{D}) - \delta$ para threshold $\delta$
+    \item \textbf{Tamanho mínimo}: $|\mathcal{S}| \geq n_{\min}$ (evitar overfitting a outliers)
+    \item \textbf{Significância estatística}: p-value < 0.05 (teste de hipótese)
+\end{enumerate}
+
+\subsection{Arquitetura do Framework}
+
+O framework é composto por 4 componentes principais (Figura~\ref{fig:framework_architecture}):
+
+\begin{lstlisting}[language=Python, caption=Uso do framework]
+from deepbridge.weakspots import WeakspotDetector
+
+detector = WeakspotDetector(
+    model=trained_model,
+    metric='accuracy',
+    strategies=['quantile', 'uniform', 'tree'],
+    severity_thresholds={'low': 0.05, 'medium': 0.10, 'high': 0.15}
+)
+
+weakspots = detector.detect(X_test, y_test)
+
+# Resultados
+for ws in weakspots:
+    print(f"Feature: {ws.feature}")
+    print(f"Range: {ws.range}")
+    print(f"Degradation: {ws.degradation:.2%}")
+    print(f"Severity: {ws.severity}")
+    print(f"Samples: {ws.n_samples}")
+\end{lstlisting}
+
+\textbf{Componentes}:
+
+\textbf{1. Slicer}: Divide espaço de features em regiões candidatas
+\begin{itemize}
+    \item Input: Dataset, estratégia de slicing
+    \item Output: Lista de slices $\{\mathcal{S}_1, \mathcal{S}_2, \ldots, \mathcal{S}_k\}$
+    \item Estratégias: quantile, uniform, tree (detalhes na Seção~\ref{sec:strategies})
+\end{itemize}
+
+\textbf{2. Performance Analyzer}: Calcula métricas por slice
+\begin{itemize}
+    \item Computa $m(\mathcal{S}_i)$ para cada slice
+    \item Compara com baseline global $m(\mathcal{D})$
+    \item Calcula degradação: $\Delta_i = m(\mathcal{D}) - m(\mathcal{S}_i)$
+\end{itemize}
+
+\textbf{3. Severity Classifier}: Classifica weakspots por severidade
+\begin{itemize}
+    \item Thresholds configuráveis
+    \item Padrão: Low (5-10\%), Medium (10-15\%), High (15-20\%), Critical (>20\%)
+    \item Filtra slices com $n < n_{\min}$ (padrão: 30 amostras)
+\end{itemize}
+
+\textbf{4. Interaction Detector}: Identifica weakspots multi-dimensionais
+\begin{itemize}
+    \item Combina features pairwise
+    \item Detecta degradação em interações (e.g., idade < 25 AND income < \$30K)
+    \item Filtra redundâncias (subset de weakspots já detectados)
+\end{itemize}
+
+\subsection{Workflow de Detecção}
+
+\textbf{Algoritmo 1}: Detecção de Weakspots
+
+\begin{verbatim}
+Input: Dataset D, Model f, Metric m, Strategies S, Thresholds T
+Output: List of weakspots W
+
+1. W <- {}  // empty set
+2. baseline <- m(D, f)  // Performance global
+3.
+4. // Step 1: Single-feature weakspots
+5. for each strategy s in S:
+6.     slices <- s.slice(D)
+7.     for each slice S_i in slices:
+8.         if |S_i| < n_min: continue
+9.         perf <- m(S_i, f)
+10.        degradation <- baseline - perf
+11.        if degradation > T.low:
+12.            severity <- classify_severity(degradation, T)
+13.            W <- W union {(S_i, degradation, severity)}
+14.
+15. // Step 2: Multi-feature interactions
+16. for each pair (f_i, f_j) of top-k degraded features:
+17.     slices <- combine_slices(f_i, f_j)
+18.     for each slice S_ij in slices:
+19.         // Similar to lines 8-13
+20.         ...
+21.
+22. // Step 3: Ranking and filtering
+23. W <- remove_redundant(W)
+24. W <- rank_by_severity(W)
+25. return W
+\end{verbatim}
+
+\textbf{Complexidade}:
+\begin{itemize}
+    \item \textbf{Quantile/Uniform}: $O(k \cdot d \cdot n)$ onde $k$ = bins, $d$ = features, $n$ = amostras
+    \item \textbf{Tree-based}: $O(d \cdot n \log n)$ (tree fitting)
+    \item \textbf{Interactions}: $O(d^2 \cdot k^2 \cdot n)$ (pairwise)
+\end{itemize}
+
+\textbf{Otimização}: Paralelização por feature + caching de predições.
+
+\subsection{Métricas Suportadas}
+
+Framework agnóstico a métricas:
+\begin{itemize}
+    \item \textbf{Classification}: Accuracy, F1, Precision, Recall, AUC
+    \item \textbf{Regression}: MAE, RMSE, R$^2$
+    \item \textbf{Ranking}: NDCG, MAP
+    \item \textbf{Custom}: User-defined metric functions
+\end{itemize}
+
+\subsection{Integração com DeepBridge}
+
+Weakspot detection integra-se ao pipeline de robustness testing:
+
+\begin{lstlisting}[language=Python, caption=Integração com experimento completo]
+from deepbridge import Experiment, DBDataset
+
+dataset = DBDataset(X, y, model=model)
+
+exp = Experiment(
+    dataset=dataset,
+    tests=['robustness', 'weakspots'],
+    config='medium'
+)
+
+results = exp.run_tests()
+
+# Weakspots detectados automaticamente
+print(results.weakspots.summary)
+\end{lstlisting}

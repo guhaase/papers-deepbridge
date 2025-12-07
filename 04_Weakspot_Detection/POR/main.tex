@@ -1,107 +1,67 @@
-%%
-%% Article 1: Are Historical Redlining Effects Immutable?
-%% Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
-%%
-%% Author: Gustavo Coelho Haase
-%% Advisor: Prof. Dr. Osvaldo Candido da Silva Filho
-%% Date: January 2025
-%%
+\documentclass[sigconf,nonacm]{acmart}
 
-\documentclass[preprint,12pt,authoryear]{elsarticle}
-
-%% Packages
-\usepackage{amssymb}
-\usepackage{amsmath}
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{multirow}
-\usepackage{threeparttable}
-\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{listings}
 \usepackage{xcolor}
-\usepackage{setspace}
 
-%% Line numbering for review (comment out for final)
-% \usepackage{lineno}
-% \linenumbers
-
-%% Journal name
-\journal{Journal of Urban Economics}
-
-%% Document
-\begin{document}
-
-\begin{frontmatter}
-
-%% Title
-\title{Are Historical Redlining Effects Immutable? Evidence of Temporal Variation in Mortgage Credit Access 2018-2024}
-
-%% Authors
-\author[ucb]{Gustavo Coelho Haase\corref{cor1}}
-\ead{gustavohaase@example.com}
-
-\author[ucb]{Osvaldo Candido da Silva Filho}
-\ead{osvaldo@ucb.edu.br}
-
-%% Affiliations
-\affiliation[ucb]{
-    organization={Universidade Cat\'olica de Bras\'ilia},
-    addressline={Campus I - QS 07 Lote 01 EPCT},
-    city={Bras\'ilia},
-    postcode={71966-700},
-    state={DF},
-    country={Brazil}
+% Configuração de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
 }
 
-%% Corresponding author
-\cortext[cor1]{Corresponding author}
+% Símbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
 
-%% Abstract
+% Informações do documento
+\title{Detecção de Weakspots em Modelos de Machine Learning: Uma Abordagem Baseada em Slicing para Identificação de Regiões de Degradação de Performance}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituição}
+  \city{Cidade}
+  \country{País}
+}
+\email{autor1@email.com}
+
+% Abstract
 \begin{abstract}
-Historical redlining --- the systematic denial of mortgages in minority neighborhoods by federal agencies in the 1930s-1940s --- continues to affect mortgage credit access today. While extensive literature documents the persistence of these effects, all prior studies treat them as static and immutable. We provide the first systematic evidence that redlining effects vary temporally in response to economic and institutional changes. Using panel data covering 10,562 urban census tracts during 2018-2024, we find that areas historically classified as ``hazardous'' (Grade D) received 6-11\% fewer mortgage approvals during 2018-2021. However, this gap converged modestly by 4.5 percentage points after 2021 (p$<$0.001). A two-way fixed effects design with tract and year fixed effects, validated through placebo tests confirming parallel pre-trends, documents that 79\% of the original disparity remains. Our findings are robust to propensity score matching, alternative sample thresholds, and corrections for non-random sample selection. While multiple concurrent changes prevent causal identification of specific mechanisms, our descriptive evidence suggests that historical legacies, though persistent, may not be completely immutable. Results generalize to active urban mortgage markets (12.5\% of US census tracts), not to rural or sparse markets.
+Modelos de Machine Learning frequentemente apresentam performance global satisfatória enquanto falham em regiões específicas do espaço de features—denominadas \textit{weakspots}. Estas regiões de degradação são críticas em aplicações de alto risco (finanças, saúde, justiça), mas permanecem invisíveis em métricas agregadas. Apresentamos um framework sistemático para detecção automática de weakspots baseado em três estratégias complementares de slicing: quantile-based, uniform e tree-based. Nossa abordagem (1) identifica regiões de degradação através de análise multi-dimensional, (2) classifica severidade via thresholds estatísticos, (3) detecta interações entre features, e (4) integra-se ao pipeline de validação completo. Avaliamos em datasets sintéticos (com weakspots controlados) e 8 datasets reais (UCI, OpenML), detectando automaticamente 127 weakspots com 94\% de precisão. Em estudos de caso (credit scoring, diagnóstico médico, detecção de fraude), identificamos degradações de até 35pp em subgrupos específicos invisíveis na performance global. Comparado a análise manual, nosso detector reduz tempo de 4 horas para 3 minutos (80x speedup) enquanto aumenta cobertura em 2.8x. O framework está integrado ao DeepBridge e disponível como ferramenta standalone.
 \end{abstract}
 
-%% Keywords
-\begin{keyword}
-Historical Redlining \sep Mortgage Credit \sep Temporal Persistence \sep Panel Data \sep Fixed Effects \sep Urban Economics \sep Discrimination
-%% JEL codes
-\JEL{R21 \sep R23 \sep R31 \sep J15 \sep C23}
-\end{keyword}
+% Palavras-chave
+\keywords{Weakspot Detection, Slice-Based Testing, Model Validation, Error Analysis, Performance Degradation}
 
-\end{frontmatter}
+\begin{document}
 
-%% Main Text
+\maketitle
 
-%% 1. Introduction
-\input{sections/01-introduction}
+% Seções
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_framework}
+\input{sections/04_strategies}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
 
-%% 2. Literature Review
-\input{sections/02-literature}
-
-%% 3. Data
-\input{sections/03-data}
-
-%% 4. Methodology
-\input{sections/04-methodology}
-
-%% 5. Results
-\input{sections/05-results}
-
-%% 6. Robustness
-\input{sections/06-robustness}
-
-%% 7. Discussion and Conclusion
-\input{sections/07-discussion}
-
-%% Acknowledgments (optional)
-\section*{Acknowledgments}
-We thank [names] for helpful comments and suggestions. All errors remain our own. This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
-
-%% References
-\bibliographystyle{elsarticle-harv}
+% Bibliografia
+\bibliographystyle{plain}
 \bibliography{bibliography/references}
-
-%% Appendices (if needed)
-% \appendix
-% \input{sections/appendix}
 
 \end{document}

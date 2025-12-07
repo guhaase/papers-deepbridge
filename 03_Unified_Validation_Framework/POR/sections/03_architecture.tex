@@ -1,0 +1,151 @@
+\section{Arquitetura do DeepBridge}
+\label{sec:architecture}
+
+A arquitetura do DeepBridge (Figura~\ref{fig:architecture}) é organizada em três camadas: (1) \textbf{Abstração de Dados} (DBDataset), (2) \textbf{Validação Multi-Dimensional} (5 suítes + Experiment orchestrator), e (3) \textbf{Relatórios \& Integração}.
+
+\subsection{DBDataset: Container Unificado}
+
+DBDataset elimina fragmentação de APIs encapsulando dados, modelo e metadados em um único container reutilizável.
+
+\begin{lstlisting}[language=Python, caption={DBDataset: Create Once\, Validate Anywhere}]
+from deepbridge import DBDataset
+
+dataset = DBDataset(
+    data=df,                    # Pandas/Dask DataFrame
+    target_column='approved',   # Target
+    model=trained_model,        # Scikit-learn/XGBoost/custom
+    protected_attributes=['gender', 'race']  # Para fairness
+)
+
+# Auto-inferência
+print(dataset.task_type)        # 'binary_classification'
+print(dataset.feature_types)    # {'age': 'continuous', ...}
+print(dataset.model_type)       # 'tree_ensemble'
+\end{lstlisting}
+
+\textbf{Funcionalidades}:
+\begin{itemize}
+    \item \textbf{Auto-inferência}: Task type, feature types, model type
+    \item \textbf{Lazy evaluation}: Predições computadas sob demanda
+    \item \textbf{Caching}: Evita recomputação
+    \item \textbf{Validação}: Checks de consistência automáticos
+\end{itemize}
+
+\subsection{Experiment: Orquestrador}
+
+Coordena validação multi-dimensional com configuração unificada.
+
+\begin{lstlisting}[language=Python, caption=Orquestração de testes]
+from deepbridge import Experiment
+
+exp = Experiment(
+    dataset=dataset,
+    tests=['robustness', 'uncertainty', 'fairness'],
+    config='medium'  # ou 'quick', 'full'
+)
+
+# Execução paralela
+results = exp.run_tests()
+
+# Resultados estruturados
+print(results.robustness.gaussian_perturbation)
+print(results.fairness.disparate_impact)
+\end{lstlisting}
+
+\textbf{Features}:
+\begin{itemize}
+    \item \textbf{Lazy loading}: Modelos carregados sob demanda (-42\% memória)
+    \item \textbf{Execução paralela}: Testes independentes em paralelo
+    \item \textbf{Progress tracking}: Barra de progresso em tempo real
+    \item \textbf{Error handling}: Falhas isoladas não abortam experimento
+\end{itemize}
+
+\subsection{5 Suítes de Validação}
+
+\subsubsection{RobustnessTestManager}
+
+Testa robustez a perturbações:
+\begin{itemize}
+    \item Gaussian perturbation (5 níveis de $\sigma$)
+    \item Quantile perturbation (p5, p25, p50, p75, p95)
+    \item Weak spot detection (features mais sensíveis)
+\end{itemize}
+
+\subsubsection{UncertaintyTestManager}
+
+Quantifica incerteza:
+\begin{itemize}
+    \item Calibration (ECE, MCE, Brier score)
+    \item Conformal prediction (cobertura 90\%, 95\%, 99\%)
+    \item Prediction intervals
+\end{itemize}
+
+\subsubsection{ResilienceTestManager}
+
+Detecta drift:
+\begin{itemize}
+    \item 5 tipos de drift (covariate, concept, prior, posterior, joint)
+    \item Testes estatísticos (KS, Chi-squared, Wasserstein)
+    \item Drift magnitude e p-values
+\end{itemize}
+
+\subsubsection{FairnessTestManager}
+
+Avalia fairness (detalhado no Paper 2):
+\begin{itemize}
+    \item 15 métricas pré/pós-treinamento
+    \item Verificação EEOC/ECOA
+    \item Threshold optimization
+\end{itemize}
+
+\subsubsection{HyperparameterTestManager}
+
+Analisa sensibilidade:
+\begin{itemize}
+    \item Cross-validation com variação de hiperparâmetros
+    \item Importance scores via permutation
+    \item Stability analysis
+\end{itemize}
+
+\subsection{Sistema de Configuração}
+
+Presets padronizados balanceiam tempo vs. cobertura:
+
+\begin{table}[h]
+\centering
+\caption{Presets de configuração}
+\label{tab:config_presets}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Preset} & \textbf{Tempo} & \textbf{Testes} & \textbf{Uso} \\
+\midrule
+Quick & 2-5 min & Amostragem 10\% & CI/CD rápido \\
+Medium & 10-20 min & Amostragem 50\% & Desenvolvimento \\
+Full & 30-60 min & Dados completos & Pré-deployment \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sistema de Relatórios}
+
+Gera relatórios em múltiplos formatos:
+
+\begin{lstlisting}[language=Python]
+# HTML interativo (Plotly)
+exp.save_html('all', 'report.html')
+
+# PDF (via LaTeX)
+exp.save_pdf('all', 'report.pdf')
+
+# JSON (programático)
+exp.save_json('all', 'results.json')
+\end{lstlisting}
+
+\textbf{Relatórios incluem}:
+\begin{itemize}
+    \item Dashboard comparativo (5 dimensões)
+    \item Drill-down por dimensão
+    \item Priorização de issues (severidade)
+    \item Recomendações de mitigação
+\end{itemize}

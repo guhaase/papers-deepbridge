@@ -1,0 +1,233 @@
+\section{Implementacao}
+\label{sec:implementation}
+
+\subsection{DBDataset Lazy Implementation}
+
+Implementacao completa de lazy properties:
+
+\begin{lstlisting}[language=Python]
+class DBDataset:
+    def __init__(self, data, target_column, model=None,
+                 protected_attributes=None, lazy=True):
+        self._data = data
+        self._target_column = target_column
+        self._model = model
+        self._protected_attributes = protected_attributes
+        self._lazy = lazy
+
+        # Lazy caches
+        self._predictions = None
+        self._predictions_proba = None
+        self._feature_importance = None
+        self._correlation_matrix = None
+
+    @property
+    def predictions(self):
+        if self._predictions is None and self._model is not None:
+            self._predictions = self._model.predict(self._data)
+        return self._predictions
+
+    def clear_cache(self):
+        """Manual cache invalidation"""
+        self._predictions = None
+        self._predictions_proba = None
+
+    def preload_all(self):
+        """Eager loading explicito"""
+        _ = self.predictions
+        _ = self.predictions_proba
+        _ = self.feature_importance
+\end{lstlisting}
+
+\subsection{Experiment Orchestrator}
+
+Gerencia lazy loading de testes:
+
+\begin{lstlisting}[language=Python]
+class Experiment:
+    def __init__(self, dataset, tests, config='medium'):
+        self.dataset = dataset
+        self.test_names = tests
+        self._test_managers = {}  # Lazy
+        self.config = config
+
+    def _get_test_manager(self, test_name):
+        """Lazy instantiation de test managers"""
+        if test_name not in self._test_managers:
+            TestClass = TEST_REGISTRY[test_name]
+            self._test_managers[test_name] = TestClass(
+                self.dataset, self.config
+            )
+        return self._test_managers[test_name]
+
+    def run_tests(self):
+        results = {}
+        for test_name in self.test_names:
+            # Test manager criado apenas quando necessario
+            manager = self._get_test_manager(test_name)
+            results[test_name] = manager.run()
+        return results
+\end{lstlisting}
+
+\subsection{Prediction Cache Implementation}
+
+Cache LRU thread-safe:
+
+\begin{lstlisting}[language=Python]
+from threading import Lock
+from collections import OrderedDict
+
+class PredictionCache:
+    def __init__(self, maxsize=128):
+        self._cache = OrderedDict()
+        self._maxsize = maxsize
+        self._lock = Lock()
+        self._hits = 0
+        self._misses = 0
+
+    def get(self, key):
+        with self._lock:
+            if key in self._cache:
+                # Move to end (LRU)
+                self._cache.move_to_end(key)
+                self._hits += 1
+                return self._cache[key]
+            self._misses += 1
+            return None
+
+    def put(self, key, value):
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
+            else:
+                self._cache[key] = value
+                if len(self._cache) > self._maxsize:
+                    self._cache.popitem(last=False)
+
+    @property
+    def hit_rate(self):
+        total = self._hits + self._misses
+        return self._hits / total if total > 0 else 0
+\end{lstlisting}
+
+\subsection{Benchmarking Infrastructure}
+
+Instrumentacao para medir overhead:
+
+\begin{lstlisting}[language=Python]
+import time
+from contextlib import contextmanager
+
+class PerformanceMonitor:
+    def __init__(self):
+        self.timings = {}
+        self.memory_snapshots = []
+
+    @contextmanager
+    def measure(self, label):
+        start = time.time()
+        start_mem = get_memory_usage()
+        yield
+        end = time.time()
+        end_mem = get_memory_usage()
+
+        self.timings[label] = {
+            'time': end - start,
+            'memory_delta': end_mem - start_mem
+        }
+
+# Uso
+monitor = PerformanceMonitor()
+with monitor.measure('predictions'):
+    preds = dataset.predictions
+
+print(f"Time: {monitor.timings['predictions']['time']:.2f}s")
+\end{lstlisting}
+
+\subsection{Configuration Options}
+
+Usuarios podem controlar lazy behavior:
+
+\begin{lstlisting}[language=Python]
+from deepbridge import Experiment, DBDataset
+
+# Option 1: Lazy (default)
+dataset = DBDataset(data=df, model=model, lazy=True)
+
+# Option 2: Eager (force preload)
+dataset = DBDataset(data=df, model=model, lazy=False)
+dataset.preload_all()
+
+# Option 3: Selective lazy
+dataset = DBDataset(data=df, model=model, lazy=True)
+dataset.preload_predictions()  # Apenas predicoes eager
+\end{lstlisting}
+
+\subsection{Profiling Tools}
+
+Ferramentas para debug de lazy loading:
+
+\begin{lstlisting}[language=Python]
+class LazyDebugger:
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def show_loaded_resources(self):
+        """Mostra quais recursos foram carregados"""
+        loaded = []
+        if dataset._predictions is not None:
+            loaded.append('predictions')
+        if dataset._predictions_proba is not None:
+            loaded.append('predictions_proba')
+        return loaded
+
+    def estimate_memory_usage(self):
+        """Estima memoria usada por recursos carregados"""
+        total = 0
+        if dataset._predictions is not None:
+            total += dataset._predictions.nbytes
+        # ... outros recursos
+        return total / (1024**2)  # MB
+\end{lstlisting}
+
+\subsection{Optimizacoes}
+
+\textbf{1. Prediction Chunking}:
+
+Para datasets grandes, compute predicoes em chunks:
+
+\begin{lstlisting}[language=Python]
+def _compute_predictions_chunked(self, chunk_size=10000):
+    n_samples = len(self._data)
+    predictions = []
+    for i in range(0, n_samples, chunk_size):
+        chunk = self._data[i:i+chunk_size]
+        preds_chunk = self._model.predict(chunk)
+        predictions.append(preds_chunk)
+    return np.concatenate(predictions)
+\end{lstlisting}
+
+\textbf{2. Memory-Mapped Arrays}:
+
+Para datasets muito grandes, use memory mapping:
+
+\begin{lstlisting}[language=Python]
+import numpy as np
+
+def _load_data_memmap(self, filename):
+    return np.load(filename, mmap_mode='r')
+\end{lstlisting}
+
+\textbf{3. Prediction Compression}:
+
+Compress predictions para economizar memoria:
+
+\begin{lstlisting}[language=Python]
+import blosc
+
+def _compress_predictions(self, preds):
+    return blosc.compress(preds.tobytes())
+
+def _decompress_predictions(self, compressed):
+    return np.frombuffer(blosc.decompress(compressed))
+\end{lstlisting}

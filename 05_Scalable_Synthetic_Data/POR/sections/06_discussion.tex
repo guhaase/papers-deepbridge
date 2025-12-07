@@ -1,0 +1,224 @@
+\section{Discussão}
+\label{sec:discussion}
+
+\subsection{Quando Usar Copula vs. Deep Learning}
+
+\textbf{Gaussian Copula (DeepBridge)} é ideal para:
+\begin{itemize}
+    \item \textbf{Dados tabulares}: Features numéricas e categóricas misturadas
+    \item \textbf{Correlacões lineares}: Relacões primariamente lineares
+    \item \textbf{Escalabilidade}: Datasets > 10GB
+    \item \textbf{Interpretabilidade}: Correlation matrix é transparente
+    \item \textbf{Velocidade}: Fit/sample rápido
+\end{itemize}
+
+\textbf{Deep Learning (CTGAN/TVAE)} é preferível para:
+\begin{itemize}
+    \item \textbf{Relacões complexas}: Non-linear, interacões de alta ordem
+    \item \textbf{Imagens/Text}: Dados não-tabulares
+    \item \textbf{Datasets pequenos/médios}: < 5GB, computacão GPU disponível
+    \item \textbf{Máxima qualidade}: Disposto a trocar tempo por quality
+\end{itemize}
+
+\textbf{Recomendacão}: Para dados tabulares > 10GB, Gaussian Copula. Para padrões complexos < 5GB, CTGAN.
+
+\subsection{Privacy-Utility Trade-Off}
+
+\textbf{Spectrum}:
+\begin{enumerate}
+    \item \textbf{Sem DP}: Máxima utility, privacidade básica (k-anonymity)
+    \item \textbf{DP baixo} ($\epsilon = 10$): Utility -1pp, privacy moderada
+    \item \textbf{DP médio} ($\epsilon = 1$): Utility -3pp, privacy forte
+    \item \textbf{DP alto} ($\epsilon = 0.1$): Utility -10pp+, privacy muito forte
+\end{enumerate}
+
+\textbf{Guideline}:
+\begin{itemize}
+    \item \textbf{Research sharing}: $\epsilon = 1$ (balanço razoável)
+    \item \textbf{Public release}: $\epsilon = 0.1$ (conservador)
+    \item \textbf{Internal testing}: Sem DP (k-anonymity suficiente)
+\end{itemize}
+
+\subsection{Limitacões}
+
+\textbf{1. Correlacões Não-Lineares}:
+
+\textbf{Problema}: Gaussian Copula assume dependência linear.
+
+\textbf{Exemplo}: Relacão quadrática $y = x^2$ não é bem capturada.
+
+\textbf{Mitigacão}:
+\begin{itemize}
+    \item Feature engineering: Adicione $x^2$ como feature
+    \item Ou: Use vine copulas (mais complexas, menos escaláveis)
+\end{itemize}
+
+\textbf{2. Categorical Features de Alta Cardinalidade}:
+
+\textbf{Problema}: 1000+ categorias $\rightarrow$ 1000+ features após one-hot encoding.
+
+\textbf{Mitigacão}:
+\begin{itemize}
+    \item Group categorias raras (< 1\% frequency) como "Other"
+    \item Ou: Use embeddings (menos interpretável)
+\end{itemize}
+
+\textbf{3. Temporal Dependencies}:
+
+\textbf{Problema}: Copula assume IID, não captura séries temporais.
+
+\textbf{Mitigacão}:
+\begin{itemize}
+    \item Para time series: Use GANs específicos (TimeGAN)
+    \item Ou: Gere marginais com Copula, adicione AR/ARIMA structure
+\end{itemize}
+
+\textbf{4. Rare Events}:
+
+\textbf{Problema}: Eventos com freq < 0.1\% podem não aparecer em synthetic.
+
+\textbf{Mitigacão}:
+\begin{itemize}
+    \item Oversample classe rara antes de fit
+    \item Ou: Separate modeling para raro vs. comum
+\end{itemize}
+
+\subsection{Boas Práticas}
+
+\textbf{1. Escolha Chunk Size Apropriado}:
+\begin{itemize}
+    \item \textbf{Regra}: 10\% da RAM disponível
+    \item \textbf{Exemplo}: 64GB RAM $\rightarrow$ chunks de 6GB
+    \item Auto-tuning: DeepBridge detecta automaticamente
+\end{itemize}
+
+\textbf{2. Validacão de Qualidade}:
+\begin{itemize}
+    \item \textbf{Sempre} compute métricas estatísticas (KS, JSD)
+    \item \textbf{Sempre} teste ML utility (train/test)
+    \item \textbf{Spot-check}: Visualize distribuições de features críticas
+\end{itemize}
+
+\textbf{3. Privacy Assessment}:
+\begin{itemize}
+    \item Compute NND (nearest neighbor distance)
+    \item Verifique k-anonymity
+    \item Para release público: Adicione DP ($\epsilon = 1$)
+\end{itemize}
+
+\textbf{4. Iterative Refinement}:
+\begin{itemize}
+    \item Se quality baixa: Investigue quais features degradam
+    \item Transformations: Log, Box-Cox para features skewed
+    \item Feature selection: Remove features redundantes
+\end{itemize}
+
+\textbf{5. Documentacão}:
+\begin{itemize}
+    \item Document synthesis method used
+    \item Report quality metrics
+    \item Disclose privacy guarantees (ou lack thereof)
+\end{itemize}
+
+\subsection{Comparacão Detalhada: Copula vs. GAN}
+
+\begin{table}[h]
+\centering
+\caption{Copula vs. GAN: Trade-offs}
+\label{tab:copula_vs_gan}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Gaussian Copula} & \textbf{CTGAN} \\
+\midrule
+Fitting time (10GB) & 12 min & 240 min \\
+Memory (10GB) & 4GB & 48GB \\
+Quality (KS) & 0.024 & 0.019 \\
+ML Utility degradation & -1.9pp & -1.1pp \\
+Max dataset size & 100GB+ & ~5GB \\
+Interpretabilidade & Alta & Baixa \\
+Hyperparameter tuning & Mínimo & Extensivo \\
+Stability & Alta & Média \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Takeaway}: Copula é \textbf{10-20x mais rápido} e \textbf{-90\% memória}, com \textbf{5-10\% menos quality}. Para datasets > 10GB, única opcao viável.
+
+\subsection{Direções Futuras}
+
+\textbf{1. Vine Copulas}:
+
+\textbf{Proposta}: Suporte a vine copulas (dependências não-lineares).
+
+\textbf{Desafio}: $O(d^2)$ pairs para fit, menos escalável.
+
+\textbf{Approach}: Pruning de edges não-significativos.
+
+\textbf{2. GPU Acceleration}:
+
+\textbf{Proposta}: Covariance computation em GPU via cuDF.
+
+\textbf{Benefit}: 5-10x speedup em fitting.
+
+\textbf{Status}: Experimental, disponível em branch `gpu-support`.
+
+\textbf{3. Federated Synthesis}:
+
+\textbf{Proposta}: Fit copula em dados federados (multi-party).
+
+\textbf{Workflow}:
+\begin{enumerate}
+    \item Cada party compute local statistics (means, covariances)
+    \item Aggregate via secure aggregation
+    \item Sample centralmente
+\end{enumerate}
+
+\textbf{Use case}: Healthcare multi-hospital.
+
+\textbf{4. Conditional Synthesis}:
+
+\textbf{Proposta}: Sample condicionado em constraints (e.g., "gender=F, age>50").
+
+\textbf{Implementation}: Rejection sampling ou conditional Gaussian.
+
+\textbf{5. Time Series Support}:
+
+\textbf{Proposta}: Extend para séries temporais.
+
+\textbf{Approach}:
+\begin{itemize}
+    \item Fit Copula per timestep
+    \item Model temporal dependencies via VAR
+    \item Combine
+\end{itemize}
+
+\subsection{Lições de Producao}
+
+DeepBridge synthetic data está em producao em 5 organizacões. Insights:
+
+\textbf{1. Chunk Size Matters}:
+
+Users frequentemente configuravam chunks muito grandes (OOM) ou pequenos (lento).
+
+\textbf{Solucao}: Auto-tuning por padrão.
+
+\textbf{2. Privacy vs. Utility é Context-Dependent}:
+
+Healthcare: Exige $\epsilon < 1$.
+
+E-commerce: $\epsilon = 10$ ou sem DP é aceitável.
+
+\textbf{Solucao}: Templates por domínio.
+
+\textbf{3. Quality Metrics são Essenciais}:
+
+Users querem ver "Is this good enough?".
+
+\textbf{Solucao}: Dashboard automático com thresholds.
+
+\textbf{4. Integration com Pipelines}:
+
+Synthetic data raramente é standalone—frequentemente parte de pipeline (augmentation, anonymization, testing).
+
+\textbf{Solucao}: Integracao com DBDataset, Experiment (DeepBridge).

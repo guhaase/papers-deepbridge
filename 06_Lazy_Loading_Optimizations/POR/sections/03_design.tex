@@ -1,0 +1,236 @@
+\section{Design do Sistema de Lazy Loading}
+\label{sec:design}
+
+\subsection{Arquitetura}
+
+O sistema consiste em 4 componentes principais:
+
+\textbf{1. Resource Manager}: Gerencia carregamento lazy de recursos (modelos, datasets)
+
+\textbf{2. Prediction Cache}: Cache LRU para predicoes reutilizaveis
+
+\textbf{3. Dependency Resolver}: Identifica quais recursos cada teste necessita
+
+\textbf{4. Lazy Properties}: Python properties que carregam sob demanda
+
+\subsection{Dependency Graph}
+
+Mapeamento de testes para recursos necessarios:
+
+\begin{table}[h]
+\centering
+\caption{Dependencias: Testes $\rightarrow$ Recursos}
+\label{tab:dependencies}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Teste} & \textbf{Recursos Necessarios} \\
+\midrule
+Robustness & Modelo, Dataset, Predicoes \\
+Fairness & Modelo, Dataset, Predicoes, Atributos protegidos \\
+Uncertainty & Modelo, Dataset, Predicoes (proba) \\
+Resilience & Dataset, Predicoes, Dataset alternativo \\
+Hyperparameters & Modelo, Dataset, Config de HP \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Insight}: Predicoes sao compartilhadas entre multiplos testes $\rightarrow$ Cache essencial.
+
+\subsection{Lazy Properties Design}
+
+\textbf{DBDataset com Lazy Loading}:
+
+\begin{lstlisting}[language=Python, caption=Lazy properties no DBDataset]
+class DBDataset:
+    def __init__(self, data, target, model):
+        self._data = data
+        self._target = target
+        self._model = model
+        # Lazy attributes (None ate serem acessados)
+        self._predictions = None
+        self._predictions_proba = None
+        self._feature_types = None
+
+    @property
+    def predictions(self):
+        """Lazy: compute apenas quando acessado"""
+        if self._predictions is None:
+            self._predictions = self._model.predict(self._data)
+        return self._predictions
+
+    @property
+    def predictions_proba(self):
+        """Lazy com fallback"""
+        if self._predictions_proba is None:
+            if hasattr(self._model, 'predict_proba'):
+                self._predictions_proba = self._model.predict_proba(self._data)
+            else:
+                # Fallback para modelos sem proba
+                self._predictions_proba = None
+        return self._predictions_proba
+
+    @property
+    def feature_types(self):
+        """Lazy com cache"""
+        if self._feature_types is None:
+            self._feature_types = self._infer_feature_types()
+        return self._feature_types
+\end{lstlisting}
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Transparente: API identica, implementacao lazy
+    \item Semantica clara: Access property $\rightarrow$ compute if needed
+    \item Cacheable: Resultado guardado em \_predictions
+\end{itemize}
+
+\subsection{Prediction Cache}
+
+\textbf{Motivacao}: Multiplos testes usam mesmas predicoes.
+
+\textbf{Design}:
+\begin{lstlisting}[language=Python]
+from functools import lru_cache
+import weakref
+
+class PredictionCache:
+    def __init__(self, maxsize=128):
+        self._cache = {}
+        self._maxsize = maxsize
+
+    def get_or_compute(self, model, data, predict_fn):
+        """Get from cache ou compute"""
+        # Key: hash de (model id, data hash)
+        key = (id(model), hash(data.tobytes()))
+
+        if key in self._cache:
+            return self._cache[key]
+
+        # Compute
+        result = predict_fn(model, data)
+
+        # Cache com weak ref para cleanup automatico
+        self._cache[key] = result
+
+        # LRU eviction se cache cheio
+        if len(self._cache) > self._maxsize:
+            self._evict_lru()
+
+        return result
+
+    def _evict_lru(self):
+        """Remove least recently used"""
+        # Implementacao: OrderedDict
+        oldest_key = next(iter(self._cache))
+        del self._cache[oldest_key]
+\end{lstlisting}
+
+\textbf{Cache Hit Rate}: Empiricamente 70-85\% em workflows tipicos.
+
+\subsection{Resource Loading Strategies}
+
+\textbf{Estrategia 1: Lazy All}:
+\begin{itemize}
+    \item Tudo lazy (modelos, datasets, predicoes)
+    \item Vantagem: Minimo uso de memoria
+    \item Desvantagem: Overhead de carregamento distribuido
+\end{itemize}
+
+\textbf{Estrategia 2: Eager Core, Lazy Extras}:
+\begin{itemize}
+    \item Core (modelo, dataset) eager
+    \item Extras (modelos alternativos, predicoes) lazy
+    \item Vantagem: Balance entre performance e memoria
+    \item Nossa escolha para default
+\end{itemize}
+
+\textbf{Estrategia 3: Adaptive}:
+\begin{itemize}
+    \item Analisa testes selecionados
+    \item Carrega eager apenas recursos compartilhados
+    \item Lazy para recursos especificos
+    \item Vantagem: Otimo teorico
+    \item Desvantagem: Complexidade de implementacao
+\end{itemize}
+
+\textbf{Implementacao Atual}: Estrategia 2 (eager core, lazy extras).
+
+\subsection{Parallel Loading}
+
+Para testes independentes, carregamento pode ser paralelizado:
+
+\begin{lstlisting}[language=Python]
+from concurrent.futures import ThreadPoolExecutor
+
+def load_resources_parallel(tests):
+    """Parallel loading de recursos independentes"""
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = []
+        for test in tests:
+            if test.resources_independent():
+                futures.append(
+                    executor.submit(test.load_resources)
+                )
+        # Wait all
+        for future in futures:
+            future.result()
+\end{lstlisting}
+
+\textbf{Speedup}: 20-30\% para 4+ testes independentes.
+
+\subsection{Garbage Collection Integration}
+
+Weak references permitem cleanup automatico:
+
+\begin{lstlisting}[language=Python]
+import weakref
+
+class ResourceManager:
+    def __init__(self):
+        # Weak references: GC pode coletar
+        self._models = weakref.WeakValueDictionary()
+        self._predictions = weakref.WeakValueDictionary()
+
+    def get_model(self, model_id):
+        if model_id in self._models:
+            return self._models[model_id]
+        # Load
+        model = load_model_from_disk(model_id)
+        self._models[model_id] = model
+        return model
+\end{lstlisting}
+
+\textbf{Beneficio}: Memoria liberada automaticamente quando recursos nao mais necessarios.
+
+\subsection{Error Handling}
+
+Lazy loading pode adiar deteccao de erros. Mitigacoes:
+
+\textbf{1. Validation na Criacao}:
+\begin{lstlisting}[language=Python]
+def __init__(self, model, data):
+    # Validate types immediately (nao lazy)
+    if not hasattr(model, 'predict'):
+        raise ValueError("Model must have predict method")
+    self._model = model
+    self._data = data
+\end{lstlisting}
+
+\textbf{2. Lazy com Try-Except}:
+\begin{lstlisting}[language=Python]
+@property
+def predictions(self):
+    if self._predictions is None:
+        try:
+            self._predictions = self._model.predict(self._data)
+        except Exception as e:
+            raise RuntimeError(f"Failed to compute predictions: {e}")
+    return self._predictions
+\end{lstlisting}
+
+\textbf{3. Pre-flight Checks}:
+\begin{itemize}
+    \item Antes de executar testes, verificar que recursos existem
+    \item Fail fast se recursos faltando
+\end{itemize}

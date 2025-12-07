@@ -1,0 +1,331 @@
+\section{Discussion}
+\label{sec:discussion}
+
+Esta seção discute orientações práticas para uso do DeepBridge Fairness, limitações da abordagem, considerações éticas e boas práticas de produção.
+
+\subsection{When to Use Which Metrics}
+
+Diferentes contextos regulatórios e de negócio exigem métricas distintas. Oferecemos orientação baseada em domínio:
+
+\subsubsection{Employment Screening (EEOC)}
+
+\textbf{Regulação}: EEOC Uniform Guidelines~\cite{eeoc1978uniform}
+
+\textbf{Métricas Obrigatórias}:
+\begin{enumerate}
+    \item \textbf{Disparate Impact}: Verificar regra 80\% ($\text{DI} \geq 0.80$)
+    \item \textbf{Question 21}: Validar representação mínima 2\% por grupo
+\end{enumerate}
+
+\textbf{Métricas Recomendadas}:
+\begin{itemize}
+    \item \textbf{Statistical Parity}: Detectar desequilíbrios sutis (< 10pp)
+    \item \textbf{Equal Opportunity}: Garantir mesmas chances para candidatos qualificados
+    \item \textbf{FNR Difference}: Evitar rejeitar candidatos qualificados de grupos protegidos
+\end{itemize}
+
+\textbf{Evitar}:
+\begin{itemize}
+    \item \textbf{Equalized Odds}: Pode forçar mesmas taxas de erro mesmo quando diferenças são justificadas
+    \item \textbf{Demographic Parity}: Excessivamente restritivo (requer exata igualdade)
+\end{itemize}
+
+\subsubsection{Credit Scoring (ECOA)}
+
+\textbf{Regulação}: Equal Credit Opportunity Act~\cite{ecoa1974equal}
+
+\textbf{Métricas Obrigatórias}:
+\begin{enumerate}
+    \item \textbf{Disparate Impact}: Regra 80\% aplica-se a decisões de crédito
+    \item \textbf{Adverse Action Notices}: Explicar decisões de negação
+\end{enumerate}
+
+\textbf{Métricas Recomendadas}:
+\begin{itemize}
+    \item \textbf{Equal Opportunity}: Garantir mesmas chances para bons pagadores
+    \item \textbf{Precision Parity}: Taxa de default deve ser similar entre grupos aprovados
+    \item \textbf{FPR Difference}: Evitar aprovar maus pagadores desproporcionalmente
+\end{itemize}
+
+\textbf{Consideração Especial}:
+\begin{itemize}
+    \item \textbf{Risk-based pricing}: Diferentes taxas de juros são permitidas se baseadas em risco real (não em grupo protegido)
+    \item Métrica relevante: \textbf{Calibration by group} (predições de risco devem ser acuradas para todos grupos)
+\end{itemize}
+
+\subsubsection{Healthcare (HIPAA, AI Act)}
+
+\textbf{Regulação}: HIPAA (EUA), AI Act (EU -- em breve)
+
+\textbf{Métricas Recomendadas}:
+\begin{itemize}
+    \item \textbf{Equal Opportunity}: Pacientes doentes devem ter mesma chance de diagnóstico correto
+    \item \textbf{FNR Difference}: Crítico -- evitar miss de diagnósticos em grupos vulneráveis
+    \item \textbf{Calibration}: Predições de risco devem ser acuradas por grupo
+\end{itemize}
+
+\textbf{Cuidado}:
+\begin{itemize}
+    \item \textbf{Disparate Impact pode ser enganoso}: Maior predição de risco para grupos vulneráveis pode refletir disparidades reais em saúde (não bias de modelo)
+    \item \textbf{Domain expertise essencial}: Sempre envolver médicos na interpretação de métricas
+\end{itemize}
+
+\subsubsection{Criminal Justice}
+
+\textbf{Regulação}: Variável por estado (EUA), GDPR (EU)
+
+\textbf{Métricas Recomendadas}:
+\begin{itemize}
+    \item \textbf{Equalized Odds}: Garantir mesmas taxas de erro (FPR e FNR) entre grupos
+    \item \textbf{FPR Difference}: Crítico -- evitar falsos positivos desproporcionais (como caso COMPAS)
+    \item \textbf{FNR Difference}: Evitar liberar indivíduos de alto risco desproporcionalmente
+\end{itemize}
+
+\textbf{Trade-off Inevitável}:
+\begin{itemize}
+    \item Se taxas base de recidivismo diferem entre grupos (realidade histórica), \textbf{é matematicamente impossível} satisfazer equalized odds E demographic parity simultaneamente~\cite{chouldechova2017fair}
+    \item Decisão política/ética: Priorizar qual métrica?
+\end{itemize}
+
+\subsection{Limitations}
+
+\subsubsection{Causal Fairness Não Coberta}
+
+DeepBridge Fairness foca em métricas de group fairness (estatísticas). \textbf{Não cobre}:
+\begin{itemize}
+    \item \textbf{Counterfactual fairness}~\cite{kusner2017counterfactual}: Requer modelo causal completo (raramente disponível)
+    \item \textbf{Path-specific effects}: Separar efeitos diretos vs. indiretos de atributos protegidos
+\end{itemize}
+
+\textbf{Implicação}: DeepBridge detecta correlações, não causalidade. Exemplo:
+\begin{itemize}
+    \item Modelo pode ser ``fair'' segundo equalized odds, mas ainda discriminar via proxies (e.g., zip code como proxy de raça)
+    \item Análise causal manual ainda necessária para interpretação completa
+\end{itemize}
+
+\textbf{Futura Direção}: Integrar ferramentas de causal inference (e.g., DoWhy) em versões futuras.
+
+\subsubsection{Desafios de Interseccionalidade}
+
+DeepBridge analisa atributos protegidos \textit{separadamente}. \textbf{Limitação}:
+\begin{itemize}
+    \item Não detecta bias em interseções (e.g., mulheres negras vs. mulheres brancas vs. homens negros)
+    \item Fenômeno conhecido: ``intersectional invisibility''~\cite{buolamwini2018gender}
+\end{itemize}
+
+\textbf{Exemplo}:
+\begin{lstlisting}[language=Python]
+# Análise atual: race e gender separadamente
+ftm.run_tests(protected_attributes=['race', 'gender'])
+
+# Não detecta: bias específico para Black+Female
+# Solução parcial: criar feature combinada
+df['race_gender'] = df['race'] + '_' + df['gender']
+ftm.run_tests(protected_attributes=['race_gender'])
+\end{lstlisting}
+
+\textbf{Problema}: Explosão combinatória (7 atributos × 3 valores = 2187 combinações).
+
+\textbf{Futura Direção}: Implementar slice-based analysis~\cite{eyuboglu2022domino} para detectar subgrupos problemáticos automaticamente.
+
+\subsubsection{Threshold Optimization Assumptions}
+
+Otimização de threshold assume:
+\begin{enumerate}
+    \item \textbf{Modelo fixo}: Ajustar threshold, não retreinar modelo
+    \item \textbf{Trade-off aceitável}: Nem sempre é -- em saúde, reduzir FNR para grupo A não deve aumentar FNR para grupo B
+    \item \textbf{Distribuição estável}: Threshold ótimo pode mudar com drift de dados
+\end{enumerate}
+
+\textbf{Quando Threshold Adjustment NÃO é Suficiente}:
+\begin{itemize}
+    \item Caso Adult Income: DI max = 0.65 mesmo com threshold extremo (0.1)
+    \item Solução: Retreinar com fairness constraints (e.g., adversarial debiasing, reweighting)
+\end{itemize}
+
+DeepBridge \textbf{alerta} quando threshold adjustment é insuficiente, mas \textbf{não implementa} mitigações automáticas (futura direção).
+
+\subsection{Ethical Considerations}
+
+\subsubsection{Risco de ``Fairness Washing''}
+
+Ferramentas de fairness podem ser usadas para ``lavar'' decisões discriminatórias:
+\begin{itemize}
+    \item Organização usa DeepBridge, obtém relatório ``conforme EEOC''
+    \item Mas: Selecionou métrica favorável, ignorou outras violações
+    \item Usa relatório para justificar sistema problemático
+\end{itemize}
+
+\textbf{Mitigações}:
+\begin{enumerate}
+    \item \textbf{Relatório sempre inclui TODAS 15 métricas} (não permite cherry-picking)
+    \item \textbf{Warnings explícitos} quando trade-offs existem
+    \item \textbf{Recomendação de auditor humano} em casos ambíguos
+\end{enumerate}
+
+\subsubsection{Metric Selection Bias}
+
+Escolher métrica ``correta'' é decisão política/ética, não técnica:
+\begin{itemize}
+    \item \textbf{Demographic parity}: Prioriza representação proporcional
+    \item \textbf{Equalized odds}: Prioriza mesmas taxas de erro
+    \item \textbf{Equal opportunity}: Prioriza chances iguais para qualificados
+\end{itemize}
+
+Cada métrica favorece diferentes grupos em diferentes contextos~\cite{chouldechova2017fair}.
+
+\textbf{Posição do DeepBridge}:
+\begin{itemize}
+    \item \textbf{Não prescrevemos} qual métrica usar
+    \item \textbf{Reportamos todas} e explicamos trade-offs
+    \item \textbf{Recomendamos} envolver stakeholders (legal, ética, impactados) na decisão
+\end{itemize}
+
+\subsubsection{Bias in, Bias out}
+
+Métricas de fairness detectam bias em \textit{predições}, não em \textit{labels}:
+\begin{itemize}
+    \item Se labels de treinamento são enviesados (e.g., decisões históricas discriminatórias), modelo aprende e reproduz bias
+    \item DeepBridge pode reportar ``fair'' mas sistema perpetua discriminação histórica
+\end{itemize}
+
+\textbf{Exemplo -- COMPAS}:
+\begin{itemize}
+    \item Labels (``recidivou'') dependem de policiamento (mais vigilância em bairros negros → mais arrests → mais labels positivos)
+    \item Modelo ``fair'' segundo equalized odds ainda reflete policiamento discriminatório
+\end{itemize}
+
+\textbf{Recomendação}:
+\begin{enumerate}
+    \item Sempre analisar \textbf{métricas pré-treinamento} (class balance, KL divergence)
+    \item Investigar \textbf{processo de labeling} para detectar bias upstream
+    \item Considerar \textbf{debiasing de dados} antes de treinar modelo
+\end{enumerate}
+
+\subsection{Production Best Practices}
+
+\subsubsection{Integração em CI/CD}
+
+DeepBridge Fairness pode ser integrado em pipelines de ML:
+
+\begin{lstlisting}[language=Python, caption=Exemplo de CI/CD com fairness gates]
+# .github/workflows/ml_pipeline.yml
+- name: Train model
+  run: python train.py
+
+- name: Fairness testing
+  run: |
+    python -c "
+    from deepbridge import DBDataset, FairnessTestManager
+
+    # Load test set e modelo
+    dataset = DBDataset(test_df, target='y', model=model)
+    ftm = FairnessTestManager(dataset)
+
+    # Verificar conformidade EEOC
+    compliance = ftm.check_eeoc_compliance()
+
+    # Fail pipeline se viola regra 80%
+    if not compliance['eeoc_80_rule']:
+        print('EEOC violation detected!')
+        exit(1)
+    "
+
+- name: Deploy model
+  if: success()
+  run: python deploy.py
+\end{lstlisting}
+
+\textbf{Fairness Gates}:
+\begin{itemize}
+    \item \textbf{Regra 80\% EEOC}: Deployment bloqueado se DI < 0.80
+    \item \textbf{Equalized Odds}: Warning se EOdds > 0.10
+    \item \textbf{Representation}: Warning se grupo < 2\%
+\end{itemize}
+
+\subsubsection{Monitoramento Contínuo}
+
+Fairness pode degradar em produção devido a drift:
+
+\begin{lstlisting}[language=Python, caption=Monitoramento de fairness em produção]
+from deepbridge import FairnessMonitor
+
+# Setup monitoring
+monitor = FairnessMonitor(
+    model=production_model,
+    protected_attributes=['gender', 'race'],
+    frequency='weekly',
+    alert_threshold={'disparate_impact': 0.80}
+)
+
+# Executar automaticamente (cron job)
+report = monitor.check_fairness(production_data)
+
+if report['violations']:
+    send_alert(report)  # Email para ML team
+    log_to_dashboard(report)  # Grafana/Datadog
+\end{lstlisting}
+
+\textbf{Frequência Recomendada}:
+\begin{itemize}
+    \item \textbf{High-risk domains} (crédito, justiça): Semanal
+    \item \textbf{Medium-risk} (contratação): Mensal
+    \item \textbf{Low-risk}: Trimestral
+\end{itemize}
+
+\subsubsection{Documentação e Auditoria}
+
+DeepBridge gera relatórios audit-ready, mas \textbf{documentação adicional} é recomendada:
+
+\textbf{Model Card}~\cite{mitchell2019model}:
+\begin{itemize}
+    \item \textbf{Intended Use}: Para que o modelo deve/não deve ser usado
+    \item \textbf{Fairness Metrics}: Reportar TODAS as 15 métricas (não cherry-pick)
+    \item \textbf{Limitations}: Grupos sub-representados, métricas não satisfeitas
+    \item \textbf{Ethical Considerations}: Trade-offs, decisões de threshold
+\end{itemize}
+
+\textbf{Versioning}:
+\begin{itemize}
+    \item Versionar relatórios de fairness junto com modelos
+    \item Rastrear como métricas mudam entre versões
+    \item Documentar decisões de threshold e justificativas
+\end{itemize}
+
+\subsubsection{Stakeholder Engagement}
+
+Fairness é decisão sociotécnica, não apenas técnica:
+
+\textbf{Recomendações}:
+\begin{enumerate}
+    \item \textbf{Compliance officers}: Revisar relatórios EEOC/ECOA antes de deployment
+    \item \textbf{Legal team}: Validar interpretação de regulamentações
+    \item \textbf{Impacted communities}: Quando possível, envolver representantes na definição de métricas
+    \item \textbf{Ethics board}: Avaliar trade-offs em casos ambíguos
+\end{enumerate}
+
+\textbf{Visualizações DeepBridge para Stakeholders}:
+\begin{itemize}
+    \item \textbf{Pareto frontier}: Mostra trade-offs fairness-acurácia visualmente
+    \item \textbf{Radar chart}: Compara 11 métricas em formato acessível
+    \item \textbf{Compliance summary}: Dashboard mostrando status EEOC/ECOA
+\end{itemize}
+
+\subsection{When Not to Use DeepBridge Fairness}
+
+DeepBridge é poderoso, mas não apropriado para todos casos:
+
+\textbf{Não usar quando}:
+\begin{enumerate}
+    \item \textbf{Causal fairness é crítica}: Use ferramentas de causal inference (DoWhy, CausalML)
+    \item \textbf{Individual fairness requerida}: DeepBridge foca em group fairness
+    \item \textbf{Dados extremamente sensíveis}: Se não pode exportar dados, use ferramentas on-premise/air-gapped
+    \item \textbf{Modelo não é ML}: Regras heurísticas não se beneficiam de métricas estatísticas
+\end{enumerate}
+
+\textbf{Usar com cautela quando}:
+\begin{enumerate}
+    \item \textbf{Grupos muito pequenos} (n < 30): Intervalos de confiança serão amplos
+    \item \textbf{Alta interseccionalidade}: Análise manual de subgrupos pode ser necessária
+    \item \textbf{Labels enviesados}: Investigar bias upstream antes de confiar em métricas
+\end{enumerate}

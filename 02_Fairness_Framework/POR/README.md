@@ -1,236 +1,120 @@
-# Article 1: Are Historical Redlining Effects Immutable?
+# Paper 2: DeepBridge Fairness Framework
 
-## Evidence of Temporal Variation in Mortgage Credit Access 2018-2024
+**Título**: DeepBridge Fairness: Da Pesquisa à Regulação -- Um Framework Pronto para Produção para Teste de Fairness Algorítmica
 
-**Authors:** Gustavo Coelho Haase, Osvaldo Candido da Silva Filho
-**Status:** In Preparation
-**Target Journal:** Journal of Urban Economics (Tier 1)
-**Started:** January 2025
+**Conferência Alvo**: FAccT 2026
 
----
+**Status**: Draft completo (17 páginas)
 
-## Directory Structure
+## Estrutura do Paper
 
-```
-01-Effects_Immutable/
-├── main.tex                    # Main LaTeX file
-├── sections/                   # Article sections
-│   ├── 01-introduction.tex
-│   ├── 02-literature.tex
-│   ├── 03-data.tex
-│   ├── 04-methodology.tex
-│   ├── 05-results.tex
-│   ├── 06-robustness.tex
-│   ├── 07-discussion.tex
-│   └── appendix.tex
-├── figures/                    # Figures (PDF format)
-│   ├── fig01_map_redlining.pdf
-│   └── fig02_event_study.pdf
-├── tables/                     # Tables (LaTeX format)
-│   ├── tab01_descriptive_stats.tex
-│   ├── tab02_main_result.tex
-│   ├── tab03_temporal_evolution.tex
-│   ├── tab04_placebo_test.tex
-│   └── tab05_threshold_sensitivity.tex
-├── bibliography/               # References
-│   └── references.bib
-├── supplementary/              # Online appendix
-│   └── online_appendix.tex
-├── build/                      # Compiled outputs
-│   └── main.pdf
-├── elsarticle.cls              # Elsevier article class
-├── elsarticle-harv.bst         # Harvard bibliography style
-├── Makefile                    # Compilation automation
-├── README.md                   # This file
-└── PLANEJAMENTO_ARTIGO.md      # Detailed planning document
-```
+### Arquivos Principais
+- `main.tex` - Documento principal (ACM sigconf format)
+- `main.pdf` - PDF compilado final (17 páginas)
+- `acmart.cls` - Classe LaTeX ACM
 
----
+### Seções (em português)
+1. `sections/01_introduction.tex` - Introdução e contribuições
+2. `sections/02_related_work.tex` - Background e trabalhos relacionados
+3. `sections/03_architecture.tex` - Arquitetura do DeepBridge Fairness
+4. `sections/04_case_studies.tex` - 4 estudos de caso (COMPAS, German Credit, Adult, Healthcare)
+5. `sections/05_evaluation.tex` - Avaliação (usabilidade, performance, métricas)
+6. `sections/06_discussion.tex` - Discussão (limitações, ética, boas práticas)
+7. `sections/07_conclusion.tex` - Conclusão e trabalhos futuros
 
-## Compilation Instructions
+### Bibliografia
+- `bibliography/references.bib` - Todas as referências (740 linhas, ~60 citações)
 
-### Option 1: Using Makefile (Recommended)
+### Figuras
+- `figures/architecture_simple.tex` - Diagrama de arquitetura (TikZ)
+- `figures/architecture_simple.pdf` - Diagrama compilado
+
+## Compilação
+
+### Método 1: Script Automatizado (Recomendado)
+
 ```bash
-make          # Compile the article
-make clean    # Remove auxiliary files
-make view     # Open the compiled PDF
+./compile.sh
 ```
 
-### Option 2: Manual Compilation
+Este script:
+- Limpa arquivos temporários
+- Compila 3 vezes (necessário para referências)
+- Processa bibliografia com BibTeX
+- Verifica se PDF tem 17 páginas e 24 referências
+- Limpa arquivos temporários ao final
+
+### Método 2: Manual
+
 ```bash
+# Limpar arquivos antigos
+rm -f main.aux main.bbl main.blg main.log main.out
+
+# Primeira compilação (gera .aux)
 pdflatex main.tex
+
+# Processar bibliografia (gera .bbl)
 bibtex main
+
+# Segunda compilação (inclui bibliografia)
 pdflatex main.tex
+
+# Terceira compilação (resolve referências cruzadas)
 pdflatex main.tex
+
+# Verificar resultado
+pdfinfo main.pdf | grep Pages
+# Deve mostrar: Pages: 17
 ```
 
-### Option 3: Overleaf
-Upload all files to Overleaf and compile online.
+**⚠️ Importante**: É necessário compilar **3 vezes** após executar `bibtex` para que as referências bibliográficas apareçam corretamente no PDF.
 
----
+### Verificar Referências Bibliográficas
 
-## Key Files
+```bash
+# Ver número de páginas (deve ser 17)
+pdfinfo main.pdf | grep Pages
 
-### Planning and Organization
-- **PLANEJAMENTO_ARTIGO.md**: Comprehensive planning document with:
-  - Article structure (6,000-8,000 words target)
-  - Section-by-section guidelines
-  - Figure/table specifications
-  - Timeline and checklist
-  - Journal submission strategy
+# Contar referências (deve ser 24)
+pdftotext main.pdf - | grep "^\[" | wc -l
 
-### Main Document
-- **main.tex**: Master file that compiles all sections
-- **sections/*.tex**: Individual section files (see structure above)
+# Ver primeiras referências
+pdftotext -f 16 -l 17 main.pdf - | grep "^\[" | head -5
+```
 
-### Data Visualization
-- **figures/**:
-  - `fig01_map_redlining.pdf`: Spatial distribution of redlined areas
-  - `fig02_event_study.pdf`: Temporal evolution (2018-2024)
+**Saída esperada**:
+```
+[1] Julia Angwin, Jeff Larson, Surya Mattu, and Lauren Kirchner. Machine bias.
+[2] Solon Barocas, Moritz Hardt, and Arvind Narayanan. Fairness and machine...
+[3] Rachel KE Bellamy, Kuntal Dey, Michael Hind, et al. AI Fairness 360...
+...
+```
 
-### Tables
-- **tables/**:
-  - `tab01`: Descriptive statistics
-  - `tab02`: Main result (balanced panel)
-  - `tab03`: Year-by-year decomposition
-  - `tab04`: Placebo test (parallel trends)
-  - `tab05`: Threshold sensitivity
+As referências aparecem nas **páginas 16-17** do PDF, listadas numericamente de [1] a [24].
 
-### References
-- **bibliography/references.bib**: BibTeX database
-  - Source: Dissertation bibliography (filtered for cited references only)
-  - Style: Harvard (author-year)
+## Contribuições Principais
 
----
+1. **15 métricas integradas** (4 pré + 11 pós-treinamento)
+2. **Auto-detecção de atributos sensíveis** (F1: 0.90)
+3. **Verificação EEOC/ECOA automática** (regra 80%, Question 21)
+4. **Otimização de threshold** (Pareto frontier)
+5. **Visualizações audit-ready** (6 tipos)
 
-## Current Status
+## Resultados
 
-### Completed
-- [x] Directory structure created
-- [x] Template files copied
-- [x] Planning document written
-- [x] Section files created with TODOs
-- [x] Main.tex configured
+- **SUS Score**: 85.2 (top 15%, "excelente")
+- **Speedup**: 2.9x vs. ferramentas manuais
+- **Cobertura**: 87% mais métricas que AI Fairness 360
+- **Taxa de sucesso**: 95% (estudo com 20 participantes)
 
-### In Progress
-- [ ] Writing sections (see PLANEJAMENTO_ARTIGO.md for detailed timeline)
+## Correções Aplicadas
 
-### To Do
-- [ ] Adapt content from dissertation
-- [ ] Create/copy figures
-- [ ] Create/copy tables
-- [ ] Extract and clean bibliography
-- [ ] Write cover letter
-- [ ] Prepare supplementary materials
+✅ **Problema do hyperref/hyperxmp resolvido**:
+- Corrigido bug da classe `acmart.cls` (v1.79) que carregava pacotes na ordem errada
+- `hyperref` agora é carregado antes de `hyperxmp` (linha 494 do acmart.cls)
 
----
+✅ **Bibliografia completa**:
+- Adicionado `mitchell2019model` - Model Cards for Model Reporting (FAT* 2019)
+- Corrigido `buolamwini2018gender` - mudado de @article para @inproceedings
 
-## Word Count Target
-
-**Total:** 6,000-8,000 words (excluding references and tables)
-
-**Breakdown:**
-- Introduction: ~1,000 words
-- Literature: ~1,500 words
-- Data + Methodology: ~1,500 words
-- Results: ~2,500 words
-- Robustness: ~800 words
-- Discussion: ~700 words
-
----
-
-## Submission Checklist
-
-Before submitting to journal:
-
-### Content
-- [ ] Abstract (≤200 words)
-- [ ] Keywords (5-7)
-- [ ] JEL codes
-- [ ] All sections complete
-- [ ] References formatted correctly
-- [ ] Figures high resolution (300 dpi)
-- [ ] Tables properly formatted
-- [ ] Online appendix prepared
-
-### Formatting
-- [ ] Follow journal guidelines
-- [ ] Line numbering (if required)
-- [ ] Double spacing (if required)
-- [ ] Author affiliations correct
-- [ ] Acknowledgments section
-- [ ] Disclosure statements
-
-### Supporting Materials
-- [ ] Cover letter
-- [ ] Highlights (3-5 bullet points)
-- [ ] Graphical abstract (optional)
-- [ ] Replication code (GitHub/OSF)
-- [ ] Data availability statement
-
----
-
-## Target Journals (in order)
-
-1. **Journal of Urban Economics** (Tier 1)
-   - Impact Factor: ~3.5
-   - Scope: Urban economics, housing, discrimination
-   - Typical turnaround: 3-4 months
-
-2. **Real Estate Economics** (Tier 1)
-   - Impact Factor: ~3.2
-   - Scope: Real estate, housing finance
-   - Typical turnaround: 3-6 months
-
-3. **Regional Science and Urban Economics** (Tier 2)
-   - Impact Factor: ~2.8
-   - Scope: Regional economics, urban issues
-   - Typical turnaround: 2-3 months
-
-4. **Journal of Housing Economics** (Tier 2)
-   - Impact Factor: ~2.5
-   - Scope: Housing markets, policy
-   - Typical turnaround: 3-4 months
-
----
-
-## Contacts
-
-**Corresponding Author:**
-Gustavo Coelho Haase
-Email: [your-email]
-
-**Co-author:**
-Prof. Dr. Osvaldo Candido da Silva Filho
-Email: [advisor-email]
-
----
-
-## Notes
-
-### From Dissertation
-This article adapts content from:
-- Chapter 1 (Introduction) → Section 1
-- Chapter 2 (Literature, Sections 2.1-2.4) → Section 2
-- Chapter 3 (Methodology, Sections 3.1-3.3) → Sections 3-4
-- Chapter 4 (Results, Sections 4.1-4.3) → Section 5-6
-- Chapter 5 (Limitations) → Section 7
-- Chapter 6 (Conclusion) → Section 7
-
-### Key Changes from Dissertation
-- **Condensed**: 76 pages → 25-30 pages
-- **Focused**: Temporal variation (main finding only)
-- **Simplified**: Removed excessive technical details
-- **Repositioned**: Descriptive contribution, not causal
-
-### Complementary Articles
-This is Article 1 of 5-6 planned publications:
-- **Article 2:** Selective convergence (heterogeneity)
-- **Article 3:** Methodological challenges (panel data)
-- **Article 4:** Policy implications
-- **Article 5:** Heckman correction (short note)
-- **Article 6:** Literature review (optional)
-
----
-
-**Last Updated:** January 2025
+✅ **Compilação sem erros**: PDF gera perfeitamente com 17 páginas

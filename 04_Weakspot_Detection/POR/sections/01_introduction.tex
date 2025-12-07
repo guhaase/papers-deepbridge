@@ -1,0 +1,107 @@
+\section{Introdução}
+\label{sec:introduction}
+
+\subsection{Motivação}
+
+Modelos de Machine Learning em produção frequentemente exibem um paradoxo perigoso: \textbf{performance global satisfatória mascarando falhas locais críticas}. Um modelo de crédito pode ter AUC=0.89 globalmente, mas apenas 0.62 para aplicantes com idade < 25. Um sistema de diagnóstico médico pode ter accuracy=92\%, mas 68\% de falsos negativos para mulheres hispânicas. Estas \textit{regiões de degradação de performance}—denominadas \textbf{weakspots}—são invisíveis em métricas agregadas, mas causam impactos desproporcionais em produção.
+
+\textbf{Problema}:
+\begin{itemize}
+    \item \textbf{Métricas agregadas escondem falhas}: Accuracy global alta não garante performance uniforme
+    \item \textbf{Análise manual é intratável}: Explorar todas combinações de features $\times$ ranges é inviável
+    \item \textbf{Subgrupos críticos são desconhecidos}: Não sabemos a priori onde procurar
+    \item \textbf{Ferramentas atuais são limitadas}: Focam em fairness (grupos protegidos) ou robustness (perturbações aleatórias)
+\end{itemize}
+
+\textbf{Exemplo Motivador}:
+
+\begin{table}[h]
+\centering
+\caption{Weakspot oculto em modelo de crédito}
+\label{tab:motivating_example}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Segmento} & \textbf{Accuracy} & \textbf{Amostras} \\
+\midrule
+\textbf{Global} & \textbf{89\%} & 10,000 \\
+\midrule
+Idade $\geq$ 25 & 91\% & 8,500 \\
+Idade < 25 & \textbf{62\%} & 1,500 \\
+\quad $\wedge$ Income < \$30K & \textbf{48\%} & 420 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Performance global (89\%) esconde degradação severa em jovens de baixa renda (48\%). Análise manual exploraria $10^6+$ combinações de ranges.
+
+\subsection{Contribuições}
+
+Apresentamos um \textbf{framework sistemático para detecção automática de weakspots} baseado em slice-based analysis multi-estratégia:
+
+\textbf{1. Framework de Detecção Multi-Estratégia} (Seção~\ref{sec:framework}):
+\begin{itemize}
+    \item \textbf{Quantile-based slicing}: Divide features em quantis (P10, P25, P50, P75, P90)
+    \item \textbf{Uniform slicing}: Bins uniformes para distribuições
+    \item \textbf{Tree-based slicing}: Decision tree identifica splits ótimos
+    \item \textbf{Feature interaction analysis}: Detecta weakspots multi-dimensionais
+\end{itemize}
+
+\textbf{2. Classificação Automática de Severidade} (Seção~\ref{sec:strategies}):
+\begin{itemize}
+    \item Thresholds baseados em degradação relativa
+    \item Requisitos de tamanho mínimo de amostra
+    \item Testes de significância estatística
+    \item Níveis: Low / Medium / High / Critical
+\end{itemize}
+
+\textbf{3. Avaliação Abrangente} (Seção~\ref{sec:evaluation}):
+\begin{itemize}
+    \item \textbf{Datasets sintéticos}: Weakspots controlados para validar detecção
+    \item \textbf{8 datasets reais}: UCI, OpenML (credit, health, fraud)
+    \item \textbf{Comparação com baseline}: Análise manual, grid search
+    \item \textbf{3 estudos de caso}: Credit scoring, diagnóstico médico, detecção de fraude
+\end{itemize}
+
+\textbf{4. Integração com Pipeline de Validação}:
+\begin{itemize}
+    \item Detecção automática durante robustness testing
+    \item Reports integrados com outras dimensões
+    \item API standalone para uso independente
+\end{itemize}
+
+\subsection{Resultados Principais}
+
+\textbf{Eficácia}:
+\begin{itemize}
+    \item \textbf{94\% precisão} na detecção de weakspots (datasets sintéticos)
+    \item \textbf{127 weakspots detectados} em 8 datasets reais
+    \item \textbf{2.8x mais cobertura} vs. análise manual
+\end{itemize}
+
+\textbf{Eficiência}:
+\begin{itemize}
+    \item \textbf{80x speedup}: 3 min vs. 4 horas (análise manual)
+    \item \textbf{Escala}: Datasets de 1K a 500K amostras
+\end{itemize}
+
+\textbf{Insights de Produção}:
+\begin{itemize}
+    \item Credit scoring: Degradação de 35pp em jovens de baixa renda
+    \item Healthcare: FNR 28pp maior para hispânicos (readmissão)
+    \item Fraud detection: Accuracy cai 22pp em transações > \$10K
+\end{itemize}
+
+\subsection{Estrutura do Paper}
+
+Seção~\ref{sec:background}: Related work (slice-based analysis, error analysis)
+
+Seção~\ref{sec:framework}: Framework de detecção (arquitetura, componentes)
+
+Seção~\ref{sec:strategies}: Estratégias de slicing e classificação de severidade
+
+Seção~\ref{sec:evaluation}: Avaliação experimental e estudos de caso
+
+Seção~\ref{sec:discussion}: Discussão, limitações, direções futuras
+
+Seção~\ref{sec:conclusion}: Conclusão

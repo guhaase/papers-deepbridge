@@ -1,0 +1,179 @@
+\section{Fundamentos e Trabalhos Relacionados}
+\label{sec:background}
+
+\subsection{Métodos de Geracão de Dados Sintéticos}
+
+\subsubsection{Métodos Estatísticos}
+
+\textbf{Sampling Simples}:
+\begin{itemize}
+    \item Bootstrap, permutacão
+    \item Limitacão: Não gera novos valores, apenas re-arranja existentes
+\end{itemize}
+
+\textbf{Parametric Models}:
+\begin{itemize}
+    \item Assume distribuicao (Normal, Poisson, etc.)
+    \item Fit parâmetros, sample da distribuicao
+    \item Limitacão: Assumption forte, não captura dependências complexas
+\end{itemize}
+
+\textbf{Copula-Based}:
+\begin{itemize}
+    \item Separa distribuições marginais de estrutura de dependência
+    \item Gaussian Copula: Assume dependência Gaussiana multivariada
+    \item Vantagem: Flexível, computacionalmente eficiente
+\end{itemize}
+
+\subsubsection{Deep Learning Methods}
+
+\textbf{GANs (Generative Adversarial Networks)}:
+\begin{itemize}
+    \item CTGAN~\cite{xu2019modeling}: Conditional GAN para dados tabulares
+    \item TVAE~\cite{xu2019modeling}: Variational Autoencoder
+    \item Vantagem: Captura padrões complexos
+    \item Limitacão: Computacionalmente intensivo, instabilidade de treino
+\end{itemize}
+
+\textbf{VAEs (Variational Autoencoders)}:
+\begin{itemize}
+    \item Encoder-decoder com latent space Gaussiano
+    \item Mais estável que GANs, mas pode gerar amostras "borradas"
+\end{itemize}
+
+\subsubsection{Hybrid Methods}
+
+\textbf{SDV (Synthetic Data Vault)}~\cite{patki2016synthetic}:
+\begin{itemize}
+    \item Framework que combina métodos (Gaussian Copula, CTGAN, TVAE)
+    \item Suporta relational data (multi-table)
+    \item Limitacão: Não escalável (carrega tudo em RAM)
+\end{itemize}
+
+\subsection{Gaussian Copulas: Fundamentos}
+
+\textbf{Definicao}:
+
+Uma cópula é uma funcao que descreve a estrutura de dependência entre variáveis aleatórias, independentemente de suas distribuições marginais.
+
+\textbf{Teorema de Sklar}: Para variáveis aleatórias $X_1, \ldots, X_d$ com distribuicao conjunta $F$ e marginais $F_1, \ldots, F_d$, existe uma cópula $C$ tal que:
+
+\[
+F(x_1, \ldots, x_d) = C(F_1(x_1), \ldots, F_d(x_d))
+\]
+
+\textbf{Gaussian Copula}:
+
+Assume que após transformar cada variável para uniforme (via CDF), a distribuicao conjunta é Normal multivariada:
+
+\begin{enumerate}
+    \item Transforme $X_j \rightarrow U_j = F_j(X_j)$ (uniforme [0,1])
+    \item Transforme $U_j \rightarrow Z_j = \Phi^{-1}(U_j)$ (Normal padrão)
+    \item $(Z_1, \ldots, Z_d) \sim \mathcal{N}(0, \Sigma)$ (Normal multivariada)
+\end{enumerate}
+
+\textbf{Vantagens para Dados Tabulares}:
+\begin{itemize}
+    \item \textbf{Flexível}: Não assume distribuicao marginal específica
+    \item \textbf{Interpretável}: Correlacão Gaussiana é fácil de entender
+    \item \textbf{Eficiente}: Fit e sampling são $O(d^2 n)$ vs. $O(epochs \cdot batch \cdot d)$ para GANs
+    \item \textbf{Estável}: Sem problemas de convergência
+\end{itemize}
+
+\textbf{Limitacões}:
+\begin{itemize}
+    \item Assume dependência linear (correlacão)
+    \item Não captura tail dependence assimétrica
+    \item Menos expressivo que deep learning para padrões complexos
+\end{itemize}
+
+\subsection{Distributed Computing com Dask}
+
+\textbf{Dask}~\cite{rocklin2015dask}: Framework Python para computacão paralela.
+
+\textbf{Abstracões}:
+\begin{itemize}
+    \item \textbf{Dask DataFrame}: API tipo Pandas para dados out-of-core
+    \item \textbf{Dask Array}: NumPy distribuído
+    \item \textbf{Task graphs}: DAG de operacões lazy
+\end{itemize}
+
+\textbf{Scheduling}:
+\begin{itemize}
+    \item \textbf{Local}: Multi-threading/processing em uma máquina
+    \item \textbf{Distributed}: Cluster de workers
+\end{itemize}
+
+\textbf{Por Que Dask para Synthetic Data}:
+\begin{itemize}
+    \item \textbf{Out-of-core}: Processa dados maiores que RAM
+    \item \textbf{Lazy evaluation}: Otimiza plano de execucao
+    \item \textbf{API familiar}: Compatível com Pandas/NumPy
+    \item \textbf{Escalável}: Single-machine a cluster
+\end{itemize}
+
+\subsection{Trabalhos Relacionados}
+
+\textbf{Scalable Synthesis}:
+
+\textbf{PrivBayes}~\cite{zhang2017privbayes}: Bayesian network com differential privacy.
+\begin{itemize}
+    \item Escalável via greedy structure learning
+    \item Limitacão: Qualidade degrada com DP
+\end{itemize}
+
+\textbf{DP-CTGAN}~\cite{xu2019modeling}: CTGAN com DP-SGD.
+\begin{itemize}
+    \item Privacy garantido
+    \item Limitacão: Ainda requer GPU, não escala para 100GB+
+\end{itemize}
+
+\textbf{DataSynthesizer}~\cite{ping2017datasynthesizer}: Bayesian networks para síntese.
+\begin{itemize}
+    \item Escalável via independence assumptions
+    \item Limitacão: Perde correlacões complexas
+\end{itemize}
+
+\textbf{Distributed GANs}:
+\begin{itemize}
+    \item Federated GANs para treino distribuído
+    \item Limitacão: Foco em privacy federado, não escalabilidade de dados
+\end{itemize}
+
+\textbf{Diferencial}:
+
+Nosso trabalho é o \textbf{primeiro} a combinar:
+\begin{enumerate}
+    \item Gaussian Copula (eficiente, interpretável)
+    \item Dask (out-of-core, paralelo)
+    \item Streaming algorithms (memory-efficient)
+    \item Garantias de qualidade e privacidade em escala
+\end{enumerate}
+
+\subsection{Comparacão de Abordagens}
+
+\begin{table}[h]
+\centering
+\caption{Comparacão de métodos de geracao sintética}
+\label{tab:method_comparison}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Método} & \textbf{Escala} & \textbf{Qualidade} & \textbf{Velocidade} & \textbf{Privacidade} \\
+\midrule
+SDV Copula & 10GB & Alta & Rápida & Básica \\
+CTGAN & 5GB & Muito Alta & Lenta & DP option \\
+TVAE & 8GB & Alta & Média & DP option \\
+PrivBayes & 50GB & Média & Rápida & DP forte \\
+\midrule
+\textbf{DeepBridge} & \textbf{100GB+} & \textbf{Alta} & \textbf{Rápida} & \textbf{DP option} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Trade-offs}:
+\begin{itemize}
+    \item \textbf{Copula vs. GAN}: Qualidade similar para tabulares, 10x+ speedup
+    \item \textbf{Distributed Copula vs. SDV}: Mesma qualidade, 50x+ escala
+    \item \textbf{Privacy vs. Utility}: DP degrada utility (trade-off ajustável)
+\end{itemize}

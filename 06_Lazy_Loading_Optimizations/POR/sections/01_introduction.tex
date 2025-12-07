@@ -1,0 +1,114 @@
+\section{Introducao}
+\label{sec:introduction}
+
+\subsection{Motivacao}
+
+Frameworks de validacao de modelos ML executam multiplas dimensoes de testes (robustness, fairness, uncertainty, etc.), cada uma requerendo acesso ao modelo e dados. Abordagem ingenua: carregar tudo antecipadamente.
+
+\textbf{Problema}: Overhead desnecessario quando usuarios executam apenas subconjuntos de testes.
+
+\textbf{Exemplo Real}:
+\begin{itemize}
+    \item Usuario executa apenas robustness + fairness (2 de 5 dimensoes)
+    \item Framework eager carrega: Modelo, 3 modelos alternativos, dataset completo, predicoes cached
+    \item Tempo: 90s setup, Memoria: 45GB
+    \item Apenas 40\% dos recursos sao efetivamente usados
+\end{itemize}
+
+\textbf{Impacto}:
+\begin{itemize}
+    \item \textbf{CI/CD}: Validacoes rapidas (subset) sao bloqueadas por setup lento
+    \item \textbf{Desenvolvimento iterativo}: Engineers querem testar 1-2 dimensoes, nao todas
+    \item \textbf{Recursos limitados}: Ambientes com <32GB RAM nao conseguem executar
+\end{itemize}
+
+\subsection{Nossa Abordagem}
+
+Lazy loading: Adiar carregamento ate necessidade efetiva + caching inteligente.
+
+\textbf{Principios}:
+\begin{enumerate}
+    \item \textbf{Load on Demand}: Recursos carregados apenas quando testes os requerem
+    \item \textbf{Intelligent Caching}: Predicoes compartilhadas entre testes sao cached
+    \item \textbf{Automatic Cleanup}: Weak references permitem garbage collection
+    \item \textbf{Parallel Loading}: Recursos independentes carregam em paralelo
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption=API com lazy loading transparente]
+from deepbridge import Experiment, DBDataset
+
+dataset = DBDataset(data=df, target='label', model=model)
+
+# Setup instantaneo (lazy)
+exp = Experiment(
+    dataset=dataset,
+    tests=['robustness', 'fairness'],  # Subset
+    config='medium'
+)
+
+# Recursos carregados apenas quando run_tests() executado
+# E apenas para testes especificados
+results = exp.run_tests()  # 40s vs 90s (eager)
+\end{lstlisting}
+
+\subsection{Contribuicoes}
+
+\textbf{1. Design de Lazy Loading} (Secao~\ref{sec:design}):
+\begin{itemize}
+    \item Identificacao de dependencias entre testes e recursos
+    \item Lazy properties via Python descriptors
+    \item Cache LRU para predicoes
+    \item Weak references para cleanup automatico
+\end{itemize}
+
+\textbf{2. Implementacao Eficiente} (Secao~\ref{sec:implementation}):
+\begin{itemize}
+    \item Zero overhead quando todos testes executados
+    \item Thread-safe caching
+    \item Parallel loading de recursos independentes
+    \item Fallback graceful para eager loading se necessario
+\end{itemize}
+
+\textbf{3. Avaliacao Empirica} (Secao~\ref{sec:evaluation}):
+\begin{itemize}
+    \item Benchmarks: 50 experimentos reais
+    \item Ablation study: Contribuicao de cada componente
+    \item Analise de trade-offs: Lazy vs Eager
+\end{itemize}
+
+\subsection{Resultados Principais}
+
+\textbf{Economia de Tempo}:
+\begin{itemize}
+    \item \textbf{30-50s saving} em setup (subset de 2-3 testes)
+    \item \textbf{45-60\% reducao} em tempo de inicializacao
+    \item \textbf{Zero overhead} quando todos testes executados
+\end{itemize}
+
+\textbf{Economia de Memoria}:
+\begin{itemize}
+    \item \textbf{-42\% uso de memoria} (lazy vs eager)
+    \item \textbf{18GB vs 32GB} para experimento tipico
+    \item Permite execucao em ambientes com recursos limitados
+\end{itemize}
+
+\textbf{Impacto em Workflows}:
+\begin{itemize}
+    \item CI/CD: Validacao rapida (2-3 testes) em <5 min total
+    \item Dev iterativo: Engineers testam dimensoes individuais sem overhead
+    \item Produtividade: +40\% reducao em tempo de iteracao
+\end{itemize}
+
+\subsection{Estrutura do Paper}
+
+Secao~\ref{sec:background}: Background em lazy evaluation e caching
+
+Secao~\ref{sec:design}: Design de lazy loading system
+
+Secao~\ref{sec:implementation}: Detalhes de implementacao
+
+Secao~\ref{sec:evaluation}: Benchmarks e ablation study
+
+Secao~\ref{sec:discussion}: Trade-offs, boas praticas
+
+Secao~\ref{sec:conclusion}: Conclusao e trabalhos futuros
