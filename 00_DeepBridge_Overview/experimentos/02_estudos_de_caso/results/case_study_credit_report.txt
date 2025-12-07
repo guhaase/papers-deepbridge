@@ -1,0 +1,23 @@
+================================================================================
+DeepBridge Validation Report: Credit Scoring
+================================================================================
+
+Timestamp: 2025-12-06T16:21:03.478099
+
+Dataset Statistics:
+  Samples: 300
+  Features: 7
+
+Validation Time:
+  Total: 0.35 minutes
+
+Violations Detected: 2
+
+Fairness Results:
+  disparate_impact_gender: 0.7295750639230488
+  eeoc_compliance_gender: FAIL
+
+Uncertainty Results:
+  ece: 0.1648731814821561
+
+================================================================================

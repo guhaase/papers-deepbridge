@@ -1,0 +1,24 @@
+\begin{table}[h!]
+\centering
+\caption{Performance Comparison: DeepBridge vs Fragmented Workflow}
+\label{tab:performance_comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Component} & \textbf{DeepBridge} & \textbf{Fragmented} & \textbf{Speedup} & \textbf{$p$-value} \\
+ & \textbf{(min)} & \textbf{(min)} & \textbf{(×)} & \\
+\midrule
+Robustness & 0.25 $\pm$ 0.01 & 27.39 $\pm$ 2.23 & 110.7$\times$ & $< 0.001$*** \\
+Uncertainty & 0.11 $\pm$ 0.00 & 21.31 $\pm$ 1.75 & 200.9$\times$ & $< 0.001$*** \\
+Resilience & 0.07 $\pm$ 0.00 & 16.42 $\pm$ 1.75 & 232.2$\times$ & $< 0.001$*** \\
+Report Generation & 0.00 $\pm$ 0.00 & 64.85 $\pm$ 2.68 & 49892.5$\times$ & $< 0.001$*** \\
+\midrule
+Total & 0.43 $\pm$ 0.02 & 162.44 $\pm$ 4.70 & 381.7$\times$ & $< 0.001$*** \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\small
+\item Note: All differences are statistically significant.
+\item * $p < 0.05$, ** $p < 0.01$, *** $p < 0.001$ (paired t-test).
+\item Times reported as mean $\pm$ standard deviation over 10 runs.
+\end{tablenotes}
+\end{table}

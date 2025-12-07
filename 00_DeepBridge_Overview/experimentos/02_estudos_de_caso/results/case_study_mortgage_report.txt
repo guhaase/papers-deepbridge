@@ -1,0 +1,21 @@
+================================================================================
+DeepBridge Validation Report: Mortgage
+================================================================================
+
+Timestamp: 2025-12-06T16:30:22.483708
+
+Dataset Statistics:
+  Samples: 135000
+  Features: N/A
+
+Validation Time:
+  Total: 0.80 minutes
+
+Violations Detected: 1
+
+Fairness Results:
+  ecoa_compliance: FAIL
+
+Uncertainty Results:
+
+================================================================================

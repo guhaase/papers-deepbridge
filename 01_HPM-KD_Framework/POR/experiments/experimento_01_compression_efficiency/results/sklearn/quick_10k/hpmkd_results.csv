@@ -1,0 +1,4 @@
+method,test_accuracy,train_accuracy,training_time,retention,teacher_accuracy,best_temperature,best_alpha,n_configs_tried
+Direct Training,65.2,69.45,0.44395971298217773,,,,,
+Traditional KD,67.35,,0.7746942043304443,71.57279489904357,94.1,,,
+HPM-KD,89.5,,8.548834085464478,95.11158342189161,94.1,,,0.0

@@ -1,0 +1,4 @@
+method,test_accuracy,train_accuracy,time,retention,teacher_accuracy
+Direct Training,65.2,69.45,0.4308464527130127,,
+Traditional KD,67.35,,0.6864304542541504,71.57279489904357,94.1
+HPM-KD,68.30000000000001,,2.314955234527588,72.58235919234858,94.1

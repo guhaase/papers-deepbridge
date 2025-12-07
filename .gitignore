@@ -111,13 +111,6 @@ build/
 # Experiment Results & Outputs
 # ============================================================================
 
-# Results directories
-results/
-*/experiments/results/
-*/POR/experiments/results/
-*/ENG/experiments/results/
-outputs/
-output/
 
 # Figures generated (uncomment if you want to ignore)
 # figures/

@@ -1,0 +1,22 @@
+================================================================================
+DeepBridge Validation Report: Hiring
+================================================================================
+
+Timestamp: 2025-12-06T16:21:16.843537
+
+Dataset Statistics:
+  Samples: 2165
+  Features: N/A
+
+Validation Time:
+  Total: 0.20 minutes
+
+Violations Detected: 1
+
+Fairness Results:
+  disparate_impact_race: 0.09850337988900286
+  eeoc_compliance_race: FAIL
+
+Uncertainty Results:
+
+================================================================================

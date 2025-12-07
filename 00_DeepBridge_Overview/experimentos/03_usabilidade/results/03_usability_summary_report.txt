@@ -1,0 +1,71 @@
+================================================================================
+DEEPBRIDGE USABILITY STUDY - SUMMARY REPORT
+================================================================================
+
+PARTICIPANTS
+--------------------------------------------------------------------------------
+Total: 20
+
+SYSTEM USABILITY SCALE (SUS)
+--------------------------------------------------------------------------------
+Score: 52.75 ± 8.58
+Interpretation: OK (D)
+Range: [40.0, 70.0]
+
+Statistical Test (vs. global average of 68):
+  t-statistic: -7.949
+  p-value: 1.0000
+  Cohen's d: -1.777 (large)
+  Result: SIGNIFICANT
+
+NASA TASK LOAD INDEX (TLX)
+--------------------------------------------------------------------------------
+Overall: 33.42 ± 3.77
+Interpretation: Low Workload
+
+Dimensions:
+  Mental Demand       : 36.7 ± 12.0
+  Physical Demand     : 10.7 ± 5.7
+  Temporal Demand     : 23.6 ± 8.4
+  Performance         : 76.5 ± 9.4
+  Effort              : 32.8 ± 9.1
+  Frustration         : 20.2 ± 6.7
+
+SUCCESS RATE
+--------------------------------------------------------------------------------
+Overall: 95.0% (19/20)
+95% CI: [76.4%, 99.1%]
+
+By Task:
+  task1_fairness      : 100.0% (20/20)
+  task2_report        : 100.0% (20/20)
+  task3_cicd          : 95.0% (19/20)
+
+COMPLETION TIMES
+--------------------------------------------------------------------------------
+Total Time: 15.42 ± 2.59 min
+Median: 15.54 min
+Range: [9.83, 20.60] min
+
+By Task:
+  task1_fairness      : 6.76 ± 1.18 min
+  task2_report        : 2.73 ± 0.84 min
+  task3_cicd          : 5.89 ± 1.33 min
+
+ERRORS
+--------------------------------------------------------------------------------
+Mean Errors: 1.45 ± 1.39
+Median: 1
+Range: [0, 5]
+
+================================================================================
+SUMMARY
+================================================================================
+✗ SUS Score target not met
+✗ NASA TLX target not met
+✓ Success Rate target met (≥ 90%)
+✗ Completion Time target not met
+✓ Error Rate target met (≤ 2)
+
+Targets Met: 2/5 (40%)
+================================================================================

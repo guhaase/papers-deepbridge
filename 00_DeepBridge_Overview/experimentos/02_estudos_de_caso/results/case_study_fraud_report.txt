@@ -1,0 +1,22 @@
+================================================================================
+DeepBridge Validation Report: Fraud Detection
+================================================================================
+
+Timestamp: 2025-12-06T16:34:25.150906
+
+Dataset Statistics:
+  Samples: 85443
+  Features: N/A
+
+Validation Time:
+  Total: 0.56 minutes
+
+Violations Detected: 0
+
+Fairness Results:
+
+Uncertainty Results:
+  ece: 0.002467720009960343
+  well_calibrated: True
+
+================================================================================

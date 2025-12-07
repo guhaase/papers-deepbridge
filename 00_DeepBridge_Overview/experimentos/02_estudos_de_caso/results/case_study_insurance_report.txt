@@ -1,0 +1,21 @@
+================================================================================
+DeepBridge Validation Report: Insurance
+================================================================================
+
+Timestamp: 2025-12-06T16:32:46.974649
+
+Dataset Statistics:
+  Samples: 178564
+  Features: N/A
+
+Validation Time:
+  Total: 0.68 minutes
+
+Violations Detected: 0
+
+Fairness Results:
+  all_tests_pass: True
+
+Uncertainty Results:
+
+================================================================================
