@@ -1,0 +1,71 @@
+\section{Introducao}
+
+A adocao crescente de sistemas de inteligencia artificial em dominios regulados---contratacao, credito, seguros, habitacao---cria tensao entre inovacao tecnologica e conformidade regulatoria. Organizacoes devem garantir que modelos de ML cumpram legislacoes complexas como EEOC Title VII (emprego), ECOA Regulation B (credito), e Fair Housing Act, mas processos de verificacao de compliance sao tipicamente manuais, caros, e realizados apenas pre-deployment.
+
+\subsection{Motivacao}
+
+Regulacoes anti-discriminacao estabelecem requisitos tecnicos especificos:
+
+\begin{itemize}
+    \item \textbf{EEOC Title VII}: Proibe discriminacao em emprego baseada em raca, cor, religiao, sexo, ou origem nacional. \textit{Four-fifths rule} estabelece que taxa de selecao de grupo protegido deve ser $\geq$ 80\% da taxa do grupo majoritario
+    \item \textbf{ECOA Regulation B}: Proibe discriminacao em transacoes de credito baseada em raca, genero, estado civil, idade, etc. Requer notificacao de decisoes adversas com razoes especificas
+    \item \textbf{Fair Housing Act}: Regula emprestimos imobiliarios e locacao, proibindo praticas discriminatorias
+\end{itemize}
+
+Violacoes podem resultar em multas substanciais, litigos, e danos reputacionais.
+
+\subsection{Problema}
+
+Verificacao manual de conformidade apresenta desafios criticos:
+
+\begin{enumerate}
+    \item \textbf{Complexidade tecnico-juridica}: Traduzir requisitos legais em testes quantitativos requer expertise em direito E estatistica
+    \item \textbf{Escopo de analise}: Auditorias completas requerem 20-80 horas de trabalho especializado por modelo
+    \item \textbf{Timing subotimo}: Compliance verificado apenas pre-deployment---problemas descobertos tardiamente custam caro para remediar
+    \item \textbf{Inconsistencia}: Interpretacoes variam entre auditores, criando resultados nao-reproduziveis
+    \item \textbf{Falta de monitoramento continuo}: Drift de dados pode violar compliance apos deployment sem deteccao
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos framework de automacao de testes de conformidade regulatoria que:
+
+\begin{itemize}
+    \item \textbf{Codifica requisitos legais}: Transforma EEOC/ECOA requirements em testes executaveis e verificaveis
+    \item \textbf{Executa verificacao automatizada}: Calcula adverse impact ratios, statistical significance, prohibited basis usage
+    \item \textbf{Gera compliance scoring}: Pontuacao agregada (0-100\%) baseada em multiplos criterios
+    \item \textbf{Identifica violacoes}: Reporta falhas especificas com severidade e recomendacoes de mitigacao
+    \item \textbf{Integra com CI/CD}: Permite continuous compliance monitoring durante desenvolvimento
+    \item \textbf{Produz relatorios auditaveis}: Gera documentacao formatada para reguladores e stakeholders
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Framework automatizado}: Primeira solucao integrada para compliance testing de EEOC/ECOA em sistemas ML
+    \item \textbf{Codificacao de requisitos legais}: Traduzimos 20+ requisitos regulatorios em testes executaveis com fundamentacao juridica
+    \item \textbf{Compliance scoring methodology}: Metrica agregada balanceando severidade de violacoes e coverage de requisitos
+    \item \textbf{Validacao empirica}: Case studies em hiring AI e lending AI demonstrando deteccao de violacoes reais
+    \item \textbf{Ferramenta pratica}: Implementacao open-source integrada ao DeepBridge para uso em producao
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Organizacoes}
+- Reducao de 80-90\% em custo de auditoria de compliance
+- Deteccao precoce de violacoes (desenvolvimento vs. producao)
+- Evidencia quantitativa para demonstracao de due diligence
+
+\subsubsection{Para Reguladores}
+- Padronizacao de metricas de compliance
+- Transparencia aumentada via relatorios automatizados
+- Capacidade de auditar sistemas em escala
+
+\subsubsection{Para Sociedade}
+- Reducao de discriminacao algoritmica via enforcement automatizado
+- Maior accountability de sistemas de IA
+- Alinhamento entre inovacao tecnologica e protecao de direitos civis
+
+\subsection{Organizacao}
+
+Secao 2 apresenta panorama regulatorio (EEOC, ECOA) e trabalhos relacionados. Secao 3 descreve design do framework de compliance testing. Secao 4 detalha implementacao de testes especificos. Secao 5 apresenta case studies em hiring e lending. Secao 6 discute limitacoes e consideracoes eticas. Secao 7 conclui com direcoes futuras.

@@ -1,0 +1,68 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    showstringspaces=false
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Do Desenvolvimento ao Deploy: Guia Prático de Validação de Modelos de Machine Learning em Produção}
+
+\author{Autor Tutorial}
+\affiliation{%
+  \institution{Instituição}
+  \city{Cidade}
+  \country{País}
+}
+\email{autor@email.com}
+
+% Abstract
+\begin{abstract}
+Modelos de machine learning em produção enfrentam desafios críticos: degradação de performance por perturbações nos dados (adversarial robustness), viés algorítmico em decisões que afetam indivíduos (fairness), e falta de quantificação de incerteza para decisões de alto risco. Este tutorial apresenta framework prático e hands-on para validação sistemática de modelos ML usando a biblioteca DeepBridge. Estruturado em 5 módulos de 30 minutos cada, cobrimos: \textbf{(1) Introdução}: desafios de validação em produção, casos de uso reais de falhas (hiring AI, credit scoring, medical diagnosis), e overview do DeepBridge; \textbf{(2) Robustness Testing}: testes de perturbação (Gaussian noise, quantile-based), weakspot detection para identificar regiões de falha localizada, e análise de overfitting por feature slices; \textbf{(3) Fairness Testing}: 15 métricas de fairness (statistical parity, equalized odds, disparate impact EEOC), auto-detecção de atributos sensíveis, age grouping regulatório (ADEA/ECOA), e threshold analysis; \textbf{(4) Uncertainty Quantification}: CRQR (Conformalized Residual Quantile Regression) para intervalos de confiança calibrados, análise de confiabilidade por features, e coverage guarantees; \textbf{(5) Integration \& Reporting}: orquestração via classe Experiment, geração de relatórios HTML interativos, e integração CI/CD. Tutorial inclui \textbf{3 notebooks executáveis} (breast cancer classification, credit scoring, housing price prediction) demonstrando redução de 73\% em false negatives via weakspot mitigation, detecção de 4 violações de fairness EEOC em modelo de hiring, e intervalos de predição com 92\% de cobertura real vs. 90\% esperada. Participantes saem com conhecimento prático para implementar pipelines de validação production-ready.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Machine Learning Validation, Production ML, Robustness Testing, Fairness, Uncertainty Quantification, MLOps}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_robustness}
+\input{sections/03_fairness}
+\input{sections/04_uncertainty}
+\input{sections/05_integration}
+\input{sections/06_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

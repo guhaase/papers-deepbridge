@@ -1,0 +1,299 @@
+\section{Design do Framework}
+
+\subsection{Visao Geral da Arquitetura}
+
+Framework consiste em quatro componentes principais integrados:
+
+\begin{enumerate}
+    \item \textbf{KDDT (Knowledge Distillation for Decision Trees)}: Destilacao de modelos complexos para decision trees interpretaveis
+    \item \textbf{GAM-Based Distillation}: Destilacao para Generalized Additive Models mantendo estrutura aditiva
+    \item \textbf{Compliance-Aware Validation Suite}: Suite multi-dimensional (fairness, robustness, uncertainty) para modelos interpretaveis
+    \item \textbf{Performance-Interpretability Trade-off Analyzer}: Quantificacao de Pareto frontiers e analise de custo de compliance
+\end{enumerate}
+
+\subsection{KDDT: Knowledge Distillation for Decision Trees}
+
+\subsubsection{Motivacao}
+
+Decision trees oferecem maxima interpretabilidade:
+\begin{itemize}
+    \item Regras if-then human-readable
+    \item Cada decisao e auditavel
+    \item Compliance com ECOA ``razoes especificas''
+    \item Path de predicao pode ser apresentado a consumidor
+\end{itemize}
+
+Desafio: Decision trees treinados diretamente em dados tem performance limitada. Solucao: Destilar conhecimento de ensembles complexos.
+
+\subsubsection{Formulacao Matematica}
+
+\textbf{Teacher Model} $M_T$: Ensemble complexo (XGBoost, Random Forest, multi-teacher)
+
+\textbf{Student Model} $M_S$: Decision Tree (CART)
+
+\textbf{Soft Labels com Temperatura}:
+\begin{equation}
+q_i^T = \frac{\exp(z_i / T)}{\sum_{j} \exp(z_j / T)}
+\end{equation}
+
+onde $T$ = temperatura (tipicamente 2.0-5.0 para maior suavizacao).
+
+\textbf{Loss Function}:
+\begin{equation}
+\mathcal{L}_{KDDT} = \alpha \cdot KL(q^T_{teacher} || q^T_{student}) + (1-\alpha) \cdot \mathcal{L}_{CE}(y_{true}, y_{student})
+\end{equation}
+
+onde:
+\begin{itemize}
+    \item $KL()$ = Kullback-Leibler divergence
+    \item $\mathcal{L}_{CE}$ = Cross-entropy loss com hard labels
+    \item $\alpha$ = balanceamento (tipicamente 0.5-0.7)
+\end{itemize}
+
+\textbf{Hyperparameter Optimization}:
+
+Framework usa Optuna para otimizar:
+\begin{itemize}
+    \item \textbf{Temperature $T$}: [1.0, 10.0]
+    \item \textbf{Alpha $\alpha$}: [0.1, 0.9]
+    \item \textbf{max\_depth}: [3, 15]
+    \item \textbf{min\_samples\_split}: [2, 100]
+    \item \textbf{min\_samples\_leaf}: [1, 50]
+\end{itemize}
+
+Otimizacao via 50 trials com cross-validation 5-fold.
+
+\subsubsection{Garantias Matematicas}
+
+\textbf{Fidelidade ao Teacher}:
+\begin{equation}
+\text{Fidelity} = 1 - KL(P_{teacher} || P_{student})
+\end{equation}
+
+Meta: Fidelity $> 0.90$ (student captura 90\%+ da distribuicao do teacher).
+
+\textbf{Trade-off Accuracy-Complexity}:
+
+Pareto frontier entre:
+\begin{itemize}
+    \item \textbf{Y-axis}: Accuracy (ou AUC, F1)
+    \item \textbf{X-axis}: Tree depth (proxy de interpretabilidade)
+\end{itemize}
+
+\subsection{GAM-Based Distillation}
+
+\subsubsection{Formulacao}
+
+Generalized Additive Models:
+\begin{equation}
+g(\mathbb{E}[Y]) = \beta_0 + \sum_{i=1}^{p} f_i(x_i)
+\end{equation}
+
+Para classificacao binaria, $g() = \text{logit}$:
+\begin{equation}
+\log\left(\frac{P(Y=1)}{1-P(Y=1)}\right) = \beta_0 + \sum_{i=1}^{p} f_i(x_i)
+\end{equation}
+
+onde $f_i()$ sao B-splines:
+\begin{equation}
+f_i(x_i) = \sum_{k=1}^{K} \gamma_{ik} B_k(x_i)
+\end{equation}
+
+\subsubsection{Extensao para Knowledge Distillation}
+
+Tradicional: GAMs treinados com hard labels $y$.
+
+Nossa extensao: GAMs aceitam soft labels $q^T_{teacher}$:
+
+\textbf{Modified Loss}:
+\begin{equation}
+\mathcal{L}_{GAM} = \alpha \cdot KL(q^T_{teacher} || q^T_{GAM}) + (1-\alpha) \cdot \mathcal{L}_{CE}(y, \hat{y}_{GAM}) + \lambda \cdot \sum_{i} \int [f_i''(x)]^2 dx
+\end{equation}
+
+onde ultimo termo = regularizacao de suavidade (penaliza funcoes muito irregulares).
+
+\subsubsection{Hyperparametros Otimizaveis}
+
+\begin{itemize}
+    \item \textbf{n\_splines}: Numero de B-splines por feature [5, 25]
+    \item \textbf{spline\_order}: Ordem dos splines [3, 5]
+    \item \textbf{lam}: Parametro de suavizacao [0.001, 10.0]
+    \item \textbf{Temperature $T$}: [1.0, 10.0]
+    \item \textbf{Alpha $\alpha$}: [0.1, 0.9]
+\end{itemize}
+
+\subsubsection{Vantagens para Compliance}
+
+\begin{enumerate}
+    \item \textbf{Decomposicao de Efeitos}: $f_i(x_i)$ pode ser plotado para mostrar efeito individual de cada feature
+    \item \textbf{Partial Dependence}: Efeito de feature $x_i$ e independente de outras (estrutura aditiva)
+    \item \textbf{ECOA Reason Codes}: Para decisao adversa, razoes = features com maior $|f_i(x_i)|$
+    \item \textbf{Monotonicity Constraints}: Posso enforcar $f_i'(x) \geq 0$ para features onde relacao positiva e esperada (e.g., income $\rightarrow$ approval)
+\end{enumerate}
+
+\subsection{Compliance-Aware Validation Suite}
+
+Suite integrada que valida tres dimensoes criticas:
+
+\subsubsection{Fairness Validation (15 Metricas)}
+
+\textbf{Pre-Training (4 metricas)}:
+\begin{enumerate}
+    \item \textbf{Class Balance}: $\frac{n_{protected}}{n_{total}} \in [0.02, 0.98]$ (EEOC Flip-Flop Rule)
+    \item \textbf{Concept Balance}: $|P(Y=1|protected) - P(Y=1|reference)| < 0.1$
+    \item \textbf{KL Divergence}: $KL(P_X|protected || P_X|reference) < 0.3$
+    \item \textbf{JS Divergence}: $JS(P_X|protected, P_X|reference) < 0.2$
+\end{enumerate}
+
+\textbf{Post-Training (11 metricas)}:
+
+Metricas criticas para compliance:
+
+\begin{table}[h]
+\centering
+\caption{Metricas de Fairness EEOC-Compliant}
+\begin{tabular}{lll}
+\toprule
+\textbf{Metrica} & \textbf{Threshold} & \textbf{Regulacao} \\
+\midrule
+Disparate Impact & $\geq 0.80$ & EEOC 80\% Rule \\
+Statistical Parity & $\leq 0.10$ & EEOC Title VII \\
+Equal Opportunity & $\leq 0.10$ & ECOA \\
+Equalized Odds & $\leq 0.10$ & Fair Lending \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretacao Automatica}:
+\begin{itemize}
+    \item \textbf{Green}: Passes threshold comfortably
+    \item \textbf{Yellow}: Marginal---requires monitoring
+    \item \textbf{Red}: CRITICAL---high legal risk
+\end{itemize}
+
+\subsubsection{Robustness Validation}
+
+Testa estabilidade de predicoes sob perturbacoes:
+
+\textbf{Gaussian Perturbation}:
+\begin{equation}
+X_{perturbed} = X + \epsilon \cdot \sigma_X \cdot \mathcal{N}(0, 1)
+\end{equation}
+
+onde $\epsilon \in \{0.1, 0.2, 0.4, 0.6, 0.8, 1.0\}$ e $\sigma_X$ = desvio padrao por feature.
+
+\textbf{Quantile Perturbation}:
+\begin{equation}
+X_{perturbed} = X + \epsilon \cdot (Q_{75} - Q_{25})
+\end{equation}
+
+\textbf{Metricas de Robustez}:
+\begin{itemize}
+    \item \textbf{Performance Degradation}: $\Delta AUC = AUC_{original} - AUC_{perturbed}$
+    \item \textbf{Prediction Stability}: $\text{Flip Rate} = \frac{\sum \mathbb{1}[\hat{y} \neq \hat{y}_{perturbed}]}{n}$
+    \item \textbf{Confidence Intervals}: 95\% CI via bootstrap (n=100 iterations)
+\end{itemize}
+
+\textbf{Weakspot Detection}:
+
+Identifica features mais sensiveis:
+\begin{equation}
+\text{Sensitivity}_i = \frac{\Delta AUC_i}{\epsilon_i}
+\end{equation}
+
+Features com alta sensitivity requerem monitoring especial em producao.
+
+\subsubsection{Uncertainty Quantification}
+
+Usa \textbf{Conformal Prediction}:
+
+\textbf{Processo}:
+\begin{enumerate}
+    \item Treina modelo em $D_{train}$
+    \item Calcula non-conformity scores em $D_{cal}$: $s_i = |y_i - \hat{y}_i|$
+    \item Para nova predicao $\hat{y}_{new}$, intervalo de predicao:
+    \begin{equation}
+    [\hat{y}_{new} - q_{(1-\alpha)}, \hat{y}_{new} + q_{(1-\alpha)}]
+    \end{equation}
+    onde $q_{(1-\alpha)}$ = $(1-\alpha)$-quantil de $\{s_i\}$
+\end{enumerate}
+
+\textbf{Metricas}:
+\begin{itemize}
+    \item \textbf{Coverage}: $\frac{\sum \mathbb{1}[y_i \in \text{interval}_i]}{n} \approx 1-\alpha$
+    \item \textbf{Interval Width}: Largura media dos intervalos (menor = melhor)
+    \item \textbf{Conditional Coverage}: Coverage por grupo demografico (fairness em incerteza)
+\end{itemize}
+
+\textbf{Compliance Benefit}: Intervalos de predicao permitem quantificar confianca---decisoes com alta incerteza podem requerer revisao humana (GDPR human oversight).
+
+\subsection{Performance-Interpretability Trade-off Analyzer}
+
+\subsubsection{Metricas de Performance}
+
+\begin{itemize}
+    \item \textbf{Classification}: Accuracy, AUC-ROC, AUC-PR, F1, Precision, Recall
+    \item \textbf{Regression}: MSE, MAE, R$^2$
+    \item \textbf{Ranking}: KS Statistic, Gini Coefficient
+    \item \textbf{Fidelity}: KL Divergence (student vs. teacher), R$^2$ Score
+\end{itemize}
+
+\subsubsection{Metricas de Interpretabilidade}
+
+\begin{itemize}
+    \item \textbf{Decision Trees}: Tree depth, number of leaves, average path length
+    \item \textbf{GAMs}: Number of splines, degree of non-linearity (via curvature)
+    \item \textbf{Linear Models}: Number of features, sparsity
+\end{itemize}
+
+\subsubsection{Pareto Frontier Analysis}
+
+Para dataset $D$, testamos multiplas configuracoes:
+
+\begin{table}[h]
+\centering
+\caption{Configuracoes Testadas}
+\begin{tabular}{lll}
+\toprule
+\textbf{Model Type} & \textbf{Interpretability} & \textbf{Expected Performance} \\
+\midrule
+Logistic Regression & Maxima & Baseline \\
+Decision Tree (d=3) & Alta & Baseline + 2-5\% \\
+Decision Tree (d=7) & Media & Baseline + 5-10\% \\
+GAM (5 splines) & Alta & Baseline + 8-12\% \\
+GAM (15 splines) & Media & Baseline + 12-15\% \\
+XGBoost & Baixa & Maxima \\
+\midrule
+KDDT (d=5) & Alta & XGBoost - 2-4\% \\
+GAM Distilled & Media-Alta & XGBoost - 3-7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Regulatory Risk Scoring}
+
+Calculamos \textbf{Compliance Score} agregado:
+
+\begin{equation}
+\text{ComplianceScore} = 0.4 \cdot S_{fairness} + 0.3 \cdot S_{robustness} + 0.2 \cdot S_{uncertainty} + 0.1 \cdot S_{interpretability}
+\end{equation}
+
+onde cada $S_i \in [0, 100]$.
+
+\textbf{Decision Matrix}:
+
+\begin{table}[h]
+\centering
+\caption{Performance-Compliance Trade-off}
+\begin{tabular}{lll}
+\toprule
+\textbf{Model} & \textbf{AUC} & \textbf{Compliance Score} \\
+\midrule
+XGBoost Ensemble & 0.87 & 73\% \\
+KDDT (T=3.0, d=7) & 0.84 & 91\% \\
+GAM Distilled & 0.82 & 88\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Escolha depende de risk appetite: Alta regulacao (banking) $\rightarrow$ priorizar compliance. Baixa regulacao (marketing) $\rightarrow$ priorizar AUC.

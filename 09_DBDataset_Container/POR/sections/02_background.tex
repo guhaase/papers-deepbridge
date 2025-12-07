@@ -1,0 +1,172 @@
+\section{Background e Trabalhos Relacionados}
+
+\subsection{Gestao de Dados em Machine Learning}
+
+\subsubsection{Abordagens Tradicionais}
+
+Ecosistema ML utiliza multiplas bibliotecas com convencoes distintas para representacao de dados:
+
+\begin{itemize}
+    \item \textbf{scikit-learn}: Arrays NumPy como padrao, objetos \texttt{Bunch} para datasets carregados, sem suporte nativo a feature names
+    \item \textbf{pandas}: DataFrames com nomes de colunas, mas conversao manual necessaria para maioria de algoritmos
+    \item \textbf{XGBoost/LightGBM}: DMatrix/Dataset proprietarios para eficiencia, requerendo transformacoes especificas
+    \item \textbf{TensorFlow/PyTorch}: Tensors com manipulacao de batch e device management, distantes de workflows tabulares
+\end{itemize}
+
+Esta heterogeneidade cria \textit{impedance mismatch} entre ferramentas, requerendo codigo de glue manual.
+
+\subsubsection{Frameworks de Validacao Existentes}
+
+\paragraph{scikit-learn} Fornece \texttt{train\_test\_split} e \texttt{cross\_validate}, mas:
+\begin{itemize}
+    \item Retorna tuplas simples $(X_{train}, X_{test}, y_{train}, y_{test})$ sem encapsulamento
+    \item Nao armazena metadados (random\_state, stratification)
+    \item Nao infere tipos de features
+    \item Nao integra modelos ou predicoes
+\end{itemize}
+
+\paragraph{Evidently AI} Plataforma de monitoring focada em drift detection:
+\begin{itemize}
+    \item Requer preparacao manual de datasets de referencia vs. producao
+    \item Features categoricas especificadas manualmente via listas
+    \item Nao fornece container unificado---apenas ferramentas de analise
+\end{itemize}
+
+\paragraph{Great Expectations} Framework de validacao de qualidade de dados:
+\begin{itemize}
+    \item Foco em validacao de schema e constraints (nao em validacao de modelos)
+    \item Nao integra modelos ML ou predicoes
+    \item Requer definicao explicita de expectations para cada feature
+\end{itemize}
+
+\paragraph{MLflow} Plataforma de tracking de experimentos:
+\begin{itemize}
+    \item Armazena artifacts (modelos, metricas) mas nao encapsula dados
+    \item Nao fornece abstracoes para gestao de features ou validacao
+    \item Foco em tracking e deployment, nao em preparacao de dados
+\end{itemize}
+
+\subsection{Inferencia de Tipos de Features}
+
+\subsubsection{Abordagens Existentes}
+
+\paragraph{pandas \texttt{dtype}} Inferencia basica baseada em tipo de dado:
+\begin{itemize}
+    \item Detecta \texttt{int64}, \texttt{float64}, \texttt{object}, \texttt{datetime64}
+    \item Nao distingue categoricas de textos livres
+    \item Nao considera cardinalidade (e.g., ZIP codes como inteiros)
+\end{itemize}
+
+\paragraph{AutoML Tools (H2O, TPOT, Auto-sklearn)}:
+\begin{itemize}
+    \item Inferem tipos durante feature engineering automatico
+    \item Regras proprietarias nao-documentadas
+    \item Foco em otimizacao de performance, nao em transparencia
+\end{itemize}
+
+\paragraph{Feature-engine}:
+\begin{itemize}
+    \item Biblioteca de feature engineering com deteccao de categoricas
+    \item Baseada em \texttt{dtype == 'object'} (identico a pandas)
+    \item Nao considera cardinalidade ou heuristicas avancadas
+\end{itemize}
+
+\subsubsection{Limitacoes de Abordagens Atuais}
+
+Nenhuma solucao existente combina:
+\begin{enumerate}
+    \item Inferencia baseada em tipo E cardinalidade
+    \item Override manual para casos ambiguos
+    \item Integracao com container de dados unificado
+    \item Validacao automatica de corretude da inferencia
+\end{enumerate}
+
+\subsection{Design Patterns para Data Containers}
+
+\subsubsection{Value Objects (Domain-Driven Design)}
+
+\textit{Value Objects} encapsulam dados relacionados com imutabilidade:
+\begin{itemize}
+    \item Garantem invariantes (e.g., splits consistentes com random\_state)
+    \item Fornecem interface coesa para operacoes relacionadas
+    \item Facilitam testing via objetos auto-contidos
+\end{itemize}
+
+DBDataset aplica este pattern ao encapsular todos elementos de validacao.
+
+\subsubsection{Facade Pattern}
+
+\textit{Facade} fornece interface simplificada para subsistema complexo:
+\begin{itemize}
+    \item Oculta complexidade de conversoes entre formatos
+    \item Abstrai detalhes de gestao de features
+    \item Expoe API uniforme para validation suites
+\end{itemize}
+
+DBDataset atua como facade para fragmentacao de dados em validacao ML.
+
+\subsubsection{Factory Pattern}
+
+\textit{Factory} centraliza logica de criacao de objetos:
+\begin{itemize}
+    \item Suporta multiplos modos de construcao (unified data, pre-split, with model)
+    \item Valida inputs antes de criar objetos
+    \item Permite extensibilidade via novos metodos de factory
+\end{itemize}
+
+DBDataset inclui \texttt{DBDatasetFactory} para construcao flexivel.
+
+\subsection{Trabalhos Relacionados}
+
+\subsubsection{Ferramentas de Validacao de Modelos}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Ferramenta} & \textbf{Container} & \textbf{Inferencia} & \textbf{Integracao} \\
+\midrule
+scikit-learn & \xmark & \xmark & Parcial \\
+Evidently AI & \xmark & Manual & \xmark \\
+Great Expectations & \xmark & Schema-based & \xmark \\
+TensorFlow Data Validation & \xmark & Schema + Stats & \xmark \\
+Fairlearn & \xmark & Manual & \xmark \\
+AIF360 & \xmark & Manual & \xmark \\
+\textbf{DBDataset} & \cmark & Auto + Manual & \cmark \\
+\bottomrule
+\end{tabular}
+\caption{Comparacao de ferramentas de validacao ML}
+\label{tab:comparison}
+\end{table}
+
+\subsubsection{TensorFlow Data Validation (TFDV)}
+
+TFDV fornece validacao de schemas e anomalias:
+\begin{itemize}
+    \item \textbf{Pros}: Inferencia estatistica de schemas, deteccao de drift
+    \item \textbf{Cons}: Especifico para TensorFlow ecosystem, nao-unificado com modelos, foco em dados brutos (nao validacao de modelos)
+\end{itemize}
+
+\subsubsection{Datasets Libraries (Hugging Face, TorchVision)}
+
+Bibliotecas de datasets para deep learning:
+\begin{itemize}
+    \item \textbf{Hugging Face Datasets}: Container para NLP datasets com caching e streaming
+    \item \textbf{TorchVision datasets}: Encapsulamento de image datasets
+    \item \textbf{Gap com DBDataset}: Foco em dados brutos para treino, nao em validacao de modelos tabulares com features inferidas
+\end{itemize}
+
+\subsection{Gap Identificado}
+
+Nenhuma ferramenta existente fornece:
+
+\begin{enumerate}
+    \item \textbf{Container unificado} encapsulando dados, splits, features, modelos, e predicoes
+    \item \textbf{Inferencia automatica} de tipos de features com override manual
+    \item \textbf{Integracao nativa} com multiplas validation suites (robustness, uncertainty, fairness)
+    \item \textbf{Flexibilidade de workflows} (unified data, pre-split, with model, with probabilities)
+    \item \textbf{Reproducibilidade garantida} via encapsulamento de random states e configuracoes
+\end{enumerate}
+
+DBDataset preenche este gap ao combinar container pattern, feature inference, e integracao com validation suites em solucao coesa.

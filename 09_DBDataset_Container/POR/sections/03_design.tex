@@ -1,0 +1,336 @@
+\section{Design do DBDataset}
+
+\subsection{Visao Geral da Arquitetura}
+
+DBDataset implementa container pattern que encapsula cinco elementos fundamentais para validacao de modelos ML:
+
+\begin{enumerate}
+    \item \textbf{Dados}: Train/test splits com suporte a auto-splitting ou pre-separacao
+    \item \textbf{Features}: Nomes e tipos (categoricas/numericas) com inferencia automatica
+    \item \textbf{Target}: Variavel objetivo com validacao de existencia
+    \item \textbf{Modelo}: Modelo treinado (opcional) para geracao de predicoes
+    \item \textbf{Predicoes}: Outputs do modelo (classes e probabilidades) para validacao
+\end{enumerate}
+
+\subsection{Principios de Design}
+
+\subsubsection{Separation of Concerns}
+
+DBDataset delega responsabilidades a componentes especializados:
+
+\begin{itemize}
+    \item \texttt{DataValidator}: Validacao de inputs (tipos, shapes, missing values)
+    \item \texttt{FeatureManager}: Inferencia e gestao de tipos de features
+    \item \texttt{ModelHandler}: Carregamento de modelos e geracao de predicoes
+    \item \texttt{DatasetFormatter}: Representacao string e debugging
+\end{itemize}
+
+Esta separacao facilita testing, manutencao, e extensibilidade.
+
+\subsubsection{Flexibility via Multiple Initialization Modes}
+
+DBDataset suporta 4 modos de inicializacao para cobrir workflows distintos:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Modo} & \textbf{Use Case} & \textbf{Parametros} \\
+\midrule
+Unified Data & Dados unicos, auto-split & \texttt{data}, \texttt{test\_size} \\
+Pre-split & Train/test separados & \texttt{train\_data}, \texttt{test\_data} \\
+With Model & Validacao de modelo & \texttt{model} \\
+With Probabilities & Pre-computed outputs & \texttt{train\_predictions}, \texttt{prob\_cols} \\
+\bottomrule
+\end{tabular}
+\caption{Modos de inicializacao do DBDataset}
+\label{tab:init_modes}
+\end{table}
+
+\subsubsection{Immutability and Data Safety}
+
+DBDataset cria copias de dados (via \texttt{.copy()}) para prevenir modificacoes acidentais:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Dados originais nao sao afetados por modificacoes em dataset
+dataset = DBDataset(data=df, target_column='y')
+dataset.train_data['new_col'] = 1  # Copia modificada
+assert 'new_col' not in df.columns  # Original intacto
+\end{lstlisting}
+
+\subsubsection{Type Agnostic Design}
+
+DBDataset aceita multiplos formatos de input:
+\begin{itemize}
+    \item \textbf{pandas DataFrame}: Uso direto com feature names
+    \item \textbf{NumPy arrays}: Conversao automatica para DataFrame com nomes genericos
+    \item \textbf{scikit-learn Bunch}: Extracao de \texttt{data}, \texttt{target}, \texttt{feature\_names}
+\end{itemize}
+
+\subsection{Componentes Principais}
+
+\subsubsection{DataValidator}
+
+Responsavel por validacao de inputs antes de criacao do container:
+
+\begin{algorithm}
+\caption{Validacao de Inputs}
+\begin{algorithmic}[1]
+\State \textbf{Input:} \texttt{data}, \texttt{target\_column}, \texttt{features}
+\State \textbf{Output:} \texttt{validated\_data}, \texttt{validated\_features}
+\If{data is None}
+    \State \textbf{raise} ValueError("Data cannot be None")
+\EndIf
+\If{target\_column not in data.columns}
+    \State \textbf{raise} ValueError("Target column not found")
+\EndIf
+\If{features is None}
+    \State features $\leftarrow$ all columns except target and prob\_cols
+\Else
+    \For{feature in features}
+        \If{feature not in data.columns}
+            \State \textbf{raise} ValueError("Feature not found")
+        \EndIf
+    \EndFor
+\EndIf
+\State \Return validated\_data, validated\_features
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{FeatureManager}
+
+Gerencia inferencia de tipos de features com dois criterios:
+
+\paragraph{Criterio 1: Type-based} Features com dtype \texttt{object} ou \texttt{category} sao categoricas.
+
+\paragraph{Criterio 2: Cardinality-based} Se \texttt{max\_categories} especificado, features com $\leq$ max\_categories valores unicos sao categoricas.
+
+\begin{algorithm}
+\caption{Inferencia de Features Categoricas}
+\begin{algorithmic}[1]
+\State \textbf{Input:} \texttt{data}, \texttt{features}, \texttt{max\_categories}
+\State \textbf{Output:} \texttt{categorical\_features}
+\State categorical\_features $\leftarrow$ []
+\For{feature in features}
+    \State is\_object $\leftarrow$ (data[feature].dtype == 'object')
+    \State n\_unique $\leftarrow$ data[feature].nunique()
+    \If{is\_object OR (max\_categories AND n\_unique $\leq$ max\_categories)}
+        \State categorical\_features.append(feature)
+    \EndIf
+\EndFor
+\State \Return categorical\_features
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Override Manual} Usuarios podem especificar \texttt{categorical\_features} explicitamente para casos ambiguos (e.g., ZIP codes como strings mas semanticamente categoricas).
+
+\subsubsection{ModelHandler}
+
+Gerencia modelos e predicoes:
+
+\begin{itemize}
+    \item \textbf{Carregamento}: Aceita objetos Python ou paths para arquivos \texttt{.pkl}/\texttt{.joblib}
+    \item \textbf{Geracao de predicoes}: Automaticamente chama \texttt{model.predict()} e \texttt{model.predict\_proba()} quando modelo definido
+    \item \textbf{Validacao de compatibilidade}: Verifica que numero de features do modelo corresponde aos dados
+\end{itemize}
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+def set_model(self, model_or_path):
+    if isinstance(model_or_path, (str, Path)):
+        model = joblib.load(model_or_path)  # Carrega de arquivo
+    else:
+        model = model_or_path  # Usa objeto diretamente
+
+    # Valida compatibilidade
+    if hasattr(model, 'n_features_in_'):
+        assert model.n_features_in_ == len(self.features)
+
+    # Gera predicoes
+    self.train_predictions = model.predict(self.train_data)
+    self.test_predictions = model.predict(self.test_data)
+\end{lstlisting}
+
+\subsubsection{DatasetFormatter}
+
+Fornece representacao string rica para debugging:
+
+\begin{lstlisting}[basicstyle=\ttfamily\tiny]
+DBDataset(
+  Features: 10 (5 categorical, 5 numerical)
+  Target: approved (binary)
+  Train: 800 samples, Test: 200 samples
+  Model: LogisticRegression
+  Predictions: Available
+)
+\end{lstlisting}
+
+\subsection{Workflows de Inicializacao}
+
+\subsubsection{Workflow 1: Unified Data com Auto-Split}
+
+Caso de uso: Dados em DataFrame unico, deseja-se split automatico.
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+dataset = DBDataset(
+    data=df,
+    target_column='approved',
+    test_size=0.2,
+    random_state=42,
+    stratify=True  # Preserva distribuicao do target
+)
+\end{lstlisting}
+
+Internamente: \texttt{train\_test\_split} do scikit-learn com parametros encapsulados.
+
+\subsubsection{Workflow 2: Pre-separated Data}
+
+Caso de uso: Train/test ja separados (e.g., temporal split, leaderboard publico/privado).
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+dataset = DBDataset(
+    train_data=train_df,
+    test_data=test_df,
+    target_column='fraud'
+)
+\end{lstlisting}
+
+\subsubsection{Workflow 3: With Trained Model}
+
+Caso de uso: Validacao de modelo ja treinado.
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+dataset = DBDataset(
+    data=df,
+    target_column='target',
+    model=trained_model  # Auto-gera predicoes
+)
+\end{lstlisting}
+
+\subsubsection{Workflow 4: With Pre-computed Probabilities}
+
+Caso de uso: Predicoes ja computadas (e.g., ensemble, modelo pesado).
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+dataset = DBDataset(
+    train_data=train_df,
+    test_data=test_df,
+    target_column='y',
+    train_predictions=train_probs,
+    test_predictions=test_probs,
+    prob_cols=['prob_0', 'prob_1']
+)
+\end{lstlisting}
+
+Beneficio: Evita recomputacao de predicoes em validation suites.
+
+\subsection{Interface de Acesso}
+
+DBDataset expoe propriedades para acesso consistente:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Propriedade} & \textbf{Descricao} \\
+\midrule
+\texttt{X} & Todas features como DataFrame \\
+\texttt{features} & Lista de nomes de features \\
+\texttt{categorical\_features} & Lista de features categoricas \\
+\texttt{numerical\_features} & Lista de features numericas \\
+\texttt{target} & Valores do target (train + test) \\
+\texttt{target\_name} & Nome da coluna target \\
+\texttt{train\_data} & Dados de treino (features + target) \\
+\texttt{test\_data} & Dados de teste (features + target) \\
+\texttt{model} & Modelo treinado \\
+\texttt{train\_predictions} & Predicoes em treino \\
+\texttt{test\_predictions} & Predicoes em teste \\
+\bottomrule
+\end{tabular}
+\caption{Interface de acesso do DBDataset}
+\label{tab:interface}
+\end{table}
+
+Adicionalmente, metodos de acesso flexivel:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Acesso por split
+X_train = dataset.get_feature_data('train')
+y_test = dataset.get_target_data('test')
+
+# Acesso por predicoes
+preds_test = dataset.get_predictions('test')
+\end{lstlisting}
+
+\subsection{Integracao com Validation Suites}
+
+DBDataset e projetado como interface primaria para validation suites:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Todas suites aceitam DBDataset
+robustness = RobustnessSuite(dataset)
+uncertainty = UncertaintySuite(dataset)
+fairness = FairnessSuite(dataset)
+resilience = ResilienceSuite(dataset)
+
+# Execucao uniforme
+results_rob = robustness.config('medium').run()
+results_unc = uncertainty.config('full').run()
+\end{lstlisting}
+
+Cada suite acessa componentes necessarios via interface padronizada:
+\begin{itemize}
+    \item Features via \texttt{dataset.features}, \texttt{dataset.categorical\_features}
+    \item Dados via \texttt{dataset.get\_feature\_data('test')}
+    \item Modelo via \texttt{dataset.model}
+    \item Predicoes via \texttt{dataset.test\_predictions}
+\end{itemize}
+
+\subsection{Extensibilidade via Factory}
+
+\texttt{DBDatasetFactory} fornece metodos de conveniencia:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Criar de modelo
+dataset = DBDatasetFactory.create_from_model(
+    train_data=train_df,
+    test_data=test_df,
+    target_column='y',
+    model=model
+)
+
+# Criar para modelo alternativo
+alt_dataset = DBDatasetFactory.create_for_alternative_model(
+    original_dataset=dataset,
+    model=alternative_model
+)
+\end{lstlisting}
+
+Novos metodos factory podem ser adicionados sem modificar classe principal (Open/Closed Principle).
+
+\subsection{Design Decisions e Trade-offs}
+
+\subsubsection{Imutabilidade vs. Memoria}
+
+\textbf{Decisao}: Copiar dados em \texttt{\_\_init\_\_}
+
+\textbf{Trade-off}: Consome 2x memoria, mas previne bugs sutis de mutacao compartilhada
+
+\textbf{Justificativa}: Validacao de modelos e processo offline---memoria disponivel, corretude critica
+
+\subsubsection{Inferencia Automatica vs. Controle Manual}
+
+\textbf{Decisao}: Inferencia automatica com override manual via \texttt{categorical\_features}
+
+\textbf{Trade-off}: Inferencia pode errar em casos ambiguos (e.g., IDs numericos)
+
+\textbf{Justificativa}: 95\% dos casos cobertos automaticamente, override disponivel para resto
+
+\subsubsection{Acoplamento com scikit-learn}
+
+\textbf{Decisao}: Usar \texttt{train\_test\_split} internamente
+
+\textbf{Trade-off}: Dependencia de scikit-learn, mas ja presente em 99\% de workflows ML
+
+\textbf{Justificativa}: Reutilizacao de codigo battle-tested, evita reimplementacao

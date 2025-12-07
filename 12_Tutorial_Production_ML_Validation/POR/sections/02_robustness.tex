@@ -1,0 +1,123 @@
+\section{Módulo 2: Robustness Testing Hands-on}
+
+\subsection{Motivação}
+
+Modelos com alta acurácia em test sets limpos falham sob perturbações realistas: data entry errors, sensor noise, distribution shift. \textbf{Exemplo}: Credit scoring AUC=0.92 (test) vs. AUC=0.78 (produção) devido a 5\% missing values.
+
+\subsection{Setup: Breast Cancer Dataset}
+
+\begin{lstlisting}
+from deepbridge import DBDataset
+from deepbridge.validation.wrappers import RobustnessSuite
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+
+# Carregar e treinar
+cancer = load_breast_cancer()
+df = pd.DataFrame(cancer.data, columns=cancer.feature_names)
+df['target'] = cancer.target
+
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)  # Test AUC: 0.965
+\end{lstlisting}
+
+\subsection{Parte 1: Basic Robustness Testing}
+
+\begin{lstlisting}
+dataset = DBDataset(data=df, target_column='target', model=clf, test_size=0.2)
+
+robustness = RobustnessSuite(
+    dataset=dataset,
+    metric='AUC',
+    n_iterations=3  # 3 runs para estabilidade
+)
+
+results = robustness.config('quick').run()  # Levels: [0.1, 0.2]
+
+print(f"Base Score: {results['base_score']:.3f}")
+print(f"Robustness Score: {results['robustness_score']:.3f}")
+print(f"Avg Impact: {results['avg_raw_impact']:.3f}")
+
+# Output: Base: 0.965, Robustness: 0.882, Impact: 0.118 (11.8%)
+\end{lstlisting}
+
+\textbf{Interpretação}: Robustness score $>$ 0.85 = robusto, 0.70-0.85 = moderado, $<$ 0.70 = baixo.
+
+\subsection{Parte 2: Feature-Level Analysis}
+
+\begin{lstlisting}
+# Features que mais degradam performance quando perturbadas
+feature_importance = results['feature_importance']
+top5 = pd.Series(feature_importance).nlargest(5)
+print(top5)
+
+# Output:
+# mean concave points  0.92  # Altamente sensivel
+# worst perimeter      0.88
+# worst radius         0.85
+\end{lstlisting}
+
+Features com importance $>$ 0.8 requerem quality checks em produção.
+
+\subsection{Parte 3: Weakspot Detection}
+
+Detecta regiões do feature space com performance degradada:
+
+\begin{lstlisting}
+weakspots = robustness.run_weakspot_detection(
+    slice_features=['mean radius', 'mean texture'],
+    n_slices=10,
+    severity_threshold=0.15  # 15% degradacao = weakspot
+)
+
+print(f"Total weakspots: {weakspots['summary']['total_weakspots']}")
+
+# Investigar top weakspot
+ws = weakspots['weakspots'][0]
+print(f"Feature: {ws['feature']}, Range: {ws['range']}")
+print(f"Severity: {ws['severity']:.2%}, Degraded: {ws['degraded_score']:.3f}")
+
+# Output:
+# Feature: mean radius, Range: (6.98, 11.04)
+# Severity: 23.5%, Degraded: 0.738  # Queda de 0.965!
+\end{lstlisting}
+
+\textbf{Mitigação}: Re-treinar com data augmentation 3x na região do weakspot $\rightarrow$ degradação 23.5\% $\rightarrow$ 8.2\%.
+
+\subsection{Parte 4: Overfitting Analysis}
+
+\begin{lstlisting}
+overfit = robustness.run_overfitting_analysis(
+    X_train, X_test, y_train, y_test,
+    slice_features=['mean texture'],
+    n_slices=10,
+    gap_threshold=0.1  # 10% gap = overfitting
+)
+
+for slice_info in overfit['problem_slices']:
+    print(f"Range: {slice_info['range']}, Train: {slice_info['train_score']:.3f}, "
+          f"Test: {slice_info['test_score']:.3f}, Gap: {slice_info['gap']:.3f}")
+
+# Output: Range: (26.5, 33.8), Train: 0.998, Test: 0.876, Gap: 0.122
+\end{lstlisting}
+
+\subsection{Best Practices}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lp{4.5cm}@{}}
+\toprule
+\textbf{Cenário} & \textbf{Recomendação} \\
+\midrule
+Desenvolvimento & config('quick'), n\_iterations=1 \\
+Pre-deployment & config('full'), weakspot detection \\
+Monitoramento & config('medium'), semanal \\
+\bottomrule
+\end{tabular}
+\caption{Configs recomendadas por cenário}
+\end{table}
+
+\subsection{Resumo}
+
+\textbf{Aprendemos}: Perturbation testing (Gaussian, quantile), weakspot detection (falhas localizadas), overfitting analysis, mitigação (data augmentation). \textbf{Próximo}: Fairness Testing.

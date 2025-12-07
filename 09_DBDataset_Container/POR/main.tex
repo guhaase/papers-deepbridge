@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{DBDataset: Um Container de Dados Unificado para Validacao Seamless de Modelos ML}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Validacao abrangente de modelos de Machine Learning requer gestao coordenada de dados de treino/teste, features, targets, modelos, e predicoes---mas ecosistema ML atual fragmenta esses elementos em objetos distintos (DataFrames, arrays, dicionarios), criando overhead de integracao e erro propenso. Apresentamos \textbf{DBDataset}, um container de dados unificado com \textbf{inferencia automatica de features} que simplifica validacao de modelos ao: (1) encapsular todos os elementos de validacao em interface unica, (2) detectar automaticamente tipos de features (categoricas/numericas) sem configuracao manual, (3) suportar multiplos workflows de inicializacao (dados unificados, pre-separados, com modelo, com probabilidades), (4) integrar-se seamlessly com suites de validacao (robustness, uncertainty, fairness, resilience). Nossa implementacao no DeepBridge suporta \textbf{4 modos de inicializacao}, \textbf{conversao automatica} entre DataFrame/array/scikit-learn Bunch, e \textbf{integracao nativa} com 6 validation suites. Avaliacao empirica em \textbf{3 case studies} (classificacao binaria, regressao, multi-class) demonstra: reducao de \textbf{73\%} em linhas de codigo para setup de validacao (68 LOC $\rightarrow$ 18 LOC), \textbf{100\% de acuracia} em inferencia automatica de features em datasets UCI/Kaggle, e \textbf{compatibilidade completa} com pipelines scikit-learn, XGBoost, LightGBM. DBDataset estabelece novo padrao para reproducibilidade e simplicidade em validacao de modelos ML.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Machine Learning, Model Validation, Data Containers, Feature Inference, MLOps, Reproducibility}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

@@ -1,0 +1,146 @@
+\section{Fundamentacao e Panorama Regulatorio}
+
+\subsection{EEOC: Equal Employment Opportunity Commission}
+
+\subsubsection{Title VII - Civil Rights Act (1964)}
+Proibe discriminacao em emprego baseada em:
+\begin{itemize}
+    \item Raca
+    \item Cor
+    \item Religiao
+    \item Sexo (incluindo orientacao sexual, identidade de genero)
+    \item Origem nacional
+\end{itemize}
+
+\subsubsection{Four-Fifths Rule (80\% Rule)}
+Uniform Guidelines on Employee Selection Procedures (1978) estabelecem teste quantitativo para adverse impact:
+
+\begin{equation}
+\text{Impact Ratio} = \frac{\text{Taxa Selecao Grupo Protegido}}{\text{Taxa Selecao Grupo Referencia}}
+\end{equation}
+
+Se Impact Ratio $<$ 0.80, ha \textbf{prima facie evidence} de discriminacao.
+
+\textbf{Exemplo}: Se 50\% de candidatos brancos sao contratados, pelo menos 40\% (50\% $\times$ 0.80) de candidatos negros devem ser contratados.
+
+\subsubsection{Statistical Significance Testing}
+Alem de four-fifths rule, EEOC recomenda testes estatisticos:
+\begin{itemize}
+    \item \textbf{Fisher's Exact Test}: Para amostras pequenas ($n < 30$)
+    \item \textbf{Chi-squared Test}: Para amostras grandes
+    \item \textbf{Z-test para proporcoes}: Comparacao de taxas de selecao
+\end{itemize}
+
+Threshold: $p < 0.05$ indica disparidade estatisticamente significativa.
+
+\subsection{ECOA: Equal Credit Opportunity Act}
+
+\subsubsection{Regulation B (12 CFR Part 1002)}
+Proibe discriminacao em transacoes de credito baseada em:
+\begin{itemize}
+    \item Raca, cor, religiao, origem nacional
+    \item Sexo, estado civil
+    \item Idade (exceto para determinar capacidade de contratar)
+    \item Recepcao de assistencia publica
+    \item Exercicio de direitos sob Consumer Credit Protection Act
+\end{itemize}
+
+\subsubsection{Prohibited Basis}
+Regulacao B especifica que credores \textbf{nao podem}:
+\begin{enumerate}
+    \item Usar caracteristicas protegidas diretamente em decisoes
+    \item Usar proxies correlacionadas (ex: codigo postal como proxy para raca)
+    \item Aplicar standards diferentes por grupo (disparate treatment)
+\end{enumerate}
+
+\subsubsection{Adverse Action Notices}
+ECOA requer que credores forneçam:
+\begin{itemize}
+    \item Notificacao de decisao adversa dentro de 30 dias
+    \item Razoes especificas para rejeicao (top-k features)
+    \item Informacao sobre direito de solicitar detalhes
+\end{itemize}
+
+Para modelos de ML: features mais importantes devem ser explicaveis e nao-discriminatorias.
+
+\subsection{Fair Housing Act}
+
+Proibe discriminacao em:
+\begin{itemize}
+    \item Venda ou locacao de habitacao
+    \item Financiamento habitacional (mortgages)
+    \item Publicidade de habitacao
+\end{itemize}
+
+Grupos protegidos: raca, cor, religiao, sexo, deficiencia, status familiar, origem nacional.
+
+\subsection{Trabalhos Relacionados}
+
+\subsubsection{Fairness Auditing Tools}
+\begin{itemize}
+    \item \textbf{AIF360} (IBM): Metricas de fairness mas sem mapeamento direto para requisitos legais
+    \item \textbf{Fairlearn} (Microsoft): Foco em metricas tecnicas, nao compliance regulatoria
+    \item \textbf{Aequitas} (U. Chicago): Toolkit para bias auditing, mas sem coverage de EEOC/ECOA especificos
+\end{itemize}
+
+\textbf{Limitacao}: Ferramentas existentes focam em metricas ML (demographic parity, equalized odds) mas nao traduzem diretamente para requisitos legais.
+
+\subsubsection{Legal-Tech para Compliance}
+\begin{itemize}
+    \item \textbf{Contratos inteligentes}: Blockchain para compliance em financas (nao aplicavel a ML)
+    \item \textbf{GRC platforms} (Governance, Risk, Compliance): ServiceNow, SAP---focados em processos, nao algoritmos
+\end{itemize}
+
+\textbf{Gap}: Falta integracao entre ferramentas de fairness ML e requisitos regulatorios especificos.
+
+\subsubsection{Trabalhos Academicos}
+
+\textbf{Huq (2019)}: Analisa tensao entre EEOC regulations e algoritmos opacos. Argumenta necessidade de transparency para compliance.
+
+\textbf{Reisman et al. (2018)}: ``Algorithmic Impact Assessments''---propoe framework qualitativo para auditoria, mas sem automacao.
+
+\textbf{Selbst et al. (2019)}: ``Fairness and Abstraction in Sociotechnical Systems''---critica metricas ML por ignorarem contexto legal.
+
+\textbf{Nossa contribuicao}: Ponte entre requisitos legais e testes automatizados executaveis.
+
+\subsection{Desafios de Traducao Legal $\rightarrow$ Tecnico}
+
+\begin{table}[h]
+\centering
+\caption{Desafios de codificacao de requisitos legais}
+\begin{tabular}{p{3cm}p{4cm}}
+\toprule
+\textbf{Requisito Legal} & \textbf{Desafio Tecnico} \\
+\midrule
+``Discriminacao proibida'' & Definir threshold quantitativo \\
+``Razoes especificas'' (ECOA) & Explicabilidade de ML \\
+``Business necessity'' & Balancear accuracy vs. fairness \\
+``Proxy variables'' & Detectar correlacoes indiretas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Precedentes Legais Relevantes}
+
+\subsubsection{Griggs v. Duke Power Co. (1971)}
+Estabeleceu \textbf{disparate impact doctrine}: Praticas neutras que causam impacto desproporcional sao discriminatorias, mesmo sem intencao.
+
+Aplicacao: Modelos ML podem violar Title VII mesmo sem usar caracteristicas protegidas diretamente.
+
+\subsubsection{Ricci v. DeStefano (2009)}
+Tensao entre evitar disparate impact e evitar disparate treatment.
+
+Aplicacao: Organizacoes nao podem simplesmente descartar resultados de modelos que mostram disparidades---devem demonstrar business necessity.
+
+\subsection{Estado da Pratica Atual}
+
+Organizacoes tipicamente verificam compliance via:
+\begin{enumerate}
+    \item \textbf{Revisao legal manual}: Advogados analisam documentacao de modelos (20-80h por modelo)
+    \item \textbf{Auditorias estatisticas ad-hoc}: Estatisticos calculam impact ratios manualmente
+    \item \textbf{Checklists qualitativos}: Sem validacao quantitativa
+\end{enumerate}
+
+Problemas: Alto custo, baixa reproducibilidade, cobertura incompleta, timing subotimo.
+
+Nossa abordagem: Automacao end-to-end com cobertura completa de requisitos EEOC/ECOA.

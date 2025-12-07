@@ -1,0 +1,160 @@
+\section{Discussao}
+
+\subsection{Principais Descobertas}
+
+\subsubsection{Deteccao Superior a Revisao Manual}
+Framework automatizado detectou \textbf{67\% mais violacoes} que revisao manual (5 vs. 3 em CS1, 4 vs. 2 em CS2). Violacoes nao-detectadas manualmente incluiam:
+
+\begin{itemize}
+    \item \textbf{Testes estatisticos}: Chi-squared e Fisher's exact frequentemente omitidos em revisoes manuais por custo computacional
+    \item \textbf{Proxy variables}: Correlacoes sutis ($r \approx 0.7$) nao-obvias sem analise quantitativa
+    \item \textbf{Violacoes procedurais}: ECOA adverse action requirements frequentemente negligenciados
+\end{itemize}
+
+\subsubsection{Trade-off Compliance-Accuracy Aceitavel}
+Mitigacoes recomendadas resultaram em perda minima de acuracia:
+\begin{itemize}
+    \item Hiring AI: -2.6\% F1-Score
+    \item Lending AI: -1.2\% AUC
+\end{itemize}
+
+Resultado alinhado com literatura (Hardt et al., 2016; Menon \& Williamson, 2018) sugerindo que post-processing e in-processing fairness interventions tipicamente causam perda $<$ 5\% em accuracy.
+
+\subsubsection{Valor de Continuous Monitoring}
+Deteccao de compliance drift em producao (CS1: 94\% $\rightarrow$ 81\%) demonstra necessidade de monitoring continuo vs. auditoria pontual pre-deployment.
+
+\subsection{Implicacoes Praticas}
+
+\subsubsection{Para Organizacoes}
+
+\textbf{Reducao de Risco Legal}:
+\begin{itemize}
+    \item Deteccao precoce de violacoes evita deployment de sistemas nao-compliant
+    \item Evidencia quantitativa de due diligence em caso de litigo
+    \item Relatorios auditaveis para reguladores (EEOC, CFPB)
+\end{itemize}
+
+\textbf{Eficiencia Operacional}:
+\begin{itemize}
+    \item 87\% reducao em custo de auditoria (\$11,250 $\rightarrow$ \$1,350 em media)
+    \item Liberacao de recursos especializados para tarefas estrategicas
+    \item Integracao em CI/CD elimina gargalos de compliance
+\end{itemize}
+
+\subsubsection{Para Desenvolvedores de ML}
+
+Framework permite shift-left de compliance:
+\begin{itemize}
+    \item Testes executados durante desenvolvimento, nao apenas pre-deployment
+    \item Feedback rapido (15min vs. semanas esperando revisao legal)
+    \item Recomendacoes tecnicas especificas (vs. orientacoes legais abstratas)
+\end{itemize}
+
+\subsubsection{Para Reguladores}
+
+\textbf{Padronizacao de Metricas}:
+Framework codifica interpretacoes especificas de regulacoes (ex: four-fifths rule, $p < 0.05$ thresholds), criando consistency entre auditorias.
+
+\textbf{Transparencia}:
+Relatorios automatizados fornecem evidencia quantitativa verificavel, reduzindo dependencia de alegacoes qualitativas.
+
+\textbf{Escalabilidade}:
+Permite auditoria de milhares de sistemas sem aumento proporcional em recursos regulatorios.
+
+\subsection{Limitacoes}
+
+\subsubsection{Limitacao 1: Interpretacao Legal}
+Framework codifica \textbf{uma interpretacao} de requisitos regulatorios. Regulacoes sao frequentemente ambiguas e sujeitas a interpretacao judicial.
+
+\textbf{Exemplo}: Four-fifths rule e ``rule of thumb'', nao threshold legal absoluto. Contextos especificos podem requerer standards diferentes.
+
+\textbf{Mitigacao}: Fornecemos parametros configuravel para thresholds. Recomendamos consulta legal para casos limite.
+
+\subsubsection{Limitacao 2: Cobertura Regulatoria}
+Framework foca em EEOC Title VII e ECOA Regulation B. Nao cobre:
+\begin{itemize}
+    \item Fair Housing Act (parcialmente sobreposto com ECOA)
+    \item ADA (Americans with Disabilities Act)
+    \item GDPR (regulacoes europeias)
+    \item Regulacoes estaduais especificas (ex: California CCPA)
+\end{itemize}
+
+\textbf{Trabalho futuro}: Extensao modular para regulacoes adicionais.
+
+\subsubsection{Limitacao 3: Business Necessity}
+EEOC permite adverse impact se houver ``business necessity'' comprovada. Esta determinacao e qualitativa e context-dependent.
+
+Framework \textbf{detecta} violacoes mas nao pode automaticamente determinar se business necessity justifica disparidade.
+
+\textbf{Recomendacao}: Usar framework para quantificar trade-offs, mas decisao final requer julgamento humano.
+
+\subsubsection{Limitacao 4: Proxies Complexos}
+Detector de proxy variables usa correlacao linear. Proxies nao-lineares ou interacoes complexas podem nao ser detectados.
+
+\textbf{Exemplo}: Combinacao de ``zip\_code'' + ``education\_level'' pode ser proxy para raca mesmo se correlacoes individuais sao baixas.
+
+\textbf{Mitigacao futura}: Incorporar tecnicas de causal inference para detectar proxies indiretos.
+
+\subsection{Consideracoes Eticas}
+
+\subsubsection{Compliance vs. Justice}
+Compliance legal e \textbf{necessario mas nao suficiente} para justica. Sistemas podem passar em testes de compliance mas ainda causar danos:
+
+\begin{itemize}
+    \item Four-fifths rule permite disparidade de ate 20\%
+    \item Nao cobre fairness intra-grupo (ex: interseccionalidade)
+    \item Foco em grupos protegidos legalmente pode negligenciar outros grupos vulneraveis
+\end{itemize}
+
+\textbf{Posicionamento}: Framework e ferramenta de \textit{compliance}, nao substituto para analise etica abrangente.
+
+\subsubsection{Automacao de Julgamento Legal}
+Codificar requisitos legais em algoritmos pode:
+\begin{itemize}
+    \item[\cmark] Aumentar consistency e reproducibilidade
+    \item[\xmark] Reduzir flexibilidade e context-sensitivity
+    \item[\xmark] Criar illusao de objectividade quando decisoes sao fundamentalmente normativas
+\end{itemize}
+
+\textbf{Recomendacao}: Usar framework como \textit{decision support}, nao decision automation.
+
+\subsubsection{Acesso e Equidade}
+Framework open-source reduz barreiras para compliance, mas:
+\begin{itemize}
+    \item Pequenas empresas podem carecer de expertise para interpretar resultados
+    \item Risco de ``checkbox compliance'' sem understanding substantivo
+\end{itemize}
+
+\textbf{Mitigacao}: Documentacao educativa, exemplos detalhados, parcerias com organizacoes de suporte legal.
+
+\subsection{Trabalhos Futuros}
+
+\subsubsection{Extensoes Tecnicas}
+\begin{enumerate}
+    \item \textbf{Regulacoes adicionais}: GDPR, ADA, Fair Housing Act, BIPA
+    \item \textbf{Causal inference}: Detectar proxies via causal graphs vs. correlacoes
+    \item \textbf{Individual fairness}: Complementar group fairness com similarity-based fairness
+    \item \textbf{Interseccionalidade}: Testes para combinacoes de caracteristicas protegidas
+    \item \textbf{Temporal analysis}: Detectar drift de compliance ao longo do tempo
+\end{enumerate}
+
+\subsubsection{Validacao Adicional}
+\begin{itemize}
+    \item \textbf{Mais dominios}: Saude, educacao, seguros, justica criminal
+    \item \textbf{Tipos de modelos}: Deep learning, ensemble methods, modelos nao-supervisionados
+    \item \textbf{Escalabilidade}: Datasets com milhoes de exemplos, milhares de features
+\end{itemize}
+
+\subsubsection{Integracao com Ecossistema ML}
+\begin{itemize}
+    \item \textbf{MLOps platforms}: Integracao nativa com MLflow, Kubeflow, SageMaker
+    \item \textbf{Model cards}: Gerar automaticamente secoes de fairness/compliance
+    \item \textbf{Explainability tools}: Integrar com SHAP, LIME para reason code generation
+\end{itemize}
+
+\subsubsection{Pesquisa Sociotecnica}
+\begin{itemize}
+    \item \textbf{Estudos de uso}: Como organizacoes real-world usam framework? Quais barreiras de adocao?
+    \item \textbf{Impacto regulatorio}: Framework altera dinamicas de enforcement? Facilita auditorias?
+    \item \textbf{Legitimidade}: Stakeholders afetados consideram testes automatizados legitimos?
+\end{itemize}

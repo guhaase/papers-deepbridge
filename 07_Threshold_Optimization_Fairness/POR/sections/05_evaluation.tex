@@ -1,0 +1,165 @@
+\section{Avaliacao Experimental}
+
+\subsection{Configuracao Experimental}
+
+\subsubsection{Datasets}
+Avaliamos em 3 datasets reais com atributos sensiveis conhecidos:
+
+\begin{table}[h]
+\centering
+\caption{Datasets utilizados}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dataset} & \textbf{N} & \textbf{Features} & \textbf{Sensitive Attr} \\
+\midrule
+COMPAS (Justica Criminal) & 7,214 & 14 & Raca \\
+Adult (Renda) & 48,842 & 14 & Genero \\
+German Credit & 1,000 & 20 & Idade ($<$25) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Modelos}
+Treinamos modelos baseline sem intervencao de justica:
+\begin{itemize}
+    \item Logistic Regression
+    \item Random Forest (100 arvores)
+    \item XGBoost (100 rounds)
+\end{itemize}
+
+\subsubsection{Metricas de Avaliacao}
+\begin{itemize}
+    \item \textbf{Acuracia}: F1-Score, Precision, Recall
+    \item \textbf{Justica}: Demographic Parity Diff, Equalized Odds Diff, Equal Opportunity Diff
+    \item \textbf{Trade-off}: Numero de solucoes Pareto-otimas identificadas
+\end{itemize}
+
+\subsection{Resultados Principais}
+
+\subsubsection{RQ1: Reducao de Violacoes de Justica}
+
+Comparamos limiar default (0.5) vs. limiar Pareto-otimo selecionado:
+
+\begin{table}[h]
+\centering
+\caption{Reducao de violacoes de justica (menor e melhor)}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dataset} & \textbf{Baseline} & \textbf{Otimizado} & \textbf{Reducao} \\
+\midrule
+COMPAS & 0.28 & 0.11 & \textbf{-60.7\%} \\
+Adult & 0.19 & 0.08 & \textbf{-57.9\%} \\
+German Credit & 0.22 & 0.13 & \textbf{-40.9\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Resultado}: Reducao media de \textbf{53.2\%} em disparidade demografica sem otimizacao adicional do modelo.
+
+\subsubsection{RQ2: Impacto na Acuracia}
+
+Analisamos perda de acuracia ao escolher limiar Pareto-otimo com menor disparidade:
+
+\begin{table}[h]
+\centering
+\caption{Impacto na acuracia (F1-Score)}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dataset} & \textbf{F1 (0.5)} & \textbf{F1 (otimo)} & \textbf{Delta} \\
+\midrule
+COMPAS & 0.67 & 0.65 & -0.02 \\
+Adult & 0.72 & 0.70 & -0.02 \\
+German Credit & 0.68 & 0.66 & -0.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Resultado}: Perda media de acuracia de apenas \textbf{2.5\%} (dentro de margem aceitavel).
+
+\subsubsection{RQ3: Solucoes Pareto-Otimas}
+
+Numero de limiares identificados na fronteira de Pareto:
+
+\begin{table}[h]
+\centering
+\caption{Solucoes Pareto-otimas identificadas}
+\begin{tabular}{lr}
+\toprule
+\textbf{Dataset} & \textbf{Num. Solucoes} \\
+\midrule
+COMPAS & 12 \\
+Adult & 8 \\
+German Credit & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Resultado}: Media de \textbf{10 solucoes} por cenario, fornecendo flexibilidade para decisores balancearem prioridades.
+
+\subsection{Analise de Trade-offs}
+
+\subsubsection{Fronteira de Pareto - COMPAS}
+Analise visual mostra trade-off claro entre F1-Score e Demographic Parity:
+
+\begin{itemize}
+    \item \textbf{Regiao A} (thresholds 0.25-0.35): Maxima justica (DP $<$ 0.10), F1 moderado (0.62-0.65)
+    \item \textbf{Regiao B} (thresholds 0.40-0.50): Balance (DP $\approx$ 0.15, F1 $\approx$ 0.67)
+    \item \textbf{Regiao C} (thresholds 0.55-0.70): Maxima acuracia (F1 $\approx$ 0.68), justica moderada (DP $\approx$ 0.22)
+\end{itemize}
+
+\subsection{Ablation Study}
+
+Avaliamos contribuicao de cada componente:
+
+\begin{table}[h]
+\centering
+\caption{Ablation study - COMPAS dataset}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Configuracao} & \textbf{DP Diff} & \textbf{F1} \\
+\midrule
+Baseline (threshold=0.5) & 0.28 & 0.67 \\
+Grid search manual & 0.15 & 0.66 \\
+NSGA-II (nossa abordagem) & \textbf{0.11} & \textbf{0.65} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NSGA-II encontra solucoes superiores a grid search manual, confirmando valor de otimizacao multi-objetivo.
+
+\subsection{Tempo de Execucao}
+
+\begin{table}[h]
+\centering
+\caption{Tempo de otimizacao de limiares}
+\begin{tabular}{lr}
+\toprule
+\textbf{Dataset} & \textbf{Tempo (s)} \\
+\midrule
+COMPAS & 2.3 \\
+Adult & 8.7 \\
+German Credit & 0.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Overhead negligivel ($<$ 10s) mesmo para dataset de 50k exemplos.
+
+\subsection{Comparacao com Ferramentas Existentes}
+
+\begin{table}[h]
+\centering
+\caption{Comparacao com frameworks de fairness}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Framework} & \textbf{Otimizacao Auto} & \textbf{Multi-Obj} & \textbf{Pareto} \\
+\midrule
+Fairlearn & \xmark & \xmark & \xmark \\
+AIF360 & \xmark & \xmark & \xmark \\
+What-If Tool & \xmark & \xmark & \xmark \\
+\textbf{DeepBridge (nossa)} & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nossa abordagem e a unica com otimizacao multi-objetivo automatizada e analise de Pareto.

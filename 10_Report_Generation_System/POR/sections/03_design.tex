@@ -1,0 +1,461 @@
+\section{Design da Arquitetura Template-Driven}
+
+\subsection{Visao Geral}
+
+O sistema de geracao de relatorios consiste em cinco componentes principais organizados em pipeline modular:
+
+\begin{enumerate}
+    \item \textbf{Data Transformers}: Normalizam resultados heterogeneos de validacao
+    \item \textbf{Specialized Renderers}: Logica especifica por tipo de validacao
+    \item \textbf{Template Manager}: Carrega e renderiza templates Jinja2
+    \item \textbf{Asset Manager}: Gerencia CSS, JavaScript, imagens
+    \item \textbf{Report Manager}: Coordena pipeline e gera relatorios finais
+\end{enumerate}
+
+\subsection{Principios de Design}
+
+\subsubsection{Separacao de Responsabilidades}
+Componentes com responsabilidades unicas e bem-definidas:
+\begin{itemize}
+    \item \textbf{Transformers}: Dados $\rightarrow$ formato padronizado
+    \item \textbf{Renderers}: Formato padronizado $\rightarrow$ contexto de template
+    \item \textbf{Templates}: Contexto $\rightarrow$ HTML/PDF
+    \item \textbf{Managers}: Orquestracao e infraestrutura
+\end{itemize}
+
+\subsubsection{Modularidade}
+Templates modulares com heranca:
+\begin{itemize}
+    \item \textbf{Base templates}: Estrutura comum (HTML boilerplate, CSS, navigation)
+    \item \textbf{Partial templates}: Componentes reutilizaveis (header, metrics grid, charts)
+    \item \textbf{Report-specific templates}: Especializacoes por tipo de validacao
+\end{itemize}
+
+\subsubsection{Extensibilidade}
+Novos tipos de validacao adicionados sem modificar core:
+\begin{itemize}
+    \item Implementar novo \texttt{DataTransformer}
+    \item Implementar novo \texttt{Renderer}
+    \item Criar templates especializados
+    \item Registrar renderer em \texttt{ReportManager}
+\end{itemize}
+
+\subsection{Data Transformers}
+
+\subsubsection{Responsabilidades}
+Transformers normalizam resultados heterogeneos:
+\begin{enumerate}
+    \item \textbf{Type Conversion}: NumPy types $\rightarrow$ Python native types (JSON-serializable)
+    \item \textbf{NaN/Inf Handling}: Valores invalidos $\rightarrow$ \texttt{null} ou placeholders
+    \item \textbf{Schema Validation}: Garante presenca de campos obrigatorios
+    \item \textbf{Metadata Addition}: Adiciona timestamp, model\_name, versao
+    \item \textbf{Deep Copy}: Previne mutacao de dados originais
+\end{enumerate}
+
+\subsubsection{Implementacao Base}
+
+\begin{lstlisting}[language=Python, caption=Base Data Transformer]
+class DataTransformer:
+    def transform(self, results: Dict, model_name: str,
+                  timestamp: Optional[str] = None) -> Dict:
+        """Transform results for template rendering."""
+        # Deep copy to avoid mutation
+        report_data = self._deep_copy(results)
+
+        # Add metadata
+        report_data['model_name'] = model_name
+        report_data['timestamp'] = timestamp or now()
+
+        # Convert NumPy types
+        report_data = self.convert_numpy_types(report_data)
+
+        return report_data
+
+    def convert_numpy_types(self, data: Any) -> Any:
+        """Convert NumPy types to Python native."""
+        if isinstance(data, dict):
+            return {k: self.convert_numpy_types(v)
+                    for k, v in data.items()}
+        elif isinstance(data, np.ndarray):
+            return data.tolist()
+        elif isinstance(data, np.integer):
+            return int(data)
+        elif isinstance(data, np.floating):
+            if np.isnan(data) or np.isinf(data):
+                return None
+            return float(data)
+        return data
+\end{lstlisting}
+
+\subsubsection{Specialized Transformers}
+Cada tipo de validacao tem transformer especializado:
+
+\textbf{UncertaintyTransformer}:
+\begin{itemize}
+    \item Calcula agregacoes: \texttt{avg\_coverage}, \texttt{avg\_interval\_width}
+    \item Organiza resultados por alpha level
+    \item Prepara dados para graficos de coverage vs. alpha
+\end{itemize}
+
+\textbf{RobustnessTransformer}:
+\begin{itemize}
+    \item Agrega metricas por tipo de ruido (gaussian, uniform, adversarial)
+    \item Calcula degradacao percentual de performance
+    \item Prepara feature importance comparisons
+\end{itemize}
+
+\textbf{FairnessTransformer}:
+\begin{itemize}
+    \item Calcula fairness metrics por grupo demografico
+    \item Identifica violacoes de thresholds (e.g., disparate impact $< 0.8$)
+    \item Prepara dados para confusion matrices por grupo
+\end{itemize}
+
+\subsection{Specialized Renderers}
+
+\subsubsection{Arquitetura de Renderer}
+
+Cada renderer herda de classe base e implementa metodo \texttt{render()}:
+
+\begin{lstlisting}[language=Python, caption=Base Renderer Structure]
+class BaseRenderer:
+    def __init__(self, template_manager: TemplateManager,
+                 asset_manager: AssetManager):
+        self.template_manager = template_manager
+        self.asset_manager = asset_manager
+
+    def render(self, results: Dict, file_path: str,
+               model_name: str, report_type: str = "interactive",
+               save_chart: bool = False) -> str:
+        """Generate and save report."""
+        # 1. Transform data
+        transformer = self.get_transformer()
+        report_data = transformer.transform(results, model_name)
+
+        # 2. Prepare template context
+        context = self.prepare_context(report_data)
+
+        # 3. Load template
+        template_path = self.get_template_path(report_type)
+        template = self.template_manager.load_template(template_path)
+
+        # 4. Render HTML
+        html = template.render(**context)
+
+        # 5. Save report
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+
+        return file_path
+\end{lstlisting}
+
+\subsubsection{Renderer Especializados}
+
+\textbf{UncertaintyRenderer}:
+\begin{itemize}
+    \item \textbf{Metricas}: Coverage accuracy, interval width, calibration error
+    \item \textbf{Visualizacoes}: Coverage vs. alpha plots, interval width distributions, prediction intervals
+    \item \textbf{Insights}: Identificacao de alphas sub/sobre-calibrados
+\end{itemize}
+
+\textbf{RobustnessRenderer}:
+\begin{itemize}
+    \item \textbf{Metricas}: Accuracy degradation, noise sensitivity, feature importance stability
+    \item \textbf{Visualizacoes}: Performance vs. noise level, feature importance comparison heatmaps
+    \item \textbf{Insights}: Features mais/menos robustas, tipos de ruido mais impactantes
+\end{itemize}
+
+\textbf{FairnessRenderer}:
+\begin{itemize}
+    \item \textbf{Metricas}: Demographic parity, equalized odds, disparate impact ratio
+    \item \textbf{Visualizacoes}: Fairness metrics por grupo, confusion matrices comparativas
+    \item \textbf{Insights}: Grupos desfavorecidos, trade-offs accuracy-fairness
+\end{itemize}
+
+\textbf{ResilienceRenderer}:
+\begin{itemize}
+    \item \textbf{Metricas}: Performance degradation sob shift, distribution distance
+    \item \textbf{Visualizacoes}: Performance vs. shift magnitude, feature distribution comparisons
+    \item \textbf{Insights}: Features driving distribution shift, resilience scores
+\end{itemize}
+
+\textbf{HyperparameterRenderer}:
+\begin{itemize}
+    \item \textbf{Metricas}: Performance por configuracao de hiperparametros
+    \item \textbf{Visualizacoes}: Heatmaps de hiperparametros, parallel coordinates
+    \item \textbf{Insights}: Otimos de hiperparametros, sensibilidade a mudancas
+\end{itemize}
+
+\subsection{Template System}
+
+\subsubsection{Hierarquia de Templates}
+
+Templates organizados em 3 niveis:
+
+\begin{enumerate}
+    \item \textbf{Common Templates}: Componentes compartilhados
+    \begin{itemize}
+        \item \texttt{common/meta.html}: HTML meta tags, CSS/JS imports
+        \item \texttt{common/header.html}: Report header com titulo, metadata
+        \item \texttt{common/footer.html}: Footer com timestamp, versao
+        \item \texttt{common/navigation.html}: Menu de navegacao entre secoes
+    \end{itemize}
+
+    \item \textbf{Report Type Templates}: Templates principais por tipo
+    \begin{itemize}
+        \item \texttt{report\_types/uncertainty/index.html}
+        \item \texttt{report\_types/robustness/index.html}
+        \item \texttt{report\_types/fairness/index.html}
+        \item etc.
+    \end{itemize}
+
+    \item \textbf{Partial Templates}: Secoes reutilizaveis
+    \begin{itemize}
+        \item \texttt{partials/overview.html}: Metricas agregadas
+        \item \texttt{partials/features.html}: Feature-level details
+        \item \texttt{partials/boxplot.html}: Boxplot visualizations
+        \item \texttt{partials/details.html}: Detailed breakdowns
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Template Inheritance}
+
+Templates usam heranca Jinja2 para reutilizacao:
+
+\begin{lstlisting}[language=HTML, caption=Template Inheritance Example]
+<!-- Base template: common/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include 'common/meta.html' %}
+    <title>{% block title %}Report{% endblock %}</title>
+</head>
+<body>
+    {% include 'common/header.html' %}
+    {% block content %}{% endblock %}
+    {% include 'common/footer.html' %}
+</body>
+</html>
+
+<!-- Child template: report_types/uncertainty/index.html -->
+{% extends 'common/base.html' %}
+{% block title %}Uncertainty Report{% endblock %}
+{% block content %}
+    {% include 'partials/overview.html' %}
+    {% include 'partials/charts.html' %}
+    {% include 'partials/details.html' %}
+{% endblock %}
+\end{lstlisting}
+
+\subsubsection{Template Filters}
+
+Filtros customizados para formatacao:
+
+\begin{lstlisting}[language=Python, caption=Custom Template Filters]
+# Safe numeric conversion
+def safe_float(value, default=0.0):
+    """Safely convert value to float."""
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+# Safe rounding
+def safe_round(value, precision=2):
+    """Safely round numeric value."""
+    numeric = safe_float(value, 0.0)
+    return round(numeric, precision)
+
+# Register filters
+env.filters['safe_float'] = safe_float
+env.filters['safe_round'] = safe_round
+env.filters['safe_multiply'] = lambda x, y: safe_float(x) * y
+\end{lstlisting}
+
+Uso em templates:
+\begin{lstlisting}[language=HTML]
+<!-- Without filter (may crash on None) -->
+{{ coverage }}
+
+<!-- With filter (safe) -->
+{{ coverage|safe_float }}
+{{ coverage|safe_round(3) }}
+{{ coverage|safe_multiply(100) }}%
+\end{lstlisting}
+
+\subsection{Asset Management}
+
+\subsubsection{Tipos de Assets}
+
+\begin{enumerate}
+    \item \textbf{CSS}: Estilos para layout, typography, color schemes
+    \item \textbf{JavaScript}: Plotly.js para graficos interativos
+    \item \textbf{Imagens}: Logos, icones (opcional)
+\end{enumerate}
+
+\subsubsection{Estrategias de Loading}
+
+\textbf{CDN Loading} (default):
+\begin{lstlisting}[language=HTML]
+<!-- Plotly via CDN -->
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+\end{lstlisting}
+
+Vantagens: Menor tamanho de HTML, caching por navegador.
+Desvantagens: Requer conexao internet.
+
+\textbf{Inline Assets}:
+\begin{lstlisting}[language=HTML]
+<!-- CSS inline -->
+<style>
+    {{ css_content|safe }}
+</style>
+\end{lstlisting}
+
+Vantagens: Relatorio standalone (funciona offline).
+Desvantagens: HTML maior, sem caching.
+
+AssetManager permite toggle entre estrategias via configuracao.
+
+\subsection{Report Manager}
+
+\subsubsection{Orquestracao de Pipeline}
+
+ReportManager coordena todos componentes:
+
+\begin{algorithm}
+\caption{Report Generation Pipeline}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Test type $T$, Results $R$, File path $F$, Model name $M$
+\State \textbf{Output}: Report path $P$
+\State
+\State $renderer \gets$ GetRenderer($T$)
+\If{$renderer$ is None}
+    \State \textbf{raise} NotImplementedError
+\EndIf
+\State
+\State $P \gets renderer.render(R, F, M)$
+\State \Return $P$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Registro de Renderers}
+
+Renderers registrados em dicionario:
+
+\begin{lstlisting}[language=Python, caption=Renderer Registration]
+class ReportManager:
+    def __init__(self, templates_dir: str):
+        self.renderers = {
+            'robustness': RobustnessRenderer(...),
+            'uncertainty': UncertaintyRenderer(...),
+            'resilience': ResilienceRenderer(...),
+            'hyperparameter': HyperparameterRenderer(...),
+            'fairness': FairnessRenderer(...)
+        }
+
+    def generate_report(self, test_type: str, results: Dict,
+                       file_path: str, model_name: str) -> str:
+        test_type_lower = test_type.lower()
+
+        if test_type_lower not in self.renderers:
+            raise NotImplementedError(
+                f"Renderer for '{test_type}' not implemented"
+            )
+
+        renderer = self.renderers[test_type_lower]
+        return renderer.render(results, file_path, model_name)
+\end{lstlisting}
+
+\subsection{Multi-Format Support}
+
+\subsubsection{Interactive Reports (HTML)}
+
+Default format:
+\begin{itemize}
+    \item HTML5 com Plotly.js para graficos interativos
+    \item Responsivo (adapta a mobile/desktop)
+    \item Zoom, pan, hover tooltips em graficos
+    \item Export de graficos para PNG/SVG via Plotly
+\end{itemize}
+
+\subsubsection{Static Reports}
+
+Para arquivamento ou impressao:
+\begin{itemize}
+    \item \textbf{Static HTML}: HTML sem JavaScript, graficos pre-renderizados como imagens
+    \item \textbf{PDF Export}: Conversao HTML $\rightarrow$ PDF via WeasyPrint ou Puppeteer
+\end{itemize}
+
+Renderers separados para static vs. interactive:
+\begin{lstlisting}[language=Python]
+# Static renderer for robustness
+static_renderers = {
+    'robustness': StaticRobustnessRenderer(...),
+    'uncertainty': StaticUncertaintyRenderer(...),
+    ...
+}
+
+# Usage
+report_manager.generate_report(
+    test_type='robustness',
+    results=results,
+    file_path='report.html',
+    model_name='MyModel',
+    report_type='static'  # or 'interactive'
+)
+\end{lstlisting}
+
+\subsection{Extensibilidade}
+
+\subsubsection{Adicionar Novo Tipo de Validacao}
+
+Passos:
+\begin{enumerate}
+    \item \textbf{Implementar DataTransformer}:
+    \begin{lstlisting}[language=Python]
+class MyValidationTransformer(DataTransformer):
+    def transform(self, results, model_name, timestamp):
+        data = super().transform(results, model_name, timestamp)
+        # Custom transformations
+        data['custom_metric'] = calculate_custom(data)
+        return data
+    \end{lstlisting}
+
+    \item \textbf{Implementar Renderer}:
+    \begin{lstlisting}[language=Python]
+class MyValidationRenderer(BaseRenderer):
+    def get_transformer(self):
+        return MyValidationTransformer()
+
+    def prepare_context(self, report_data):
+        return {
+            'metric': report_data['custom_metric'],
+            ...
+        }
+    \end{lstlisting}
+
+    \item \textbf{Criar Templates}:
+    \begin{itemize}
+        \item \texttt{templates/report\_types/myvalidation/index.html}
+        \item \texttt{templates/report\_types/myvalidation/partials/...}
+    \end{itemize}
+
+    \item \textbf{Registrar Renderer}:
+    \begin{lstlisting}[language=Python]
+self.renderers['myvalidation'] = MyValidationRenderer(...)
+    \end{lstlisting}
+\end{enumerate}
+
+\subsubsection{Customizar Templates Existentes}
+
+Templates podem ser customizados sem modificar codigo:
+\begin{enumerate}
+    \item Copiar template existente para diretorio custom
+    \item Modificar HTML/CSS conforme necessario
+    \item Configurar TemplateManager para usar diretorio custom
+\end{enumerate}
+
+Separacao clara entre logica (Python) e apresentacao (templates) permite customizacao sem risco de quebrar funcionalidade.

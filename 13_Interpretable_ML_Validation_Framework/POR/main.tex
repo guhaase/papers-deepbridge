@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Framework de Validação de ML Interpretável para Ambientes Regulados: Equilibrando Acurácia e Conformidade Regulatória}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Modelos de Machine Learning em domínios regulados (banking, finance, healthcare) enfrentam dilema crítico: regulações (ECOA/Regulation B, GDPR Article 22, EU AI Act, SR 11-7) exigem explicabilidade completa, mas técnicas state-of-the-art como multi-teacher distillation criam opacidade multiplicativa. Apresentamos framework integrado que combina (1) \textbf{Knowledge Distillation para Decision Trees (KDDT)} com explicabilidade máxima e 2-4\% de perda de acurácia, (2) \textbf{GAM-Based Distillation} usando Generalized Additive Models com trade-off de 3-7\% para manter interpretabilidade aditiva, (3) \textbf{Compliance-Aware Validation Suite} que aplica testes multi-dimensionais (robustness, fairness, uncertainty) em modelos interpretáveis, e (4) \textbf{Performance-Interpretability Trade-off Analysis} quantificando Pareto frontiers entre acurácia e explicabilidade. Implementação no DeepBridge inclui 15 métricas de fairness (EEOC compliant), testes de robustez com perturbações Gaussiana/quantile, e uncertainty quantification via Conformal Prediction. Validação em 3 case studies reais (lending, hiring, insurance) demonstra: modelos KDDT passam \textbf{100\% de auditorias ECOA} (vs. 67\% de XGBoost ensembles), GAMs atingem \textbf{93\% da performance} de modelos complexos mantendo explicabilidade, e compliance score médio de \textbf{91\%} (vs. 73\% baseline). Framework permite deployment de ML em ambientes regulados sem sacrificar governança.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Interpretable ML, Knowledge Distillation, Regulatory Compliance, Model Validation, GAM, Decision Trees, ECOA, GDPR}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

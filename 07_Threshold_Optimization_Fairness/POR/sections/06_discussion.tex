@@ -1,0 +1,109 @@
+\section{Discussao}
+
+\subsection{Principais Descobertas}
+
+\subsubsection{Trade-offs Nao-Lineares}
+Nossa analise revelou que relacoes entre limiares e metricas de justica sao frequentemente nao-lineares e dataset-dependentes. Por exemplo:
+
+\begin{itemize}
+    \item \textbf{COMPAS}: Demographic parity melhora monotonicamente com reducao de limiar, mas equalized odds tem ponto de inflexao em 0.35
+    \item \textbf{Adult}: Precisao e justica mostram trade-off quase linear, facilitando selecao
+    \item \textbf{German Credit}: Multiplos minimos locais requerem otimizacao global
+\end{itemize}
+
+Isto justifica abordagem automatizada vs. selecao manual ad-hoc.
+
+\subsubsection{Importancia de Multiplas Metricas}
+Experimentos confirmam que otimizar para uma metrica de justica isoladamente pode degradar outras:
+
+\begin{itemize}
+    \item Limiar otimo para demographic parity (0.30) em COMPAS resulta em pior equalized odds
+    \item Abordagem multi-objetivo identifica compromissos balanceados
+\end{itemize}
+
+\subsection{Implicacoes Praticas}
+
+\subsubsection{Para Desenvolvedores de ML}
+Framework permite:
+\begin{enumerate}
+    \item \textbf{Auditoria rapida}: Identificar rapidamente se modelo tem trade-offs aceitaveis
+    \item \textbf{Debugging de fairness}: Visualizar exatamente como limiar afeta cada grupo
+    \item \textbf{Justificacao de decisoes}: Documentar escolha de limiar com evidencia quantitativa
+\end{enumerate}
+
+\subsubsection{Para Tomadores de Decisao}
+Fronteiras de Pareto permitem decisoes informadas baseadas em prioridades organizacionais:
+
+\begin{itemize}
+    \item \textbf{Organizacoes risk-averse}: Podem escolher limiares que minimizam disparidade mesmo com leve perda de acuracia
+    \item \textbf{Contextos competitivos}: Podem optar por balance entre metricas
+    \item \textbf{Requisitos legais}: Podem garantir conformidade com thresholds especificos de justica
+\end{itemize}
+
+\subsection{Limitacoes}
+
+\subsubsection{Limitacao 1: Atributo Sensivel Conhecido}
+Framework requer acesso a atributo sensivel durante analise. Em contextos onde isto e proibido (ex: GDPR), abordagens de fairness-without-demographics sao necessarias.
+
+\textbf{Mitigacao futura}: Integrar proxy-based fairness metrics.
+
+\subsubsection{Limitacao 2: Espaco de Limiares Discreto}
+Analisamos limiares em passos de 0.05. Embora suficiente para pratica, pode perder solucoes otimas entre pontos.
+
+\textbf{Mitigacao futura}: Implementar busca continua com gradient-based optimization.
+
+\subsubsection{Limitacao 3: Post-Processing Apenas}
+Nossa abordagem e post-processing---nao modifica modelo. Se modelo base e altamente enviesado, ajuste de limiar pode ser insuficiente.
+
+\textbf{Mitigacao futura}: Combinar com in-processing fairness (ex: adversarial debiasing).
+
+\subsubsection{Limitacao 4: Trade-offs Fundamentais}
+Em alguns casos, trade-off entre acuracia e justica e inerente aos dados. Framework identifica isto mas nao resolve.
+
+\textbf{Implicacao}: Decisores devem estar cientes de limitacoes fundamentais vs. artefatos de modelagem.
+
+\subsection{Consideracoes Eticas}
+
+\subsubsection{Transparencia}
+Framework aumenta transparencia ao explicitar trade-offs quantitativamente, mas decisao final permanece humana e deve considerar contexto social.
+
+\subsubsection{Definicao de Justica}
+Implementamos metricas matematicas comuns, mas ``justica'' e conceito multifacetado. Ferramentas tecnicas nao substituem deliberacao etica.
+
+\subsubsection{Uso Responsavel}
+Framework pode ser usado para:
+\begin{itemize}
+    \item[\cmark] Identificar e mitigar vieses em modelos
+    \item[\cmark] Documentar conformidade com regulacoes
+    \item[\xmark] ``Fairness washing''---aparencia de justica sem mudanca substantiva
+\end{itemize}
+
+Recomendamos uso em conjunto com revisao por stakeholders afetados.
+
+\subsection{Trabalhos Futuros}
+
+\subsubsection{Extensoes Tecnicas}
+\begin{enumerate}
+    \item \textbf{Limiares por grupo}: Permitir limiares diferentes por grupo demografico (group-specific thresholds)
+    \item \textbf{Metricas adicionais}: Incorporar individual fairness, calibration fairness
+    \item \textbf{Multiclass}: Estender para problemas de classificacao multi-classe
+    \item \textbf{Incerteza}: Quantificar incerteza nas estimativas de Pareto frontiers via bootstrapping
+\end{enumerate}
+
+\subsubsection{Integracao com Pipeline ML}
+Integrar framework em CI/CD de ML:
+\begin{itemize}
+    \item Teste automatico de fairness em cada deploy de modelo
+    \item Alertas quando novos dados alteram trade-offs significativamente
+    \item Versionamento de decisoes de threshold junto com modelos
+\end{itemize}
+
+\subsubsection{Validacao em Novos Dominios}
+Aplicar framework em:
+\begin{itemize}
+    \item Saude (diagnostico, alocacao de recursos)
+    \item Educacao (admissoes, recomendacao de cursos)
+    \item Justica criminal (fianca, sentencing)
+\end{itemize}
+
+Validar generalizacao de descobertas.

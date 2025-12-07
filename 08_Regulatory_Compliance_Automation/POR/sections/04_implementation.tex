@@ -1,0 +1,369 @@
+\section{Implementacao}
+
+\subsection{Arquitetura}
+
+Implementamos framework em Python 3.9+ com integracao ao DeepBridge:
+
+\begin{verbatim}
+deepbridge/compliance/
+├── regulatory_kb.py          # Knowledge base
+├── tests/
+│   ├── eeoc_tests.py        # 12 testes EEOC
+│   ├── ecoa_tests.py        # 8 testes ECOA
+│   └── base_test.py         # Classe base
+├── executor.py              # Test executor
+├── scorer.py                # Compliance scoring
+├── detector.py              # Violation detection
+├── reports/
+│   ├── generator.py         # Report generation
+│   └── templates/           # Templates formatados
+└── utils/
+    ├── statistics.py        # Funcoes estatisticas
+    └── legal_thresholds.py  # Thresholds regulatorios
+\end{verbatim}
+
+\subsection{Implementacao de Testes EEOC}
+
+\subsubsection{EEOC-001: Four-Fifths Rule}
+
+\begin{lstlisting}[language=Python]
+class FourFifthsRuleTest(ComplianceTest):
+    """EEOC Uniform Guidelines Section 4D"""
+
+    def __init__(self, protected_attr='race'):
+        self.protected_attr = protected_attr
+        self.threshold = 0.80
+        self.severity = 'CRITICAL'
+
+    def run(self, predictions, metadata):
+        """
+        Calcula impact ratio entre grupos
+
+        Returns:
+            {
+                'passed': bool,
+                'impact_ratio': float,
+                'details': dict
+            }
+        """
+        # Extrair grupos
+        protected = metadata[self.protected_attr]
+        protected_group = (protected == 1)
+        reference_group = (protected == 0)
+
+        # Calcular taxas de selecao
+        rate_protected = predictions[protected_group].mean()
+        rate_reference = predictions[reference_group].mean()
+
+        # Impact ratio
+        impact_ratio = rate_protected / rate_reference
+
+        # Verifica compliance
+        passed = impact_ratio >= self.threshold
+
+        return {
+            'passed': passed,
+            'impact_ratio': impact_ratio,
+            'rate_protected': rate_protected,
+            'rate_reference': rate_reference,
+            'n_protected': protected_group.sum(),
+            'n_reference': reference_group.sum()
+        }
+\end{lstlisting}
+
+\subsubsection{EEOC-003: Chi-Squared Test}
+
+\begin{lstlisting}[language=Python]
+class ChiSquaredTest(ComplianceTest):
+    """Statistical significance of selection disparities"""
+
+    def run(self, predictions, metadata):
+        from scipy.stats import chi2_contingency
+
+        # Construir tabela de contingencia
+        protected = metadata[self.protected_attr]
+
+        # [Selected, Not Selected] x [Protected, Reference]
+        table = [
+            [
+                (predictions[protected==1] == 1).sum(),
+                (predictions[protected==1] == 0).sum()
+            ],
+            [
+                (predictions[protected==0] == 1).sum(),
+                (predictions[protected==0] == 0).sum()
+            ]
+        ]
+
+        # Executar chi-squared test
+        chi2, p_value, dof, expected = chi2_contingency(table)
+
+        # p >= 0.05 indica nao-significativo (bom)
+        passed = p_value >= 0.05
+
+        return {
+            'passed': passed,
+            'p_value': p_value,
+            'chi2_statistic': chi2,
+            'contingency_table': table
+        }
+\end{lstlisting}
+
+\subsubsection{EEOC-004: Fisher's Exact Test}
+
+Para amostras pequenas ($n < 30$):
+
+\begin{lstlisting}[language=Python]
+class FishersExactTest(ComplianceTest):
+    """For small samples (n < 30)"""
+
+    def run(self, predictions, metadata):
+        from scipy.stats import fisher_exact
+
+        # Verificar tamanho de amostra
+        n = len(predictions)
+        if n >= 30:
+            return {'skipped': True,
+                    'reason': 'Sample too large, use Chi-sq'}
+
+        # Construir tabela 2x2
+        protected = metadata[self.protected_attr]
+        table = [
+            [
+                (predictions[protected==1] == 1).sum(),
+                (predictions[protected==1] == 0).sum()
+            ],
+            [
+                (predictions[protected==0] == 1).sum(),
+                (predictions[protected==0] == 0).sum()
+            ]
+        ]
+
+        # Fisher's exact test
+        odds_ratio, p_value = fisher_exact(table)
+
+        passed = p_value >= 0.05
+
+        return {
+            'passed': passed,
+            'p_value': p_value,
+            'odds_ratio': odds_ratio
+        }
+\end{lstlisting}
+
+\subsection{Implementacao de Testes ECOA}
+
+\subsubsection{ECOA-001: Prohibited Basis in Features}
+
+\begin{lstlisting}[language=Python]
+class ProhibitedBasisCheck(ComplianceTest):
+    """ECOA Regulation B 12 CFR 1002.2(z)"""
+
+    PROHIBITED_FEATURES = [
+        'race', 'color', 'religion', 'national_origin',
+        'sex', 'marital_status', 'age',
+        'public_assistance'
+    ]
+
+    def run(self, model, feature_names):
+        """
+        Verifica se features proibidas sao usadas
+        diretamente pelo modelo
+        """
+        violations = []
+
+        for feat in feature_names:
+            # Verifica match exato ou substring
+            for prohibited in self.PROHIBITED_FEATURES:
+                if prohibited in feat.lower():
+                    violations.append({
+                        'feature': feat,
+                        'prohibited_basis': prohibited
+                    })
+
+        passed = len(violations) == 0
+
+        return {
+            'passed': passed,
+            'violations': violations,
+            'n_violations': len(violations)
+        }
+\end{lstlisting}
+
+\subsubsection{ECOA-002: Proxy Variable Detection}
+
+Detecta features correlacionadas com caracteristicas protegidas:
+
+\begin{lstlisting}[language=Python]
+class ProxyVariableDetector(ComplianceTest):
+    """Detecta correlacoes entre features e attrs protegidos"""
+
+    def __init__(self, correlation_threshold=0.7):
+        self.threshold = correlation_threshold
+        self.severity = 'HIGH'
+
+    def run(self, X, metadata):
+        import pandas as pd
+
+        # Combinar features e attrs protegidos
+        df = pd.concat([X, metadata], axis=1)
+
+        # Calcular correlacoes
+        protected_attrs = ['race', 'gender', 'age']
+        feature_cols = X.columns
+
+        proxies = []
+        for feat in feature_cols:
+            for protected in protected_attrs:
+                if protected in df.columns:
+                    corr = df[feat].corr(df[protected])
+                    if abs(corr) >= self.threshold:
+                        proxies.append({
+                            'feature': feat,
+                            'protected_attr': protected,
+                            'correlation': corr
+                        })
+
+        passed = len(proxies) == 0
+
+        return {
+            'passed': passed,
+            'proxy_variables': proxies,
+            'n_proxies': len(proxies)
+        }
+\end{lstlisting}
+
+\subsubsection{ECOA-004: Reason Code Generation}
+
+ECOA requer razoes especificas para decisoes adversas:
+
+\begin{lstlisting}[language=Python]
+class ReasonCodeGenerator(ComplianceTest):
+    """ECOA Section 1002.9(b)(2) - Reason Codes"""
+
+    def run(self, model, X, predictions):
+        """
+        Gera top-k features para decisoes adversas
+        usando SHAP values
+        """
+        import shap
+
+        # Obter apenas decisoes adversas (rejeicoes)
+        adverse_mask = (predictions == 0)
+        X_adverse = X[adverse_mask]
+
+        if len(X_adverse) == 0:
+            return {'skipped': True}
+
+        # Calcular SHAP values
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_adverse)
+
+        # Top-4 features (ECOA recomenda 2-4 razoes)
+        reason_codes = []
+        for i in range(len(X_adverse)):
+            top_features = np.argsort(
+                np.abs(shap_values[i])
+            )[-4:][::-1]
+
+            reasons = [
+                X.columns[idx] for idx in top_features
+            ]
+            reason_codes.append(reasons)
+
+        # Verifica se reason codes sao interpretaveis
+        passed = self._validate_interpretability(
+            reason_codes
+        )
+
+        return {
+            'passed': passed,
+            'reason_codes_generated': len(reason_codes),
+            'sample_reasons': reason_codes[:5]
+        }
+\end{lstlisting}
+
+\subsection{Compliance Scorer Implementation}
+
+\begin{lstlisting}[language=Python]
+class ComplianceScorer:
+    def __init__(self, alpha=0.3, beta=0.7):
+        self.alpha = alpha  # Peso de coverage
+        self.beta = beta    # Peso de pass rate
+
+    def compute_score(self, test_results):
+        # Calcula coverage
+        executed = sum(1 for r in test_results
+                      if not r.get('skipped', False))
+        applicable = len(test_results)
+        coverage = executed / applicable
+
+        # Calcula weighted pass rate
+        weights = {
+            'CRITICAL': 3,
+            'HIGH': 2,
+            'MEDIUM': 1,
+            'LOW': 0.5
+        }
+
+        total_weight = 0
+        passed_weight = 0
+
+        for result in test_results:
+            if result.get('skipped'):
+                continue
+
+            severity = result.get('severity', 'MEDIUM')
+            weight = weights[severity]
+            total_weight += weight
+
+            if result['passed']:
+                passed_weight += weight
+
+        weighted_pass_rate = passed_weight / total_weight
+
+        # Score final
+        score = (self.alpha * coverage +
+                self.beta * weighted_pass_rate) * 100
+
+        return {
+            'overall_score': score,
+            'coverage': coverage * 100,
+            'pass_rate': weighted_pass_rate * 100
+        }
+\end{lstlisting}
+
+\subsection{Report Generator}
+
+\begin{lstlisting}[language=Python]
+class ComplianceReportGenerator:
+    def generate(self, test_results, score, violations):
+        report = {
+            'timestamp': datetime.now().isoformat(),
+            'compliance_score': score,
+            'summary': self._generate_summary(
+                test_results, violations
+            ),
+            'test_results': test_results,
+            'violations': violations,
+            'recommendations': self._generate_recommendations(
+                violations
+            )
+        }
+
+        # Gerar multiplos formatos
+        self._save_json(report)
+        self._save_html(report)
+        self._save_pdf(report)
+
+        return report
+\end{lstlisting}
+
+\subsection{Otimizacoes de Performance}
+
+\begin{itemize}
+    \item \textbf{Caching}: Resultados de testes sao cacheados por (model\_hash, data\_hash)
+    \item \textbf{Paralelizacao}: Testes independentes executam em paralelo via multiprocessing
+    \item \textbf{Lazy evaluation}: Testes dependentes pulados se pre-requisitos falham
+    \item \textbf{Sampling}: Para datasets grandes ($>$100k), amostragem estratificada para testes estatisticos
+\end{itemize}

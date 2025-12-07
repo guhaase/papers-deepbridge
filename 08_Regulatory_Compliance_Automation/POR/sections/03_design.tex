@@ -1,0 +1,224 @@
+\section{Design do Framework}
+
+\subsection{Visao Geral}
+
+O framework de compliance automation consiste em cinco componentes principais:
+
+\begin{enumerate}
+    \item \textbf{Regulatory Knowledge Base}: Codificacao estruturada de requisitos EEOC/ECOA
+    \item \textbf{Test Executor}: Engine que executa testes de compliance automaticamente
+    \item \textbf{Compliance Scorer}: Agregacao de resultados em pontuacao 0-100\%
+    \item \textbf{Violation Detector}: Identificacao e classificacao de violacoes por severidade
+    \item \textbf{Report Generator}: Producao de relatorios auditaveis formatados
+\end{enumerate}
+
+\subsection{Regulatory Knowledge Base}
+
+\subsubsection{Estrutura de Codificacao}
+Cada requisito regulatorio e codificado como:
+
+\begin{lstlisting}[language=Python, caption=Estrutura de Requisito]
+@dataclass
+class RegulatoryRequirement:
+    id: str                    # Ex: "EEOC_TITLE_VII_001"
+    regulation: str            # "EEOC" ou "ECOA"
+    description: str           # Descricao em linguagem natural
+    citation: str              # Referencia legal
+    test_function: Callable    # Funcao executavel
+    severity: str              # "CRITICAL", "HIGH", "MEDIUM"
+    threshold: float           # Valor de compliance
+    remediation: str           # Recomendacao de mitigacao
+\end{lstlisting}
+
+\subsubsection{EEOC Requirements}
+Codificamos 12 requisitos EEOC:
+
+\begin{table}[h]
+\centering
+\caption{Testes EEOC Implementados}
+\begin{tabular}{lp{4cm}l}
+\toprule
+\textbf{ID} & \textbf{Teste} & \textbf{Threshold} \\
+\midrule
+EEOC-001 & Four-Fifths Rule (Raca) & $\geq 0.80$ \\
+EEOC-002 & Four-Fifths Rule (Genero) & $\geq 0.80$ \\
+EEOC-003 & Statistical Significance (Chi-sq) & $p \geq 0.05$ \\
+EEOC-004 & Fisher's Exact Test & $p \geq 0.05$ \\
+EEOC-005 & Disparate Treatment Detection & Nenhum \\
+EEOC-006 & Prohibited Basis Usage & Nenhum \\
+EEOC-007 & Business Necessity Validation & Manual \\
+EEOC-008 & Z-test for Selection Rates & $p \geq 0.05$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{ECOA Requirements}
+Codificamos 8 requisitos ECOA:
+
+\begin{table}[h]
+\centering
+\caption{Testes ECOA Implementados}
+\begin{tabular}{lp{5cm}}
+\toprule
+\textbf{ID} & \textbf{Teste} \\
+\midrule
+ECOA-001 & Prohibited Basis in Features \\
+ECOA-002 & Proxy Variable Detection \\
+ECOA-003 & Adverse Action Notification \\
+ECOA-004 & Reason Code Generation \\
+ECOA-005 & Disparate Impact (Credito) \\
+ECOA-006 & Age Discrimination Check \\
+ECOA-007 & Marital Status Check \\
+ECOA-008 & Public Assistance Check \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Test Executor}
+
+\subsubsection{Workflow de Execucao}
+
+\begin{algorithm}
+\caption{Compliance Test Execution}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Model $M$, Dataset $D$, Protected Attrs $A$
+\State \textbf{Output}: Compliance Report $R$
+\State
+\State $results \gets []$
+\For{each requirement $req$ in RegulatoryKB}
+    \State $test\_result \gets req.test\_function(M, D, A)$
+    \State $passed \gets test\_result \geq req.threshold$
+    \State $results.append(\{req.id, passed, test\_result\})$
+\EndFor
+\State
+\State $score \gets$ ComputeComplianceScore($results$)
+\State $violations \gets$ DetectViolations($results$)
+\State $R \gets$ GenerateReport($results, score, violations$)
+\State \Return $R$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Tratamento de Dependencias}
+Alguns testes dependem de pre-requisitos:
+\begin{itemize}
+    \item \textbf{EEOC-004} (Fisher's Exact) requer amostra pequena---executado apenas se $n < 30$
+    \item \textbf{ECOA-003} (Adverse Action) requer que modelo tenha sido deployado
+\end{itemize}
+
+Framework gerencia dependencias via grafo de execucao.
+
+\subsection{Compliance Scorer}
+
+\subsubsection{Metodologia de Scoring}
+Compliance score agregado considera:
+\begin{enumerate}
+    \item \textbf{Coverage}: Proporcao de testes executados
+    \item \textbf{Pass Rate}: Proporcao de testes aprovados
+    \item \textbf{Severity-Weighted}: Violacoes criticas pesam mais
+\end{enumerate}
+
+Formula:
+\begin{equation}
+\text{Score} = \alpha \cdot \text{Coverage} + \beta \cdot \text{PassRate}_{\text{weighted}}
+\end{equation}
+
+onde:
+\begin{align}
+\text{Coverage} &= \frac{\text{Testes Executados}}{\text{Testes Aplicaveis}} \\
+\text{PassRate}_{\text{weighted}} &= \frac{\sum_{i} w_i \cdot \mathbb{1}[\text{pass}_i]}{\sum_{i} w_i}
+\end{align}
+
+Pesos $w_i$: CRITICAL=3, HIGH=2, MEDIUM=1.
+
+Parametros default: $\alpha=0.3$, $\beta=0.7$.
+
+\subsubsection{Interpretacao de Scores}
+
+\begin{table}[h]
+\centering
+\caption{Interpretacao de Compliance Scores}
+\begin{tabular}{ll}
+\toprule
+\textbf{Score} & \textbf{Interpretacao} \\
+\midrule
+90-100\% & Compliance robusto \\
+75-89\% & Compliance adequado, melhorias recomendadas \\
+60-74\% & Compliance marginal, acoes necessarias \\
+$<$ 60\% & Nao-compliant, deployment arriscado \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Violation Detector}
+
+\subsubsection{Classificacao de Violacoes}
+
+Violacoes sao classificadas por:
+\begin{itemize}
+    \item \textbf{Severidade}: CRITICAL, HIGH, MEDIUM, LOW
+    \item \textbf{Tipo}: Disparate Impact, Disparate Treatment, Prohibited Basis, Procedural
+    \item \textbf{Grupo Afetado}: Qual grupo demografico sofre impacto adverso
+\end{itemize}
+
+\subsubsection{Exemplo de Violacao}
+
+\begin{verbatim}
+VIOLATION DETECTED
+ID: EEOC-001
+Severity: CRITICAL
+Type: Disparate Impact
+Description: Four-fifths rule violated for Race
+Details:
+  - Black applicants: 35% selection rate
+  - White applicants: 52% selection rate
+  - Impact Ratio: 0.67 (threshold: 0.80)
+  - Statistical significance: p=0.003
+
+Remediation:
+  1. Review feature importance for racial proxies
+  2. Consider threshold adjustment
+  3. Implement fairness constraints in training
+\end{verbatim}
+
+\subsection{Report Generator}
+
+\subsubsection{Tipos de Relatorios}
+
+\begin{enumerate}
+    \item \textbf{Executive Summary}: 1-2 paginas com score e violacoes criticas
+    \item \textbf{Technical Report}: Detalhes estatisticos completos, graficos
+    \item \textbf{Regulatory Report}: Formatado para submissao a EEOC/CFPB
+    \item \textbf{Developer Report}: Recomendacoes de mitigacao tecnicas
+\end{enumerate}
+
+\subsubsection{Secoes do Relatorio}
+
+\begin{itemize}
+    \item \textbf{Compliance Score}: Pontuacao agregada com breakdown por categoria
+    \item \textbf{Test Results}: Tabela com todos testes executados
+    \item \textbf{Violations}: Lista de falhas com severidade
+    \item \textbf{Statistical Evidence}: Impact ratios, p-values, confidence intervals
+    \item \textbf{Recommendations}: Acoes priorizadas para remediacao
+    \item \textbf{Audit Trail}: Timestamp, versao do modelo, dataset usado
+\end{itemize}
+
+\subsection{Integracao CI/CD}
+
+Framework permite continuous compliance monitoring:
+
+\begin{lstlisting}[language=Python, caption=Exemplo de Pipeline CI/CD]
+# Em .gitlab-ci.yml ou similar
+compliance-check:
+  stage: test
+  script:
+    - python run_compliance_tests.py
+    - python check_minimum_score.py --threshold 75
+  artifacts:
+    reports:
+      compliance: compliance_report.json
+  only:
+    - merge_requests
+    - main
+\end{lstlisting}
+
+Pipeline falha se compliance score $<$ threshold configurado.

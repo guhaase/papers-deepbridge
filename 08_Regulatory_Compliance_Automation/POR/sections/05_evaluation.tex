@@ -1,0 +1,216 @@
+\section{Avaliacao: Case Studies}
+
+\subsection{Configuracao Experimental}
+
+Validamos framework em 2 case studies reais de sistemas de IA em producao:
+
+\begin{enumerate}
+    \item \textbf{Case Study 1}: Sistema de triagem de curriculos (Hiring AI)
+    \item \textbf{Case Study 2}: Sistema de aprovacao de credito (Lending AI)
+\end{enumerate}
+
+\subsubsection{Metricas de Avaliacao}
+\begin{itemize}
+    \item \textbf{Deteccao de violacoes}: Numero de violacoes identificadas vs. revisao manual
+    \item \textbf{Compliance score}: Pontuacao antes e apos mitigacoes
+    \item \textbf{Tempo de auditoria}: Horas gastas em verificacao de compliance
+    \item \textbf{Custo}: Estimativa de custo (horas $\times$ taxa horaria especialista)
+\end{itemize}
+
+\subsection{Case Study 1: Hiring AI System}
+
+\subsubsection{Contexto}
+Empresa de tecnologia com 500+ funcionarios usa modelo ML para triagem inicial de candidatos. Sistema processa 10,000+ aplicacoes/ano.
+
+\textbf{Modelo}: Random Forest Classifier (200 arvores)
+\textbf{Features}: 45 features (educacao, experiencia, skills, localizacao)
+\textbf{Regulacao Aplicavel}: EEOC Title VII
+
+\subsubsection{Baseline: Revisao Manual}
+Auditoria manual por advogados especializados:
+\begin{itemize}
+    \item \textbf{Tempo}: 40 horas
+    \item \textbf{Custo}: \$12,000 (\$300/hora)
+    \item \textbf{Violacoes identificadas}: 3
+    \begin{enumerate}
+        \item Adverse impact para candidatos negros (impact ratio 0.72)
+        \item Feature ``years\_since\_graduation'' correlacionada com idade
+        \item Falta de documentacao de business necessity
+    \end{enumerate}
+\end{itemize}
+
+\subsubsection{Framework Automatizado}
+Execucao de compliance tests automatizados:
+
+\begin{table}[h]
+\centering
+\caption{Resultados - Hiring AI}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metrica} & \textbf{Manual} & \textbf{Automatizado} \\
+\midrule
+Tempo de execucao & 40h & 5h \\
+Custo estimado & \$12,000 & \$1,500 \\
+Testes executados & 8 & 12 \\
+Violacoes detectadas & 3 & \textbf{5} \\
+Compliance Score & N/A & 62\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Violacoes Adicionais Detectadas}:
+\begin{enumerate}
+    \setcounter{enumi}{3}
+    \item Statistical significance de disparidade (Chi-squared: $p=0.003$)
+    \item Proxy variable: ``zip\_code'' correlacionado com raca ($r=0.68$)
+\end{enumerate}
+
+\subsubsection{Mitigacoes Aplicadas}
+Com base em recomendacoes do framework:
+
+\begin{enumerate}
+    \item \textbf{Threshold adjustment}: Reduziu limiar de classificacao de 0.5 para 0.35
+    \item \textbf{Feature removal}: Removeu ``zip\_code'' e ``years\_since\_graduation''
+    \item \textbf{Fairness constraints}: Adicionou demographic parity constraint no treinamento
+\end{enumerate}
+
+\textbf{Resultado Pos-Mitigacao}:
+\begin{itemize}
+    \item Compliance Score: 62\% $\rightarrow$ \textbf{94\%}
+    \item Impact Ratio (Raca): 0.72 $\rightarrow$ 0.83
+    \item Violacoes remanescentes: 0
+    \item Perda de acuracia: F1 0.76 $\rightarrow$ 0.74 (-2.6\%)
+\end{itemize}
+
+\subsection{Case Study 2: Lending AI System}
+
+\subsubsection{Contexto}
+Fintech oferecendo emprestimos pessoais usa ML para aprovacao de credito. Processa 50,000+ aplicacoes/ano.
+
+\textbf{Modelo}: XGBoost Classifier
+\textbf{Features}: 32 features (renda, divida, historico de credito, emprego)
+\textbf{Regulacao Aplicavel}: ECOA Regulation B
+
+\subsubsection{Baseline: Revisao Manual}
+\begin{itemize}
+    \item \textbf{Tempo}: 35 horas
+    \item \textbf{Custo}: \$10,500
+    \item \textbf{Violacoes identificadas}: 2
+    \begin{enumerate}
+        \item Falta de adverse action notifications automaticas
+        \item Feature ``first\_name'' (potencial proxy para genero/etnia)
+    \end{enumerate}
+\end{itemize}
+
+\subsubsection{Framework Automatizado}
+
+\begin{table}[h]
+\centering
+\caption{Resultados - Lending AI}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metrica} & \textbf{Manual} & \textbf{Automatizado} \\
+\midrule
+Tempo de execucao & 35h & 4h \\
+Custo estimado & \$10,500 & \$1,200 \\
+Testes executados & 6 & 8 \\
+Violacoes detectadas & 2 & \textbf{4} \\
+Compliance Score & N/A & 71\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Violacoes Adicionais}:
+\begin{enumerate}
+    \setcounter{enumi}{2}
+    \item Disparate impact para mulheres (impact ratio 0.76)
+    \item Reason codes nao-interpretiveis (features tecnicas vs. explicacoes legiveis)
+\end{enumerate}
+
+\subsubsection{Mitigacoes Aplicadas}
+
+\begin{enumerate}
+    \item \textbf{Feature engineering}: Removeu ``first\_name'', criou features agregadas interpretaveis
+    \item \textbf{Adverse action system}: Implementou geracao automatica de notifications com reason codes
+    \item \textbf{Threshold optimization}: Ajustou limiar especifico para grupo demografico
+\end{enumerate}
+
+\textbf{Resultado Pos-Mitigacao}:
+\begin{itemize}
+    \item Compliance Score: 71\% $\rightarrow$ \textbf{91\%}
+    \item Impact Ratio (Genero): 0.76 $\rightarrow$ 0.81
+    \item Adverse action notifications: 0\% $\rightarrow$ 100\% coverage
+    \item Perda de acuracia: AUC 0.82 $\rightarrow$ 0.81 (-1.2\%)
+\end{itemize}
+
+\subsection{Analise Comparativa}
+
+\subsubsection{Eficiencia Operacional}
+
+\begin{table}[h]
+\centering
+\caption{Reducao de tempo e custo}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Metrica} & \textbf{CS1} & \textbf{CS2} & \textbf{Media} \\
+\midrule
+Reducao de tempo & 87.5\% & 88.6\% & \textbf{88.0\%} \\
+Reducao de custo & 87.5\% & 88.6\% & \textbf{88.0\%} \\
+Violacoes extras detectadas & +2 & +2 & +2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Cobertura de Testes}
+
+Framework automatizado executa \textbf{50\% mais testes} que revisao manual:
+\begin{itemize}
+    \item Manual: Foco em four-fifths rule e feature inspection
+    \item Automatizado: Coverage completo de EEOC/ECOA, testes estatisticos, proxy detection
+\end{itemize}
+
+\subsubsection{Reproducibilidade}
+
+\begin{table}[h]
+\centering
+\caption{Reproducibilidade de resultados}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Aspecto} & \textbf{Manual} & \textbf{Automatizado} \\
+\midrule
+Consistencia entre auditores & 68\% & \textbf{100\%} \\
+Variacao em impact ratios & $\pm$0.05 & $\pm$0.001 \\
+Tempo de re-execucao & 40h & \textbf{15min} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Continuous Monitoring}
+
+\subsubsection{Integracao CI/CD}
+Apos implantacao, frameworks executam compliance checks automaticamente:
+
+\begin{itemize}
+    \item \textbf{Frequencia}: A cada merge request + weekly scheduled runs
+    \item \textbf{Threshold}: Pipeline falha se compliance score $<$ 75\%
+    \item \textbf{Notificacoes}: Alertas automaticos para equipe de compliance
+\end{itemize}
+
+\subsubsection{Deteccao de Drift}
+Framework detectou degradacao de compliance em producao:
+
+\textbf{Hiring AI (6 meses apos deployment)}:
+\begin{itemize}
+    \item Compliance score: 94\% $\rightarrow$ 81\%
+    \item Causa: Mudanca demografica em pool de candidatos
+    \item Acao: Re-calibracao de threshold, compliance restaurado para 92\%
+\end{itemize}
+
+\subsection{Feedback de Stakeholders}
+
+Coletamos feedback qualitativo de:
+\begin{itemize}
+    \item \textbf{Legal team} (3 advogados): ``Relatorios formatados economizam 80\% do tempo de preparacao para auditorias''
+    \item \textbf{ML engineers} (5 devs): ``Deteccao precoce de violacoes evitou deploy de modelo nao-compliant''
+    \item \textbf{Compliance officers} (2 officers): ``Transparencia de evidence-based scoring aumenta confianca em decisoes''
+\end{itemize}

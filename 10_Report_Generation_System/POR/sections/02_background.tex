@@ -1,0 +1,162 @@
+\section{Background e Trabalhos Relacionados}
+
+\subsection{Validacao de Modelos Machine Learning}
+
+Validacao rigorosa de modelos ML e essencial para deployment em producao. Principais dimensoes de validacao incluem:
+
+\subsubsection{Uncertainty Quantification}
+Modelos devem quantificar incerteza em predicoes. Tecnicas incluem:
+\begin{itemize}
+    \item \textbf{Conformal Prediction}: Garante coverage probabilistico calibrado
+    \item \textbf{Bayesian Methods}: Posterior distributions sobre parametros
+    \item \textbf{Ensemble Methods}: Variacao entre modelos indica incerteza
+\end{itemize}
+
+Metricas: coverage accuracy, interval width, calibration error.
+
+\subsubsection{Robustness Testing}
+Avalia estabilidade de modelos sob perturbacoes:
+\begin{itemize}
+    \item \textbf{Adversarial Robustness}: Resistencia a exemplos adversariais
+    \item \textbf{Noise Robustness}: Performance sob ruido gaussiano/uniforme
+    \item \textbf{Feature Importance Stability}: Consistencia de feature rankings
+\end{itemize}
+
+Metricas: adversarial accuracy, noise degradation, feature importance correlation.
+
+\subsubsection{Fairness Auditing}
+Detecta e quantifica bias demografico:
+\begin{itemize}
+    \item \textbf{Group Fairness}: Demographic parity, equalized odds
+    \item \textbf{Individual Fairness}: Similar individuals $\rightarrow$ similar predictions
+    \item \textbf{Disparate Impact}: Four-fifths rule, statistical parity difference
+\end{itemize}
+
+Metricas: demographic parity difference, equalized odds difference, disparate impact ratio.
+
+\subsubsection{Resilience Testing}
+Avalia degradacao sob distribution shift:
+\begin{itemize}
+    \item \textbf{Covariate Shift}: $P(X)$ muda mas $P(Y|X)$ constante
+    \item \textbf{Concept Drift}: $P(Y|X)$ muda ao longo do tempo
+    \item \textbf{Label Shift}: $P(Y)$ muda mas $P(X|Y)$ constante
+\end{itemize}
+
+Metricas: performance degradation, KL divergence, distribution distance.
+
+\subsection{Sistemas de Templates}
+
+Template engines separam estrutura (layout) de conteudo (dados), permitindo reutilizacao e manutencao:
+
+\subsubsection{Jinja2}
+Template engine Python amplamente adotado:
+\begin{itemize}
+    \item \textbf{Template Inheritance}: Templates filhos extendem templates pais
+    \item \textbf{Macros}: Funcoes reutilizaveis dentro de templates
+    \item \textbf{Filters}: Transformacoes aplicadas a variaveis (\texttt{|round}, \texttt{|safe})
+    \item \textbf{Control Structures}: \texttt{\{% if \%\}}, \texttt{\{% for \%\}}, \texttt{\{% block \%\}}
+    \item \textbf{Auto-escaping}: Previne XSS em contextos HTML
+\end{itemize}
+
+Usado em frameworks web (Flask, Django), documentacao (Sphinx), e reporting.
+
+\subsubsection{Vantagens de Template Systems}
+\begin{enumerate}
+    \item \textbf{Separacao de Responsabilidades}: Designers trabalham em templates; desenvolvedores em logica
+    \item \textbf{Reutilizacao}: Componentes comuns (headers, footers) definidos uma vez
+    \item \textbf{Manutencao}: Mudancas de layout nao requerem modificacao de codigo
+    \item \textbf{Consistencia}: Estrutura uniforme garantida por templates compartilhados
+    \item \textbf{Testabilidade}: Templates e logica podem ser testados independentemente
+\end{enumerate}
+
+\subsection{Visualizacao Interativa de Dados}
+
+Bibliotecas JavaScript modernas permitem exploracao interativa:
+
+\subsubsection{Plotly.js}
+Biblioteca open-source para graficos interativos:
+\begin{itemize}
+    \item \textbf{Tipos de graficos}: 40+ tipos (scatter, bar, heatmap, 3D, etc.)
+    \item \textbf{Interatividade}: Zoom, pan, hover tooltips, selecionabilidade
+    \item \textbf{Export}: PNG, SVG, PDF diretamente do navegador
+    \item \textbf{Responsividade}: Adapta a tamanho de tela
+    \item \textbf{Performance}: WebGL rendering para milhoes de pontos
+\end{itemize}
+
+Alternativas: D3.js (mais flexivel, mais complexo), Chart.js (mais simples, menos recursos).
+
+\subsection{Trabalhos Relacionados}
+
+\subsubsection{Model Cards (Google)}
+Mitchell et al. [2019] propuseram ``model cards'' para documentar modelos ML:
+\begin{itemize}
+    \item \textbf{Estrutura}: Secoes padronizadas (model details, intended use, metrics, caveats)
+    \item \textbf{Formato}: Documentos estaticos (Markdown, PDF)
+    \item \textbf{Limitacoes}: Nao-interativo, nao-automatizado, generico (nao especializado por tipo de validacao)
+\end{itemize}
+
+\textbf{Nossa diferenca}: Templates especializados por tipo de validacao, relatorios interativos, geracao automatizada.
+
+\subsubsection{TensorBoard}
+Plataforma de visualizacao do TensorFlow:
+\begin{itemize}
+    \item \textbf{Foco}: Training metrics (loss curves, histograms)
+    \item \textbf{Interatividade}: Dashboard web interativo
+    \item \textbf{Limitacoes}: Acoplado a TensorFlow, nao cobre validacao comprehensiva (fairness, robustness), nao gera relatorios exportaveis
+\end{itemize}
+
+\textbf{Nossa diferenca}: Framework-agnostico, foco em validacao pos-training, relatorios standalone exportaveis.
+
+\subsubsection{MLflow}
+Plataforma de MLOps com tracking e reporting:
+\begin{itemize}
+    \item \textbf{Tracking}: Logs metricas, parametros, artefatos
+    \item \textbf{UI}: Dashboard web para comparacao de runs
+    \item \textbf{Limitacoes}: Reporting generico (tabelas de metricas), visualizacoes basicas, nao especializado por tipo de validacao
+\end{itemize}
+
+\textbf{Nossa diferenca}: Renderers especializados, visualizacoes avancadas por tipo de validacao, templates customizaveis.
+
+\subsubsection{Weights \& Biases}
+Plataforma comercial de experiment tracking:
+\begin{itemize}
+    \item \textbf{Features}: Dashboards interativos, comparacao de experimentos, reporting
+    \item \textbf{Limitacoes}: Plataforma proprietaria (vendor lock-in), custo elevado para uso enterprise, templates nao-extensiveis
+\end{itemize}
+
+\textbf{Nossa diferenca}: Open-source, templates extensiveis, controle total sobre estrutura de relatorios.
+
+\subsubsection{Evidently AI}
+Framework de monitoring para ML:
+\begin{itemize}
+    \item \textbf{Foco}: Data drift, model performance monitoring
+    \item \textbf{Relatorios}: HTML dashboards pre-formatados
+    \item \textbf{Limitacoes}: Templates fixos nao-customizaveis, foco em monitoring (vs. validacao comprehensiva)
+\end{itemize}
+
+\textbf{Nossa diferenca}: Templates customizaveis, cobertura completa de validacao (uncertainty, robustness, fairness, resilience).
+
+\subsection{Gaps na Literatura}
+
+Trabalhos relacionados apresentam limitacoes:
+
+\begin{table}[h]
+\centering
+\caption{Comparacao com Trabalhos Relacionados}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Ferramenta} & \textbf{Templates} & \textbf{Interativo} & \textbf{Multi-validacao} & \textbf{Extensivel} \\
+\midrule
+Model Cards & \xmark & \xmark & \xmark & \cmark \\
+TensorBoard & \xmark & \cmark & \xmark & \xmark \\
+MLflow & \xmark & \cmark & \xmark & \cmark \\
+W\&B & \xmark & \cmark & \cmark & \xmark \\
+Evidently & \xmark & \cmark & \xmark & \xmark \\
+\textbf{Nossa Solucao} & \cmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Principal gap}: Nenhuma solucao combina templates customizaveis, interatividade, cobertura multi-validacao, e extensibilidade.
+
+Nossa contribuicao preenche esse gap com sistema template-driven especializado para reporting de validacao ML.

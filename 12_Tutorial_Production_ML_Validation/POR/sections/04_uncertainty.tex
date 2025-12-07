@@ -1,0 +1,81 @@
+\section{Módulo 4: Uncertainty Quantification Hands-on}
+
+\subsection{Motivação: Por Que Quantificar Incerteza?}
+
+Modelos de regressão produzem predições pontuais sem indicação de confiança. Em decisões críticas (medical dosage, financial forecasting, engineering), intervalos calibrados são essenciais. \textbf{Problema}: Métodos tradicionais (linear regression CI) falham para modelos não-lineares e dados heteroscedásticos. \textbf{Solução}: CRQR---Conformal Prediction model-agnostic com garantias matemáticas.
+
+\subsection{CRQR: Conformalized Residual Quantile Regression}
+
+\textbf{Algoritmo}: (1) Split dados em train/calib/test, (2) Treinar quantile regression para $[\hat{q}_\alpha(x), \hat{q}_{1-\alpha}(x)]$, (3) Calcular non-conformity scores $s_i$ em calib, (4) Ajustar intervalos com quantile de $s$. \textbf{Garantia}: Com probabilidade $\geq 1-\alpha$, intervalo contém valor verdadeiro.
+
+\subsection{Setup e Execução}
+
+\begin{lstlisting}
+# Dataset: California Housing (20k samples, regression)
+from deepbridge.validation.wrappers import UncertaintySuite
+
+dataset = DBDataset(data=df, target_column='target', model=model)
+uncertainty = UncertaintySuite(dataset=dataset, verbose=True)
+
+results = uncertainty.config('medium').run()  # alphas=[0.05, 0.1, 0.2]
+
+# Analise alpha=0.1 (90% CI)
+alpha_01 = results['primary_model']['crqr']['by_alpha']['0.1']['overall_result']
+print(f"Expected Coverage: 90.0%")
+print(f"Actual Coverage: {alpha_01['coverage']:.3f}")
+print(f"Mean Width: {alpha_01['mean_width']:.3f}")
+
+# Output: Coverage: 0.917 (bem calibrado!), Width: 0.623 (~62k USD)
+\end{lstlisting}
+
+\subsection{Feature Importance para Incerteza}
+
+\begin{lstlisting}
+# Features que mais aumentam incerteza
+feat_importance = results['primary_model']['feature_importance']
+top3 = pd.Series(feat_importance).nlargest(3)
+print(top3)
+
+# Output:
+# AveOccup    0.94  # Alta ocupacao = alta incerteza
+# Longitude   0.89
+# Latitude    0.87
+\end{lstlisting}
+
+\subsection{Reliability Analysis}
+
+Analisa confiabilidade em diferentes regiões do feature space:
+
+\begin{lstlisting}
+reliability = results['primary_model']['reliability_analysis']
+
+# Regioes de baixa confianca
+for region in reliability['AveOccup']['low_confidence_regions']:
+    print(f"Range: {region['range']}, Confidence: {region['confidence_score']:.3f}")
+
+# Output: Range: (6.5, 12.3), Confidence: 0.62  # Ocupacao extrema
+\end{lstlisting}
+
+\subsection{Predições com Intervalos}
+
+\begin{lstlisting}
+from deepbridge.validation.robustness.uncertainty_suite import CRQR
+
+crqr = CRQR(alpha=0.1, random_state=42)
+crqr.fit(X_train, y_train)
+
+lower, upper, point = crqr.predict_interval(X_new)
+
+for i in range(5):
+    print(f"Casa {i+1}: ${point[i]:.2f} x 100k, "
+          f"90% CI: [${lower[i]:.2f}, ${upper[i]:.2f}], "
+          f"Width: ${upper[i]-lower[i]:.2f}")
+\end{lstlisting}
+
+\subsection{Aplicações em Produção}
+
+\textbf{Flagging high-uncertainty}: Identificar predições com intervalo $>$ threshold para review manual. \textbf{Conservative pricing}: Usar lower bound como preço (minimizar risco de subpricing).
+
+\subsection{Resumo}
+
+\textbf{Aprendemos}: CRQR para intervalos calibrados, feature importance para incerteza, reliability analysis, aplicações em flagging e pricing. \textbf{Próximo}: Integration \& Reporting.

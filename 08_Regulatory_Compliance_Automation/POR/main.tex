@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Automacao de Testes de Conformidade Regulatoria para Sistemas de IA: Estudos de Caso EEOC e ECOA}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Organizacoes que implantam sistemas de IA em dominios regulados---contratacao, credito, habitacao---enfrentam requisitos complexos de conformidade (EEOC, ECOA, GDPR), mas verificacao de compliance e tipicamente manual, ad-hoc, e realizada somente pre-deployment. Apresentamos framework de automacao de testes de conformidade regulatoria que (1) codifica requisitos legais em testes executaveis (EEOC Title VII, ECOA Regulation B), (2) executa verificacao continua durante desenvolvimento, (3) gera relatorios de compliance scoring com evidencias quantitativas, e (4) identifica violacoes especificas com recomendacoes de mitigacao. Nossa implementacao no DeepBridge inclui: \textbf{12 testes EEOC} (adverse impact ratio, four-fifths rule, statistical significance), \textbf{8 testes ECOA} (prohibited basis checks, notification requirements), \textbf{compliance scoring} (0-100\%) agregando multiplos criterios, e \textbf{geracao automatica de relatorios} formatados para auditoria. Validacao em 2 case studies reais (hiring AI, lending AI) demonstra: deteccao de \textbf{5 violacoes EEOC} nao-identificadas em revisao manual, \textbf{87\% reducao} em tempo de auditoria de compliance (40h $\rightarrow$ 5h), \textbf{compliance score} passando de 62\% para 94\% apos mitigacoes recomendadas. Framework permite continuous compliance monitoring em CI/CD pipelines.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Regulatory Compliance, AI Governance, EEOC, ECOA, Automated Testing, Legal Tech}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

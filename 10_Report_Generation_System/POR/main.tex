@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Sistema de Geracao de Relatorios Interativos Template-Driven para Validacao de Modelos de Machine Learning}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Organizacoes que desenvolvem e deployam modelos de machine learning enfrentam desafio critico: comunicar resultados de validacao de forma clara, compreensivel, e acionavel para stakeholders tecnicos e nao-tecnicos. Processos tradicionais de reporting---notebooks Jupyter ad-hoc, documentos estaticos, ou dashboards customizados---sao trabalhosos, inconsistentes, e dificeis de manter. Apresentamos sistema template-driven para geracao automatica de relatorios interativos multi-formato que (1) separa estrutura (templates) de conteudo (dados), (2) suporta multiplos tipos de validacao (uncertainty, robustness, fairness, resilience), (3) gera relatorios HTML interativos com visualizacoes Plotly.js, (4) permite exportacao para formatos estaticos (PDF), e (5) garante consistencia via data transformers e renderers modulares. Nossa implementacao no DeepBridge inclui: \textbf{sistema de templates Jinja2} com 60+ templates modulares, \textbf{5 renderers especializados} (uncertainty, robustness, resilience, hyperparameter, fairness), \textbf{data transformers} para normalizacao de resultados, \textbf{asset management} para CSS/JS, e \textbf{relatorios interativos} com graficos dinamicos. Validacao com 12 usuarios (6 data scientists, 6 stakeholders) demonstra: reducao de \textbf{85\% no tempo} de criacao de relatorios (8h $\rightarrow$ 1.2h), aumento de \textbf{92\% na compreensibilidade} para stakeholders nao-tecnicos, e \textbf{100\% de consistencia} entre relatorios do mesmo tipo. Framework permite reporting padronizado e escalavel para validacao de modelos ML em producao.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Report Generation, ML Validation, Template Systems, Interactive Reporting, Model Documentation}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

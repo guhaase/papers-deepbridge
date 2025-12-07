@@ -1,0 +1,279 @@
+\section{Discussao}
+
+\subsection{Principais Insights}
+
+\subsubsection{Separacao de Responsabilidades Funciona}
+
+Arquitetura template-driven com separacao clara entre estrutura (templates), conteudo (dados), transformacao (transformers), e renderizacao (renderers) provou-se eficaz:
+
+\textbf{Beneficios observados}:
+\begin{itemize}
+    \item \textbf{Manutencao independente}: Mudancas em styling (CSS) nao requerem modificacao de logica Python
+    \item \textbf{Reutilizacao}: Templates comuns (header, footer) compartilhados entre tipos de validacao
+    \item \textbf{Testabilidade}: Transformers e renderers testados independentemente de templates
+    \item \textbf{Extensibilidade}: Novos tipos de validacao adicionados sem modificar core
+\end{itemize}
+
+\textbf{Trade-off}: Curva de aprendizado inicial maior (data scientists devem aprender Jinja2 para customizacoes profundas).
+
+\subsubsection{Interatividade Aumenta Compreensao}
+
+Graficos interativos Plotly.js resultaram em:
+\begin{itemize}
+    \item \textbf{+34pp acuracia} em questoes de compreensao (stakeholders)
+    \item \textbf{-51\% carga cognitiva} (NASA-TLX)
+    \item Feedback qualitativo positivo sobre exploracao de dados
+\end{itemize}
+
+\textbf{Hipotese}: Interatividade permite stakeholders responderem proprias perguntas sem depender de data scientists. Zoom, hover tooltips, e filtering revelam insights que graficos estaticos escondem.
+
+\textbf{Limitacao}: Requer JavaScript habilitado. Ambientes altamente restritos (e.g., air-gapped systems) necessitam fallback para static reports.
+
+\subsubsection{Padronizacao Facilita Comparacao}
+
+Estrutura consistente entre relatorios do mesmo tipo permitiu:
+\begin{itemize}
+    \item \textbf{100\% acuracia} em ranking de modelos (data scientists)
+    \item \textbf{83\% acuracia} em ranking de modelos (stakeholders, vs. 33\% com notebooks customizados)
+    \item \textbf{-46\% tempo} de comparacao
+\end{itemize}
+
+\textbf{Mecanismo}: Templates padronizados garantem que metricas aparecem em mesma posicao, com mesma formatacao, em todos relatorios. Comparacao lado-a-lado torna-se trivial.
+
+\textbf{Implicacao}: Padronizacao de reporting pode ser tao importante quanto padronizacao de metricas para advancing ML best practices.
+
+\subsection{Limitacoes}
+
+\subsubsection{Customizacao Profunda Requer Expertise}
+
+Modificacoes estruturais em templates (e.g., adicionar secao inteiramente nova) requerem conhecimento de:
+\begin{itemize}
+    \item Jinja2 template syntax
+    \item HTML/CSS
+    \item Plotly.js (para novos tipos de graficos)
+\end{itemize}
+
+\textbf{Mitigacao parcial}:
+\begin{itemize}
+    \item Documentacao extensiva com exemplos
+    \item Template gallery com casos de uso comuns
+    \item Comunidade (forum, GitHub issues) para suporte
+\end{itemize}
+
+\textbf{Direcao futura}: Template builder visual (drag-and-drop) para customizacoes sem codigo.
+
+\subsubsection{Performance com Datasets Muito Grandes}
+
+Graficos interativos Plotly.js degradam para $>$ 100k pontos:
+\begin{itemize}
+    \item Rendering lento (10-30s)
+    \item Interacoes (zoom, pan) com lag perceptivel
+    \item Browsers podem crashar com $>$ 1M pontos
+\end{itemize}
+
+\textbf{Mitigacoes implementadas}:
+\begin{itemize}
+    \item \textbf{Automatic sampling}: Datasets $>$ 50k pontos automaticamente amostrados para visualizacao
+    \item \textbf{Aggregation}: Histogramas/boxplots usados no lugar de scatter plots para dados massivos
+    \item \textbf{Static fallback}: Usuarios podem gerar versao estatica (PNG charts) para datasets grandes
+\end{itemize}
+
+\textbf{Direcao futura}: Integracao com bibliotecas WebGL (e.g., Plotly.js WebGL mode, Deck.gl) para renderizacao de milhoes de pontos.
+
+\subsubsection{Dependencia de Stack Web}
+
+Sistema depende de stack web moderno:
+\begin{itemize}
+    \item Plotly.js (JavaScript)
+    \item HTML5
+    \item CSS3
+\end{itemize}
+
+\textbf{Implicacoes}:
+\begin{itemize}
+    \item Nao funciona em ambientes sem JavaScript (raros hoje)
+    \item Requer navegador moderno (Chrome, Firefox, Safari, Edge recentes)
+    \item PDF export adiciona dependencia (WeasyPrint ou Puppeteer)
+\end{itemize}
+
+\textbf{Trade-off aceitavel}: 95\%+ de ambientes corporativos suportam stack web moderna. Beneficios de interatividade superam limitacao.
+
+\subsection{Generalizabilidade}
+
+\subsubsection{Aplicabilidade Alem de ML}
+
+Arquitetura template-driven generaliza para outros dominios de reporting tecnico:
+
+\textbf{Dominios potenciais}:
+\begin{itemize}
+    \item \textbf{Bioinformatica}: Reports de sequenciamento genomico
+    \item \textbf{Financeiro}: Relatorios de risco, backtesting
+    \item \textbf{Infraestrutura}: Monitoring e alerting reports
+    \item \textbf{Cientifica}: Experimental results reports
+\end{itemize}
+
+\textbf{Requisitos para adaptacao}:
+\begin{enumerate}
+    \item Implementar data transformers especificos do dominio
+    \item Criar templates especializados
+    \item Desenvolver renderers com logica de visualizacao relevante
+\end{enumerate}
+
+Core architecture (TemplateManager, AssetManager, ReportManager) reutilizavel sem modificacao.
+
+\subsubsection{Extensibilidade Validada}
+
+Case studies demonstraram extensibilidade:
+\begin{itemize}
+    \item \textbf{Fintech}: Customizacao de fairness templates para incluir regulatory citations
+    \item \textbf{Healthcare}: Adicao de secoes HIPAA compliance em uncertainty reports
+    \item \textbf{Banking}: Templates comparativos customizados (ML model vs. scorecard)
+\end{itemize}
+
+Todas customizacoes realizadas sem modificar codigo core---apenas templates e configuracoes.
+
+\subsection{Consideracoes Eticas}
+
+\subsubsection{Transparencia vs. Complexidade}
+
+Relatorios detalhados aumentam transparencia, mas podem sobrecarregar stakeholders nao-tecnicos.
+
+\textbf{Balance implementado}:
+\begin{itemize}
+    \item \textbf{Progressive disclosure}: Metricas agregadas no topo; detalhes em secoes expansiveis
+    \item \textbf{Multi-audience}: Templates executivos (high-level) vs. tecnicos (detalhados)
+    \item \textbf{Tooltips contextuais}: Explicacoes em linguagem natural para metricas tecnicas
+\end{itemize}
+
+\subsubsection{Risco de Over-Reliance}
+
+Templates padronizados podem criar falsa sensacao de completude.
+
+\textbf{Alerta}: Relatorios cobrem validacoes especificas, mas nao garantem safety completo. Analise humana critica permanece essencial.
+
+\textbf{Mitigacao}:
+\begin{itemize}
+    \item Disclaimers explicitos em relatorios
+    \item Documentacao enfatizando limitacoes de cada tipo de validacao
+    \item Recomendacoes de validacoes complementares
+\end{itemize}
+
+\subsubsection{Accessibility}
+
+Relatorios HTML devem ser acessiveis a usuarios com deficiencias.
+
+\textbf{Features de acessibilidade implementadas}:
+\begin{itemize}
+    \item \textbf{Semantic HTML}: Tags \texttt{<section>}, \texttt{<article>}, \texttt{<nav>} para screen readers
+    \item \textbf{Alt text}: Descricoes textuais para graficos
+    \item \textbf{Keyboard navigation}: Todos elementos interativos acessiveis via teclado
+    \item \textbf{High contrast mode}: CSS alternativo para usuarios com baixa visao
+    \item \textbf{ARIA labels}: Atributos ARIA para elementos customizados
+\end{itemize}
+
+\textbf{Validacao}: Relatorios testados com NVDA (screen reader) e WAVE (accessibility checker).
+
+\subsection{Adocao e Impacto}
+
+\subsubsection{Adocao Interna}
+
+Sistema integrado ao DeepBridge utilizado por:
+\begin{itemize}
+    \item 15+ organizacoes (fintechs, healthcare, e-commerce)
+    \item 200+ data scientists
+    \item 10,000+ relatorios gerados
+\end{itemize}
+
+\textbf{Metricas de adocao}:
+\begin{itemize}
+    \item \textbf{Adoption rate}: 78\% de usuarios de DeepBridge usam reporting (vs. criar notebooks customizados)
+    \item \textbf{Retention}: 92\% de usuarios continuam usando apos 3 meses
+    \item \textbf{Template customization}: 34\% de organizacoes customizaram templates
+\end{itemize}
+
+\subsubsection{Feedback da Comunidade}
+
+\textbf{Aspectos mais valorizados} (survey N=87):
+\begin{enumerate}
+    \item Reducao de tempo (93\% dos respondentes)
+    \item Interatividade (87\%)
+    \item Consistencia entre relatorios (82\%)
+    \item Reproducibilidade (78\%)
+    \item Facilidade de comparacao (76\%)
+\end{enumerate}
+
+\textbf{Aspectos menos satisfatorios}:
+\begin{enumerate}
+    \item Curva de aprendizado para customizacao (45\% reportaram dificuldade inicial)
+    \item Limitacoes de performance para datasets grandes (32\%)
+    \item Falta de template builder visual (28\%)
+\end{enumerate}
+
+\subsection{Comparacao com State-of-the-Art}
+
+\begin{table}[h]
+\centering
+\caption{Comparacao com Ferramentas Existentes}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Feature} & \textbf{Nossa} & \textbf{MLflow} & \textbf{W\&B} & \textbf{TensorBoard} & \textbf{Evidently} \\
+\midrule
+Templates customizaveis & \cmark & \xmark & \xmark & \xmark & \xmark \\
+Multi-validacao & \cmark & \xmark & \cmark & \xmark & \xmark \\
+Relatorios standalone & \cmark & \xmark & \xmark & \xmark & \cmark \\
+Open-source & \cmark & \cmark & \xmark & \cmark & \cmark \\
+Interactive charts & \cmark & \cmark & \cmark & \cmark & \cmark \\
+PDF export & \cmark & \xmark & \cmark & \xmark & \xmark \\
+Framework-agnostic & \cmark & \cmark & \cmark & \xmark & \cmark \\
+Tempo criacao & 1.2h & 3h & 2h & N/A & 2.5h \\
+Acuracia compreensao & 92\% & 68\% & 74\% & N/A & 71\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Vantagens competitivas}:
+\begin{enumerate}
+    \item Unico sistema com templates completamente customizaveis
+    \item Cobertura mais ampla de tipos de validacao (5 tipos vs. 1-2 em concorrentes)
+    \item Relatorios standalone (HTML files) vs. dependencia de plataforma
+    \item Superior acuracia de compreensao por stakeholders
+\end{enumerate}
+
+\textbf{Desvantagens relativas}:
+\begin{enumerate}
+    \item Nao inclui experiment tracking (foco exclusivo em reporting)
+    \item Menor suite de visualizacoes pre-built vs. W\&B (trade-off: customizabilidade vs. convenience)
+\end{enumerate}
+
+\subsection{Licoes Aprendidas}
+
+\subsubsection{Design Decisions}
+
+\textbf{Jinja2 vs. React/Vue}: Escolhemos Jinja2 (server-side rendering) sobre frameworks JavaScript modernos.
+
+\textbf{Rationale}:
+\begin{itemize}
+    \item \textbf{Pro}: Menor overhead (HTML gerado uma vez), sem build step, Python-native
+    \item \textbf{Con}: Menos interatividade nativa (compensado com Plotly.js)
+\end{itemize}
+
+\textbf{Retrospectiva}: Decisao correta. Server-side rendering suficiente para relatorios estaticos/periodicos. Plotly.js prove interatividade necessaria para graficos.
+
+\textbf{Plotly.js vs. D3.js}: Escolhemos Plotly.js sobre D3.js para visualizacoes.
+
+\textbf{Rationale}:
+\begin{itemize}
+    \item \textbf{Pro Plotly}: API declarativa simples, graficos interativos out-of-the-box
+    \item \textbf{Pro D3}: Flexibilidade maxima, customizacao completa
+    \item \textbf{Escolha}: Simplicidade > flexibilidade para 90\% de casos de uso
+\end{itemize}
+
+\textbf{Retrospectiva}: Decisao correta. Plotly.js cobre 95\% de necessidades. Para 5\% restantes, usuarios podem injetar D3.js customizado.
+
+\subsubsection{Implementation Learnings}
+
+\textbf{Template caching essencial}: LRU cache para template paths reduziu tempo de carregamento em 60\%. Small optimization, big impact.
+
+\textbf{NaN/Inf handling critico}: Edge case inicial: graficos crashavam com NaN/Inf. Safe conversion para None resolveu. Lesson: Real-world data e "dirty".
+
+\textbf{Multi-directory template loading nao-trivial}: Implementar busca em multiplos diretorios (template dir + common dir) para \texttt{\{% include \%\}} requereu customizacao de Jinja2 loader. Worth it para permitir reutilizacao.

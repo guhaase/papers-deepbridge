@@ -1,0 +1,107 @@
+\section{Design do Framework}
+
+\subsection{Visao Geral}
+
+O framework de otimizacao de limiares consiste em quatro componentes principais:
+
+\begin{enumerate}
+    \item \textbf{Threshold Analyzer}: Varia limiares sistematicamente (0.1-0.9, passo 0.05)
+    \item \textbf{Metrics Computer}: Calcula metricas de justica e acuracia para cada limiar
+    \item \textbf{Pareto Optimizer}: Identifica solucoes nao-dominadas usando NSGA-II
+    \item \textbf{Visualization Engine}: Gera graficos interativos de trade-offs
+\end{enumerate}
+
+\subsection{Threshold Analyzer}
+
+\subsubsection{Espaco de Busca}
+Definimos o espaco de limiares como $\Theta = \{0.10, 0.15, 0.20, \ldots, 0.90\}$. Excluimos extremos ($<$0.1, $>$0.9) por resultarem em predicoes triviais.
+
+\subsubsection{Estrategia de Varredura}
+Para cada limiar $\theta \in \Theta$:
+\begin{itemize}
+    \item Converte probabilidades em predicoes: $\hat{y}_i = \mathbb{1}[p_i \geq \theta]$
+    \item Calcula metricas de confusao (TP, FP, TN, FN) por grupo demografico
+    \item Agrega resultados para analise posterior
+\end{itemize}
+
+\subsection{Metrics Computer}
+
+\subsubsection{Metricas de Acuracia}
+Para cada limiar, calculamos:
+\begin{itemize}
+    \item \textbf{F1-Score}: $F1 = 2 \cdot \frac{precision \cdot recall}{precision + recall}$
+    \item \textbf{Precision}: $P = \frac{TP}{TP + FP}$
+    \item \textbf{Recall}: $R = \frac{TP}{TP + FN}$
+    \item \textbf{Accuracy}: $Acc = \frac{TP + TN}{TP + TN + FP + FN}$
+\end{itemize}
+
+\subsubsection{Metricas de Justica}
+Calculamos disparidades entre grupos (grupo 0 vs. grupo 1):
+\begin{itemize}
+    \item \textbf{Demographic Parity Diff}: $|P(\hat{Y}=1|A=0) - P(\hat{Y}=1|A=1)|$
+    \item \textbf{Equalized Odds Diff}: $max(|TPR_0 - TPR_1|, |FPR_0 - FPR_1|)$
+    \item \textbf{Equal Opportunity Diff}: $|TPR_0 - TPR_1|$
+\end{itemize}
+
+Valores proximos de zero indicam maior justica.
+
+\subsection{Pareto Optimizer}
+
+\subsubsection{Formulacao Multi-Objetivo}
+Definimos problema de otimizacao com $k$ objetivos:
+\begin{equation}
+\text{minimize} \quad f(\theta) = (f_1(\theta), f_2(\theta), \ldots, f_k(\theta))
+\end{equation}
+
+Tipicamente:
+\begin{itemize}
+    \item $f_1$: Minimizar erro de classificacao ($1 - F1$)
+    \item $f_2$: Minimizar disparidade de demographic parity
+    \item $f_3$: Minimizar disparidade de equalized odds
+\end{itemize}
+
+\subsubsection{NSGA-II para Threshold Selection}
+Adaptamos NSGA-II para nosso contexto:
+
+\begin{algorithm}
+\caption{Threshold Optimization via NSGA-II}
+\begin{algorithmic}[1]
+\State $\Theta \gets \{0.10, 0.15, \ldots, 0.90\}$ \Comment{Populacao inicial}
+\For{cada $\theta \in \Theta$}
+    \State $metrics[\theta] \gets$ ComputeMetrics($\theta$)
+\EndFor
+\State $fronts \gets$ NonDominatedSort($\Theta$, $metrics$)
+\State $pareto \gets fronts[0]$ \Comment{Primeira fronteira}
+\State \Return $pareto$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Visualization Engine}
+
+\subsubsection{Graficos de Trade-off}
+Geramos visualizacoes bidimensionais:
+\begin{itemize}
+    \item \textbf{F1 vs. Demographic Parity}: Mostra trade-off acuracia-justica
+    \item \textbf{Precision vs. Recall}: Curva PR tradicional
+    \item \textbf{TPR vs. FPR por Grupo}: ROC curves estratificadas
+\end{itemize}
+
+\subsubsection{Pareto Frontier Plot}
+Destacamos solucoes Pareto-otimas com marcadores especiais, permitindo decisores identificarem visualmente configuracoes otimas baseadas em preferencias.
+
+\subsection{Design Decisions}
+
+\begin{table}[h]
+\centering
+\caption{Principais decisoes de design}
+\begin{tabular}{lll}
+\toprule
+\textbf{Aspecto} & \textbf{Decisao} & \textbf{Justificativa} \\
+\midrule
+Intervalo & 0.1-0.9 & Extremos sao triviais \\
+Passo & 0.05 & Balance granulosidade/custo \\
+Algoritmo & NSGA-II & Estado da arte multi-obj \\
+Metricas & 3 fairness + 4 accuracy & Cobertura abrangente \\
+\bottomrule
+\end{tabular}
+\end{table}

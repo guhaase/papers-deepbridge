@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Otimizacao Multi-Objetivo de Limiares para Equilibrio entre Justica e Acuracia}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+A selecao de limiares de classificacao em modelos de machine learning impacta diretamente metricas de justica (fairness) e acuracia, mas tradicionalmente e feita de forma manual e subjetiva. Apresentamos um framework de otimizacao multi-objetivo que automatiza a analise de limiares no intervalo 10-90\%, identificando fronteiras de Pareto para trade-offs justica-acuracia. Nossa abordagem (1) varia limiares sistematicamente em passos de 5\%, (2) calcula metricas de justica (demographic parity, equalized odds, equal opportunity) e acuracia (F1, precision, recall) para cada limiar, (3) identifica solucoes Pareto-otimas usando algoritmos multi-objetivo (NSGA-II), e (4) gera visualizacoes interativas das fronteiras de trade-off. Experimentos em 3 datasets reais (credito, contratacao, saude) demonstram: \textbf{identificacao automatica} de limiares otimos (vs. manual), \textbf{reducao de 40-60\%} em violacoes de justica sem perda significativa de acuracia ($<$3\%), \textbf{descoberta de 8-12 solucoes Pareto-otimas} por cenario, permitindo decisoes informadas baseadas em prioridades organizacionais. Framework integrado ao DeepBridge permite analise automatizada de trade-offs em qualquer modelo de classificacao.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Fairness, Threshold Optimization, Multi-Objective Optimization, Pareto Frontier, Algorithmic Fairness}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

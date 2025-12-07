@@ -1,0 +1,101 @@
+\section{Módulo 5: Integration \& Reporting}
+
+\subsection{Orquestração via Experiment Class}
+
+Produção requer consistência, rastreabilidade e eficiência:
+
+\begin{lstlisting}
+from deepbridge import DBDataset, Experiment
+
+dataset = DBDataset(data=df, target_column='target', model=clf)
+
+exp = Experiment(
+    dataset=dataset,
+    experiment_type='binary_classification',
+    tests=['robustness', 'fairness', 'uncertainty'],
+    protected_attributes=['race', 'sex', 'age']
+)
+
+# Executar todos os testes
+results = exp.run_tests(config_name='medium')
+
+# Acessar resultados
+print(f"Robustness: {results['robustness']['robustness_score']:.3f}")
+print(f"Fairness: {results['fairness']['overall_fairness_score']:.3f}")
+print(f"Uncertainty: {results['uncertainty']['primary_model']['uncertainty_quality_score']:.3f}")
+\end{lstlisting}
+
+\subsection{Sistema de Relatórios}
+
+\begin{lstlisting}
+# Relatorios individuais
+results['robustness'].save_html('reports/robustness.html')
+
+# Dashboard consolidado
+exp.generate_consolidated_report(
+    results=results,
+    output_path='reports/dashboard.html',
+    model_name='Model v2.1',
+    metadata={'commit': 'a3f4b92', 'date': '2024-01-15'}
+)
+\end{lstlisting}
+
+\subsection{Integração CI/CD (GitHub Actions)}
+
+\begin{lstlisting}[language=bash]
+# .github/workflows/model_validation.yml
+name: ML Model Validation
+
+on:
+  pull_request:
+    paths: ['models/**', 'data/**']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: pip install deepbridge scikit-learn
+    - name: Run validation
+      run: python scripts/run_validation.py --config quick
+    - name: Check results
+      run: python scripts/check_validation_results.py
+\end{lstlisting}
+
+\textbf{scripts/run\_validation.py}: Carrega modelo/dados, cria Experiment, roda testes, salva resultados JSON. \textbf{scripts/check\_validation\_results.py}: Verifica thresholds (robustness $\geq$ 0.75, fairness $\geq$ 0.80), \texttt{sys.exit(1)} se falhar.
+
+\subsection{Monitoramento Contínuo}
+
+\begin{lstlisting}[language=bash]
+# Cronjob semanal em producao
+0 2 * * 0 cd /project && python scripts/monitor_production.py
+
+# monitor_production.py: carrega modelo producao,
+# dados ultimos 7 dias, roda validacao, alerta se degradacao
+\end{lstlisting}
+
+\subsection{Pipeline End-to-End}
+
+\begin{lstlisting}
+# Treino -> Validacao -> Deploy
+clf.fit(X_train, y_train)
+
+exp = Experiment(dataset, tests=['robustness', 'fairness'])
+results = exp.run_tests(config_name='full')
+
+# Criterios de aprovacao
+robustness_ok = results['robustness']['robustness_score'] >= 0.80
+fairness_ok = results['fairness']['overall_fairness_score'] >= 0.85
+deploy_approved = robustness_ok and fairness_ok
+
+if deploy_approved:
+    joblib.dump(clf, 'models/production/model_v2.1.pkl')
+    exp.generate_consolidated_report(results, 'reports/deployment_v2.1.html')
+else:
+    print("Model REJECTED for deployment")
+\end{lstlisting}
+
+\subsection{Resumo}
+
+\textbf{Aprendemos}: Experiment orchestration, relatórios (individuais + consolidados), CI/CD (GitHub Actions), monitoramento contínuo, pipeline end-to-end (treino $\rightarrow$ validação $\rightarrow$ deploy).

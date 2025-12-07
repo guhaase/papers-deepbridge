@@ -1,0 +1,168 @@
+\section{Background e Trabalhos Relacionados}
+
+\subsection{Panorama Regulatorio}
+
+\subsubsection{ECOA Regulation B (Equal Credit Opportunity Act)}
+
+12 CFR 1002 estabelece requisitos especificos para sistemas de decisao de credito:
+
+\begin{itemize}
+    \item \textbf{Section 1002.2(z)}: Define ``prohibited basis''---raca, cor, religiao, origem nacional, sexo, estado civil, idade, assistencia publica
+    \item \textbf{Section 1002.9(b)(2)}: Requer notificacao de ``razoes especificas e principais'' para decisoes adversas. Razoes devem ser ``especificas'' (nao genericas) e ``principais'' (fatores que realmente influenciaram)
+    \item \textbf{Official Interpretations}: CFPB clarifica que ``credit score'' sozinho nao e razao suficiente---componentes do score devem ser identificados
+\end{itemize}
+
+Jurisprudencia estabelece que sistemas opacos violam ECOA mesmo sem intencao discriminatoria (disparate impact doctrine).
+
+\subsubsection{GDPR Article 22 (Right to Explanation)}
+
+Regulacao europeia estabelece:
+
+\begin{quote}
+``Data subject shall have right not to be subject to decision based solely on automated processing... [Organizacao deve provide] meaningful information about logic involved, significance and envisaged consequences.''
+\end{quote}
+
+Debate academico sobre ``meaningful information'': SHAP values sao suficientes? Ou e necessario modelo globalmente interpretavel?
+
+\subsubsection{EU AI Act (2024)}
+
+Classifica sistemas de credito/emprego/healthcare como ``high-risk AI'':
+
+\begin{itemize}
+    \item \textbf{Article 13}: Transparency obligations---documentacao tecnica, logs de decisoes
+    \item \textbf{Article 14}: Human oversight---capacidade humana de compreender e supervisionar
+    \item \textbf{Annex IV}: Especifica documentacao necessaria incluindo ``logica do sistema''
+\end{itemize}
+
+\subsubsection{SR 11-7 (Federal Reserve Model Risk Management)}
+
+Guidance para bancos nos EUA:
+
+\begin{itemize}
+    \item \textbf{Validation Requirements}: Modelos devem ser validados por funcao independente
+    \item \textbf{Documentation}: Deve ser ``compreensivel para audiencias nao familiarizadas com modelo''
+    \item \textbf{Ongoing Monitoring}: Performance drift pode invalidar compliance
+\end{itemize}
+
+\subsection{Interpretabilidade em Machine Learning}
+
+\subsubsection{Intrinsic vs. Post-hoc Interpretability}
+
+\textbf{Modelos Intrinsecamente Interpretaveis}:
+\begin{itemize}
+    \item \textbf{Linear/Logistic Regression}: $y = \beta_0 + \beta_1 x_1 + ... + \beta_p x_p$. Coeficientes sao efeitos diretos
+    \item \textbf{Decision Trees}: Regras if-then human-readable
+    \item \textbf{GAMs}: Estrutura aditiva permite decomposicao de efeitos
+    \item \textbf{Rule-based systems}: Conjuntos de regras logicas
+\end{itemize}
+
+\textbf{Post-hoc Explanation Methods}:
+\begin{itemize}
+    \item \textbf{SHAP (SHapley Additive exPlanations)}: Atribuicao baseada em teoria de jogos. Problema: computacionalmente caro, explica predicoes individuais nao modelo
+    \item \textbf{LIME (Local Interpretable Model-agnostic Explanations)}: Aproximacao local linear. Problema: instavel, varia com sampling
+    \item \textbf{Attention mechanisms}: Para deep learning. Problema: atencao $\neq$ causalidade
+\end{itemize}
+
+Rudin (2019) argumenta: ``Stop explaining black box models. Use interpretable models.'' Post-hoc explanations criam ``ilusao de interpretabilidade''.
+
+\subsubsection{Metricas de Interpretabilidade}
+
+Nao ha consenso, mas proxies incluem:
+
+\begin{itemize}
+    \item \textbf{Model complexity}: Numero de parametros, profundidade de arvore
+    \item \textbf{Simulatability}: Humano consegue ``executar'' modelo mentalmente?
+    \item \textbf{Decomposability}: Partes individuais tem significado?
+    \item \textbf{Algorithmic transparency}: Processo de aprendizado e compreensivel?
+\end{itemize}
+
+\subsection{Knowledge Distillation}
+
+Hinton et al. (2015) introduzem destilacao de conhecimento:
+
+\textbf{Ideia Central}: Modelo complexo (teacher) treina modelo simples (student) via soft labels.
+
+\textbf{Formulacao}:
+\begin{equation}
+q_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}
+\end{equation}
+
+onde $T$ = temperatura (controla suavizacao), $z_i$ = logits do teacher.
+
+\textbf{Loss Function}:
+\begin{equation}
+\mathcal{L} = \alpha \mathcal{L}_{soft}(q_{teacher}, q_{student}) + (1-\alpha) \mathcal{L}_{hard}(y_{true}, y_{student})
+\end{equation}
+
+\textbf{Aplicacoes Tradicionais}:
+\begin{itemize}
+    \item Model compression (BERT $\rightarrow$ DistilBERT)
+    \item Edge deployment (NN $\rightarrow$ quantized NN)
+    \item Ensemble $\rightarrow$ single model
+\end{itemize}
+
+\textbf{Gap}: Literatura foca em compressao, nao interpretabilidade. Nosso trabalho: destilacao para modelos interpretaveis especificamente.
+
+\subsection{Generalized Additive Models (GAMs)}
+
+Hastie \& Tibshirani (1990) introduzem GAMs:
+
+\textbf{Formulacao}:
+\begin{equation}
+g(E[Y]) = \beta_0 + f_1(x_1) + f_2(x_2) + ... + f_p(x_p)
+\end{equation}
+
+onde:
+\begin{itemize}
+    \item $g()$ = link function (identity para regressao, logit para classificacao)
+    \item $f_i()$ = smooth functions (splines, wavelets, etc.)
+    \item Estrutura aditiva permite interpretabilidade
+\end{itemize}
+
+\textbf{Vantagens}:
+\begin{itemize}
+    \item Captura nao-linearidade sem ``black box''
+    \item Efeito de cada feature pode ser plotado independentemente
+    \item Regularizacao natural via smoothing
+\end{itemize}
+
+\textbf{InterpretML (Microsoft)}: Implementacao moderna de GAMs (EBMs---Explainable Boosting Machines) com boosting. Nosso trabalho estende para aceitar destilacao via soft labels.
+
+\subsection{Trabalhos Relacionados}
+
+\subsubsection{Interpretable ML Frameworks}
+
+\begin{itemize}
+    \item \textbf{InterpretML (Microsoft)}: Suite com GAMs, decision trees, linear models. Gap: Nao integra validation multi-dimensional (robustness, fairness, uncertainty)
+    \item \textbf{PiML (Python Interpretable ML)}: Framework focado em modelos interpretaveis. Gap: Sem suporte a destilacao de ensembles complexos
+    \item \textbf{AIX360 (IBM)}: Toolkit com SHAP, LIME, contrastive explanations. Gap: Foca em post-hoc explanations, nao modelos interpretaveis
+\end{itemize}
+
+\subsubsection{Knowledge Distillation para Interpretabilidade}
+
+\begin{itemize}
+    \item \textbf{Tan et al. (2018)}: Distillation Tree-based models. Usam decision trees como students mas sem optimization de temperatura/alpha
+    \item \textbf{Che et al. (2016)}: Interpretable RNNs via attention distillation. Dominio especifico (series temporais)
+    \item \textbf{Frosst \& Hinton (2017)}: Soft decision trees. Estrutura diferenciavel mas perde interpretabilidade vs. CART
+\end{itemize}
+
+\textbf{Gap}: Nenhum trabalho combina destilacao interpretavel com validation suite rigorosa e mapeamento regulatorio.
+
+\subsubsection{Fairness-Aware ML}
+
+\begin{itemize}
+    \item \textbf{AIF360 (IBM)}: 70+ metricas de fairness, 10+ algoritmos de mitigacao. Gap: Nao foca em interpretabilidade
+    \item \textbf{Fairlearn (Microsoft)}: Constraints para fairness durante treinamento. Gap: Assume modelos complexos, nao interpretaveis
+    \item \textbf{Aequitas}: Ferramenta de auditoria de fairness. Gap: Apenas analise, sem integracao com model development
+\end{itemize}
+
+\subsubsection{Nossa Posicao no Estado da Arte}
+
+Primeiro framework que:
+\begin{enumerate}
+    \item Combina destilacao especificamente para modelos interpretaveis (KDDT, GAMs)
+    \item Integra validation multi-dimensional (fairness, robustness, uncertainty) para modelos interpretaveis
+    \item Mapeia metricas tecnicas para requisitos regulatorios especificos
+    \item Quantifica trade-offs performance-interpretabilidade empiricamente em dominios regulados
+    \item Oferece ferramenta production-ready com CI/CD integration
+\end{enumerate}

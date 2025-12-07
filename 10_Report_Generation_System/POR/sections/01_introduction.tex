@@ -1,0 +1,86 @@
+\section{Introducao}
+
+A validacao rigorosa de modelos de machine learning e essencial para deployment seguro em producao, mas comunicar resultados de validacao para stakeholders diversos---data scientists, engenheiros de ML, gerentes de produto, auditores, reguladores---apresenta desafio critico. Relatorios devem ser simultaneamente tecnicamente precisos, visualmente claros, e acionaveis, enquanto cobrem multiplas dimensoes de validacao: robustez, incerteza, fairness, resiliencia, performance.
+
+\subsection{Motivacao}
+
+Praticas atuais de reporting para validacao de modelos ML apresentam limitacoes significativas:
+
+\begin{itemize}
+    \item \textbf{Notebooks Jupyter ad-hoc}: Data scientists criam notebooks customizados para cada validacao. Inconsistencia estrutural dificulta comparacao entre modelos. Manutencao onerosa---mudancas em metricas requerem atualizacao manual de multiplos notebooks
+    \item \textbf{Documentos estaticos (PDF, Word)}: Formato inflexivel sem interatividade. Stakeholders nao podem explorar dados. Graficos estaticos limitam insights
+    \item \textbf{Dashboards customizados}: Desenvolvimento caro (40-80 horas por tipo de validacao). Acoplamento entre visualizacao e dados dificulta reutilizacao. Updates requerem conhecimento de frontend
+    \item \textbf{Falta de padronizacao}: Cada equipe cria propria solucao. Resultados nao-comparaveis entre projetos. Onboarding de novos membros demorado
+\end{itemize}
+
+\subsection{Problema}
+
+Geracao eficaz de relatorios de validacao ML enfrenta desafios tecnicos e organizacionais:
+
+\begin{enumerate}
+    \item \textbf{Heterogeneidade de validacoes}: Diferentes tipos (uncertainty quantification, robustness testing, fairness audits) requerem metricas, visualizacoes, e interpretacoes distintas
+    \item \textbf{Multiplos stakeholders}: Data scientists precisam detalhes tecnicos; executivos querem high-level metrics; reguladores exigem evidencias auditaveis
+    \item \textbf{Evolucao de requisitos}: Metricas e best practices de validacao evoluem. Sistema de reporting deve adaptar sem reescrever codigo
+    \item \textbf{Reproducibilidade}: Relatorios devem ser reproduziveis. Mesmos dados + mesmo template = mesmo relatorio
+    \item \textbf{Interatividade}: Graficos estaticos limitam exploracao. Stakeholders querem filtrar, ampliar, comparar dinamicamente
+    \item \textbf{Multi-formato}: Alguns contextos exigem HTML interativo; outros requerem PDF estatico para arquivamento
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos sistema template-driven para geracao automatica de relatorios interativos que resolve problemas acima via separacao clara entre:
+\begin{itemize}
+    \item \textbf{Estrutura} (templates Jinja2): Define layout, secoes, e styling
+    \item \textbf{Conteudo} (dados de validacao): Resultados de testes de ML
+    \item \textbf{Transformacao} (data transformers): Normaliza resultados heterogeneos
+    \item \textbf{Renderizacao} (renderers): Gera HTML/PDF final
+\end{itemize}
+
+\textbf{Componentes principais}:
+
+\begin{itemize}
+    \item \textbf{Template System}: 60+ templates Jinja2 modulares organizados por tipo de validacao. Templates reutilizam componentes comuns (header, footer, navigation) via heranca
+    \item \textbf{Data Transformers}: Normalizam resultados heterogeneos em formato padronizado. Convertem tipos NumPy, tratam NaN/Inf, validam schemas
+    \item \textbf{Specialized Renderers}: 5 renderers (uncertainty, robustness, resilience, hyperparameter, fairness) com logica especifica de transformacao e visualizacao
+    \item \textbf{Asset Management}: Gerencia CSS, JavaScript, imagens. Inline assets em HTML para portabilidade ou serve via CDN
+    \item \textbf{Interactive Charts}: Integracao Plotly.js para graficos interativos (zoom, pan, filter, export)
+    \item \textbf{Multi-format Export}: HTML interativo como default; PDF estatico via export ou static renderers
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Template-driven architecture}: Primeira solucao integrada para reporting de validacao ML que separa estrutura de conteudo, permitindo evolucao independente
+    \item \textbf{Specialized renderers}: Framework modular com renderers especificos para 5 tipos de validacao, cada um otimizado para metricas e visualizacoes relevantes
+    \item \textbf{Data transformation pipeline}: Sistema robusto de transformacao que normaliza resultados heterogeneos, trata edge cases (NaN, Inf), e valida schemas
+    \item \textbf{Interactive reporting}: Relatorios HTML com Plotly.js permitindo exploracao interativa de dados de validacao
+    \item \textbf{Validacao empirica}: Estudo com 12 usuarios demonstrando reducao de 85\% em tempo de criacao e aumento de 92\% em compreensibilidade
+    \item \textbf{Ferramenta pratica}: Implementacao open-source integrada ao DeepBridge com 60+ templates prontos para uso
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Data Scientists}
+\begin{itemize}
+    \item Reducao de 80-90\% em tempo gasto criando relatorios
+    \item Foco em analise vs. formatting/styling
+    \item Reproducibilidade automatica de relatorios
+\end{itemize}
+
+\subsubsection{Para Organizacoes}
+\begin{itemize}
+    \item Padronizacao de reporting entre equipes e projetos
+    \item Onboarding acelerado (templates documentam best practices)
+    \item Compliance facilitado via relatorios auditaveis
+\end{itemize}
+
+\subsubsection{Para Stakeholders}
+\begin{itemize}
+    \item Compreensao aumentada via visualizacoes interativas
+    \item Comparabilidade entre modelos (estrutura consistente)
+    \item Acesso democratizado a insights de validacao
+\end{itemize}
+
+\subsection{Organizacao}
+
+Secao 2 apresenta background sobre validacao de modelos ML, sistemas de templates, e trabalhos relacionados. Secao 3 descreve design da arquitetura template-driven. Secao 4 detalha implementacao de renderers, transformers, e templates. Secao 5 apresenta estudo de usabilidade com 12 usuarios e case studies. Secao 6 discute limitacoes e extensoes. Secao 7 conclui com direcoes futuras.

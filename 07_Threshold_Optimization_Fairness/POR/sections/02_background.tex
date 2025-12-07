@@ -1,0 +1,67 @@
+\section{Fundamentacao e Trabalhos Relacionados}
+
+\subsection{Metricas de Justica em ML}
+
+Definimos formalmente as principais metricas de justica utilizadas:
+
+\subsubsection{Demographic Parity (Paridade Demografica)}
+Um classificador satisfaz demographic parity se a taxa de predicoes positivas e independente do grupo demografico:
+\begin{equation}
+P(\hat{Y}=1|A=0) = P(\hat{Y}=1|A=1)
+\end{equation}
+onde $A$ e o atributo sensivel (ex: raca, genero) e $\hat{Y}$ e a predicao.
+
+\subsubsection{Equalized Odds (Chances Equalizadas)}
+Requer que taxas de verdadeiros positivos (TPR) e falsos positivos (FPR) sejam iguais entre grupos:
+\begin{align}
+P(\hat{Y}=1|Y=1,A=0) &= P(\hat{Y}=1|Y=1,A=1) \\
+P(\hat{Y}=1|Y=0,A=0) &= P(\hat{Y}=1|Y=0,A=1)
+\end{align}
+
+\subsubsection{Equal Opportunity (Oportunidade Igual)}
+Versao relaxada de equalized odds, requer apenas igualdade de TPR:
+\begin{equation}
+P(\hat{Y}=1|Y=1,A=0) = P(\hat{Y}=1|Y=1,A=1)
+\end{equation}
+
+\subsection{Otimizacao Multi-Objetivo}
+
+\subsubsection{Dominancia de Pareto}
+Uma solucao $x_1$ domina $x_2$ (denotado $x_1 \succ x_2$) se:
+\begin{itemize}
+    \item $x_1$ e pelo menos tao boa quanto $x_2$ em todos objetivos
+    \item $x_1$ e estritamente melhor que $x_2$ em pelo menos um objetivo
+\end{itemize}
+
+Solucoes nao-dominadas formam a \textbf{fronteira de Pareto}.
+
+\subsubsection{NSGA-II}
+Non-dominated Sorting Genetic Algorithm II e um algoritmo evolutivo multi-objetivo que:
+\begin{enumerate}
+    \item Classifica populacao em fronteiras de dominancia
+    \item Mantem diversidade via crowding distance
+    \item Utiliza elitismo para preservar melhores solucoes
+\end{enumerate}
+
+\subsection{Trabalhos Relacionados}
+
+\subsubsection{Post-Processing para Fairness}
+Hardt et al. (2016) propuseram ajuste de limiares como metodo post-processing para equalized odds. Nossa abordagem estende isto com:
+\begin{itemize}
+    \item Multiplas metricas de justica simultaneamente
+    \item Otimizacao multi-objetivo (vs. constraint-based)
+    \item Analise sistematica de trade-offs
+\end{itemize}
+
+\subsubsection{Threshold Optimization}
+Trabalhos previos focam em otimizar limiares para acuracia. Corbett-Davies et al. (2017) analisam trade-offs teoricos entre justica e utilidade, mas sem framework automatizado para analise pratica.
+
+\subsubsection{Ferramentas de Fairness}
+Frameworks como Fairlearn (Microsoft), AIF360 (IBM), e What-If Tool (Google) oferecem analise de justica mas com limitacoes:
+\begin{itemize}
+    \item Fairlearn: Requer especificacao manual de constraints
+    \item AIF360: Foco em metricas individuais, nao otimizacao multi-objetivo
+    \item What-If: Visualizacao mas sem otimizacao automatica
+\end{itemize}
+
+Nossa contribuicao: framework integrado com otimizacao multi-objetivo automatizada, analise sistematica de limiares, e visualizacao de fronteiras de Pareto.

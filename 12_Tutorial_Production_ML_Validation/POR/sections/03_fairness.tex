@@ -1,0 +1,84 @@
+\section{Módulo 3: Fairness Testing Hands-on}
+
+\subsection{Motivação e Framework Regulatório}
+
+Modelos ML em decisões críticas podem perpetuar discriminação. \textbf{EEOC Four-Fifths Rule}: Taxa de seleção de grupo protegido deve ser $\geq$ 80\% da taxa de referência: $\frac{\text{Rate}_{\text{protected}}}{\text{Rate}_{\text{reference}}} \geq 0.80$. \textbf{ECOA}: Proíbe discriminação em crédito por race, sex, marital status, age.
+
+\subsection{Setup e Auto-Detecção}
+
+\begin{lstlisting}
+# Dataset: Adult Income (48k samples, atributos sensiveis)
+from deepbridge import DBDataset, Experiment
+from deepbridge.validation.wrappers import FairnessSuite
+
+dataset = DBDataset(data=df, target_column='target', model=clf)
+
+# Auto-detectar atributos sensiveis
+sensitive_attrs = Experiment.detect_sensitive_attributes(dataset, threshold=0.7)
+# Output: ['race', 'sex', 'age']
+\end{lstlisting}
+
+\subsection{Métricas de Fairness}
+
+DeepBridge implementa 15 métricas: \textbf{Pre-training} (class balance, concept balance, KL/JS divergence) e \textbf{Post-training} (statistical parity, equal opportunity, equalized odds, disparate impact).
+
+\begin{lstlisting}
+fairness = FairnessSuite(
+    dataset=dataset,
+    protected_attributes=['race', 'sex', 'age'],
+    age_grouping=True,
+    age_grouping_strategy='ecoa'  # ou 'median', 'adea'
+)
+
+results = fairness.config('medium').run()
+
+# Verificar disparate impact (EEOC compliance)
+di = results['posttrain_metrics']['sex']['disparate_impact']
+print(f"Ratio: {di['ratio']:.3f}, Passes: {di['passes_threshold']}")
+# Output: Ratio: 0.73, Passes: False  # CRITICAL!
+\end{lstlisting}
+
+\subsection{Age Grouping Regulatório}
+
+\textbf{Estratégias}: \texttt{median} (split binário), \texttt{adea} (employment: $<$40, 40-49, 50-59, 60+), \texttt{ecoa} (credit: 18-29, 30-39, 40-49, 50-59, 60+).
+
+\subsection{Threshold Analysis}
+
+Analisa como fairness varia com threshold de classificação:
+
+\begin{lstlisting}
+results_full = fairness.config('full').run()
+ta = results_full['threshold_analysis']
+
+print(f"Optimal threshold: {ta['optimal_threshold']:.3f}")
+print(f"DI at 0.5: {ta['default_threshold_metrics']['sex']['disparate_impact']:.3f}")
+print(f"DI at optimal: {ta['optimal_metrics']['sex']['disparate_impact']:.3f}")
+
+# Output:
+# Optimal threshold: 0.42
+# DI at 0.5: 0.73  # FAIL
+# DI at optimal: 0.81  # PASS
+\end{lstlisting}
+
+\subsection{Mitigação de Viés}
+
+\textbf{Estratégia 1 - Re-sampling}: Balancear grupos com SMOTE. \textbf{Estratégia 2 - Fairness-aware Learning}:
+
+\begin{lstlisting}
+from fairlearn.reductions import ExponentiatedGradient, DemographicParity
+
+mitigator = ExponentiatedGradient(
+    estimator=GradientBoostingClassifier(),
+    constraints=DemographicParity()
+)
+mitigator.fit(X_train, y_train, sensitive_features=X_train['sex'])
+
+# Validar
+results_mitigated = FairnessSuite(dataset_fair,
+                                 protected_attributes=['sex']).run()
+# Disparate Impact: 0.73 -> 0.84 (PASS!)
+\end{lstlisting}
+
+\subsection{Resumo}
+
+\textbf{Aprendemos}: 15 métricas, age grouping (ADEA/ECOA), threshold optimization, mitigação (re-sampling, fairness-aware learning). \textbf{Próximo}: Uncertainty Quantification.

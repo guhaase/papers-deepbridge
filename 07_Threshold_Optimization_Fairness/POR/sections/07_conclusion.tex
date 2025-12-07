@@ -1,0 +1,79 @@
+\section{Conclusao}
+
+Apresentamos um framework de otimizacao multi-objetivo para selecao automatizada de limiares de classificacao que balanceia metricas de justica e acuracia. Nossa abordagem combina varredura sistematica de limiares (0.1-0.9), calculo de multiplas metricas de fairness, e identificacao de solucoes Pareto-otimas via NSGA-II.
+
+\subsection{Principais Resultados}
+
+Experimentos em 3 datasets reais demonstraram:
+
+\begin{enumerate}
+    \item \textbf{Reducao significativa de vieses}: 40-60\% reducao em violacoes de demographic parity comparado a limiar default (0.5)
+    \item \textbf{Perda minima de acuracia}: Apenas 2-3\% reducao em F1-Score ao escolher limiares Pareto-otimos focados em justica
+    \item \textbf{Multiplas solucoes otimas}: Identificacao de 8-12 configuracoes Pareto-otimas por cenario, permitindo escolhas informadas
+    \item \textbf{Eficiencia computacional}: Tempo de execucao $<$ 10s mesmo para datasets grandes (50k exemplos)
+\end{enumerate}
+
+\subsection{Contribuicoes para a Area}
+
+\subsubsection{Contribuicao Tecnica}
+Primeira solucao integrada que combina:
+\begin{itemize}
+    \item Analise sistematica e automatizada de limiares
+    \item Otimizacao multi-objetivo para fairness
+    \item Identificacao de fronteiras de Pareto
+    \item Visualizacao interativa de trade-offs
+\end{itemize}
+
+\subsubsection{Contribuicao Pratica}
+Framework open-source integrado ao DeepBridge, permitindo praticantes de ML:
+\begin{itemize}
+    \item Auditarem modelos quanto a trade-offs fairness-accuracy
+    \item Justificarem decisoes de threshold com evidencia quantitativa
+    \item Identificarem se ajuste post-processing e suficiente ou se in-processing e necessario
+\end{itemize}
+
+\subsubsection{Contribuicao Metodologica}
+Demonstramos empiricamente que:
+\begin{itemize}
+    \item Trade-offs entre acuracia e justica sao dataset-dependentes e nao-lineares
+    \item Selecao manual de limiares frequentemente resulta em solucoes sub-otimas
+    \item Otimizacao multi-objetivo supera grid search manual
+    \item Post-processing via threshold optimization pode reduzir disparidades significativamente em muitos casos
+\end{itemize}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Pesquisadores}
+Framework fornece baseline robusto para comparacao com metodos mais sofisticados (in-processing, pre-processing). Esperamos que se torne ferramenta padrao para analise de trade-offs em fairness research.
+
+\subsubsection{Para Praticantes}
+Integracao com DeepBridge reduz barreira tecnica para analise de justica. Empresas podem incorporar analise de trade-offs em pipelines de validacao de modelos sem expertise especializada em fairness ML.
+
+\subsubsection{Para Reguladores}
+Visualizacoes de fronteiras de Pareto fornecem evidencia quantitativa de trade-offs inerentes, auxiliando desenvolvimento de politicas realistas sobre fairness em sistemas automatizados.
+
+\subsection{Limitacoes e Trabalho Futuro}
+
+Reconhecemos limitacoes:
+\begin{itemize}
+    \item Requer acesso a atributo sensivel (incompativel com alguns requisitos de privacidade)
+    \item Abordagem post-processing pode ser insuficiente para modelos altamente enviesados
+    \item Espaco de limiares discretizado pode perder solucoes otimas
+\end{itemize}
+
+Trabalhos futuros incluem:
+\begin{enumerate}
+    \item Extensao para group-specific thresholds
+    \item Integracao com fairness-without-demographics
+    \item Suporte para classificacao multi-classe
+    \item Quantificacao de incerteza em Pareto frontiers
+    \item Validacao em dominios adicionais (saude, educacao)
+\end{enumerate}
+
+\subsection{Mensagem Final}
+
+Threshold optimization e componente fundamental mas frequentemente negligenciado de fairness-aware ML. Nossa contribuicao demonstra que analise sistematica e automatizada de limiares pode reduzir disparidades significativamente com minimo overhead computacional e perda de acuracia.
+
+Disponibilizamos framework como parte do DeepBridge (github.com/deepbridge-ml) sob licenca MIT, encorajando adocao e extensao pela comunidade. Acreditamos que integracao de ferramentas de fairness em frameworks de validacao mainstream e passo critico para desenvolvimento responsavel de ML.
+
+\textbf{Chamado a acao}: Encorajamos desenvolvedores de ML a incorporarem analise de trade-offs fairness-accuracy como parte padrao de validacao de modelos, nao apenas quando requisitos de justica sao explicitos. Muitos vieses sao descobertos somente quando sistemas sao auditados---analise proativa pode prevenir danos.

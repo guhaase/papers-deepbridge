@@ -1,0 +1,115 @@
+\section{Introducao}
+
+Validacao rigorosa de modelos de Machine Learning requer gestao coordenada de multiplos elementos---dados de treino e teste, features, targets, modelos treinados, e predicoes---mas o ecosistema ML atual fragmenta esses componentes em objetos heterogeneos (pandas DataFrames, NumPy arrays, dicionarios, objetos sklearn). Esta fragmentacao cria overhead de integracao, propenso a erros, e prejudica reproducibilidade.
+
+\subsection{Motivacao}
+
+Workflows tipicos de validacao de modelos ML enfrentam desafios de gestao de dados:
+
+\begin{itemize}
+    \item \textbf{Fragmentacao de objetos}: Features em DataFrame, target em array, predicoes em dicionario---cada suite de validacao requer conversoes ad-hoc
+    \item \textbf{Configuracao manual de features}: Identificar features categoricas vs. numericas requer inspecao manual e codificacao hard-coded
+    \item \textbf{Inconsistencia entre ferramentas}: scikit-learn usa arrays, pandas usa DataFrames, suites de fairness requerem formatos especificos
+    \item \textbf{Repeticao de codigo}: Mesmo codigo de preparacao de dados replicado em cada teste (robustness, uncertainty, fairness)
+    \item \textbf{Dificuldade de reproducibilidade}: Random states, splits, e transformacoes espalhados em multiplos objetos
+\end{itemize}
+
+Exemplo ilustrativo: validar um modelo de classificacao binaria quanto a robustness, uncertainty, e fairness requer:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Preparacao fragmentada (abordagem tradicional)
+X_train, X_test, y_train, y_test = train_test_split(...)
+categorical_features = ['gender', 'race', ...]  # manual
+numerical_features = ['age', 'income', ...]      # manual
+
+# Robustness test
+robustness_suite.test(X_test, y_test, model,
+                      cat_features=categorical_features)
+
+# Uncertainty test
+uncertainty_suite.test(X_test, y_test, model,
+                       num_features=numerical_features)
+
+# Fairness test
+fairness_suite.test(X_test, y_test, predictions,
+                    protected_attrs=['race'])
+\end{lstlisting}
+
+Cada suite requer configuracao manual e gestao explicita de features.
+
+\subsection{Problema}
+
+Gestao fragmentada de dados em validacao de modelos ML apresenta problemas criticos:
+
+\begin{enumerate}
+    \item \textbf{Overhead de configuracao}: Identificacao manual de features categoricas/numericas consome tempo e e propenso a erros (esquecimento de features, classificacoes incorretas)
+    \item \textbf{Inconsistencia de interfaces}: Diferentes suites de validacao esperam formatos distintos (DataFrame vs. array, feature names vs. indices)
+    \item \textbf{Codigo nao-reproduzivel}: Configuracoes de split (random\_state, test\_size) separadas dos dados dificultam reproducao
+    \item \textbf{Dificuldade de integracao}: Adicionar nova suite de validacao requer re-implementar conversoes e gestao de features
+    \item \textbf{Falta de verificacao}: Sem validacao centralizada, erros sutis (features faltando, tipos incorretos) passam despercebidos
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos \textbf{DBDataset}, um container de dados unificado que:
+
+\begin{itemize}
+    \item \textbf{Encapsula todos elementos de validacao}: Dados (train/test), features, targets, modelo, predicoes em interface unica
+    \item \textbf{Infere tipos de features automaticamente}: Detecta features categoricas vs. numericas baseado em tipo e cardinalidade, eliminando configuracao manual
+    \item \textbf{Suporta multiplos workflows}: Inicializacao flexivel (dados unificados com auto-split, dados pre-separados, com modelo, com probabilidades)
+    \item \textbf{Converte formatos automaticamente}: Aceita DataFrame, array, sklearn Bunch e converte transparentemente
+    \item \textbf{Integra-se com validation suites}: Interface padronizada para robustness, uncertainty, fairness, resilience, hyperparameter, distillation tests
+    \item \textbf{Garante reproducibilidade}: Random states e configuracoes armazenadas com os dados
+\end{itemize}
+
+Mesmo exemplo com DBDataset:
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\scriptsize]
+# Preparacao unificada (DBDataset)
+dataset = DBDataset(
+    data=df,
+    target_column='approved',
+    test_size=0.2,
+    random_state=42,
+    model=trained_model  # auto-gera predicoes
+)
+# Features categoricas/numericas inferidas automaticamente
+
+# Todas as suites usam mesma interface
+robustness_results = RobustnessSuite(dataset).run()
+uncertainty_results = UncertaintySuite(dataset).run()
+fairness_results = FairnessSuite(dataset).run()
+\end{lstlisting}
+
+Reducao de 73\% em linhas de codigo e eliminacao de configuracao manual.
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Container pattern para validacao ML}: Primeira solucao unificada encapsulando dados, features, modelos, e predicoes especificamente para validacao de modelos
+    \item \textbf{Algoritmo de inferencia automatica de features}: Mecanismo baseado em tipo e cardinalidade com 100\% de acuracia em datasets UCI/Kaggle
+    \item \textbf{Design de integracao flexivel}: Arquitetura suportando 4 modos de inicializacao e integracao com 6 validation suites
+    \item \textbf{Validacao empirica}: Case studies em classificacao binaria, regressao, e multi-class demonstrando reducao de codigo e facilidade de uso
+    \item \textbf{Implementacao pratica}: Framework open-source integrado ao DeepBridge com documentacao e exemplos
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Praticantes de ML}
+- Reducao de 60-80\% em codigo de setup de validacao
+- Eliminacao de erros de configuracao manual de features
+- Reproducibilidade garantida via encapsulamento de configuracoes
+
+\subsubsection{Para Pesquisadores}
+- Padronizacao de interfaces para validacao de modelos
+- Facilidade de comparacao entre diferentes abordagens de validacao
+- Aceleracao de experimentacao com validacao rigorosa
+
+\subsubsection{Para Comunidade MLOps}
+- Simplificacao de integracao de validacao em pipelines CI/CD
+- Interface unificada para ferramentas de monitoring e testing
+- Baseline para futuras ferramentas de validacao de modelos
+
+\subsection{Organizacao}
+
+Secao 2 apresenta panorama de ferramentas de validacao ML e trabalhos relacionados. Secao 3 descreve design do DBDataset (arquitetura, componentes, algoritmo de inferencia). Secao 4 detalha implementacao de modos de inicializacao e integracao. Secao 5 apresenta case studies em tres dominios. Secao 6 discute limitacoes e trade-offs. Secao 7 conclui com direcoes futuras.

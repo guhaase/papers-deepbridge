@@ -1,0 +1,204 @@
+\section{Implementacao}
+
+\subsection{Arquitetura}
+
+Implementamos o framework em Python 3.9+ com integracao ao DeepBridge. Estrutura modular:
+
+\begin{verbatim}
+deepbridge/fairness/
+├── threshold_optimizer.py    # Classe principal
+├── metrics/
+│   ├── fairness_metrics.py   # Metricas de justica
+│   └── accuracy_metrics.py   # Metricas de acuracia
+├── optimization/
+│   │── nsga2.py              # Implementacao NSGA-II
+│   └── pareto.py             # Analise de dominancia
+└── visualization/
+    ├── trade_off_plots.py    # Graficos 2D
+    └── interactive_dash.py   # Dashboard interativo
+\end{verbatim}
+
+\subsection{Threshold Optimizer}
+
+Classe principal que orquestra analise:
+
+\begin{lstlisting}[language=Python]
+class ThresholdOptimizer:
+    def __init__(self,
+                 model,
+                 X, y, sensitive_attr,
+                 thresholds=np.arange(0.1, 0.95, 0.05)):
+        self.model = model
+        self.X = X
+        self.y = y
+        self.sensitive_attr = sensitive_attr
+        self.thresholds = thresholds
+        self.results = []
+
+    def optimize(self):
+        # 1. Obter predicoes probabilisticas
+        probs = self.model.predict_proba(self.X)[:, 1]
+
+        # 2. Varrer limiares
+        for thresh in self.thresholds:
+            metrics = self._compute_metrics(
+                probs, thresh
+            )
+            self.results.append({
+                'threshold': thresh,
+                **metrics
+            })
+
+        # 3. Identificar Pareto frontier
+        self.pareto_front = self._find_pareto()
+
+        return self.pareto_front
+\end{lstlisting}
+
+\subsection{Fairness Metrics}
+
+Implementacao eficiente de metricas de justica:
+
+\begin{lstlisting}[language=Python]
+class FairnessMetrics:
+    @staticmethod
+    def demographic_parity_diff(y_pred, sensitive):
+        groups = np.unique(sensitive)
+        rates = [
+            y_pred[sensitive == g].mean()
+            for g in groups
+        ]
+        return abs(rates[0] - rates[1])
+
+    @staticmethod
+    def equalized_odds_diff(y_true, y_pred, sensitive):
+        groups = np.unique(sensitive)
+
+        # TPR por grupo
+        tprs = [
+            recall_score(
+                y_true[sensitive == g],
+                y_pred[sensitive == g]
+            ) for g in groups
+        ]
+
+        # FPR por grupo
+        fprs = [
+            FairnessMetrics._fpr(
+                y_true[sensitive == g],
+                y_pred[sensitive == g]
+            ) for g in groups
+        ]
+
+        return max(
+            abs(tprs[0] - tprs[1]),
+            abs(fprs[0] - fprs[1])
+        )
+\end{lstlisting}
+
+\subsection{NSGA-II Implementation}
+
+Adaptacao de NSGA-II para selecao de limiares:
+
+\begin{lstlisting}[language=Python]
+class NSGA2Optimizer:
+    def non_dominated_sort(self, solutions, objectives):
+        """Classifica solucoes em fronteiras"""
+        fronts = [[]]
+        domination_count = [0] * len(solutions)
+        dominated_solutions = [[] for _ in solutions]
+
+        # Comparar todos pares
+        for i, sol_i in enumerate(solutions):
+            for j, sol_j in enumerate(solutions):
+                if self._dominates(
+                    objectives[i],
+                    objectives[j]
+                ):
+                    dominated_solutions[i].append(j)
+                elif self._dominates(
+                    objectives[j],
+                    objectives[i]
+                ):
+                    domination_count[i] += 1
+
+            if domination_count[i] == 0:
+                fronts[0].append(i)
+
+        return fronts[0]  # Retorna primeira fronteira
+
+    def _dominates(self, obj1, obj2):
+        """Verifica se obj1 domina obj2"""
+        better_in_any = False
+        for o1, o2 in zip(obj1, obj2):
+            if o1 > o2:  # Pior em algum objetivo
+                return False
+            if o1 < o2:  # Melhor em algum objetivo
+                better_in_any = True
+        return better_in_any
+\end{lstlisting}
+
+\subsection{Visualization}
+
+Geracao de graficos de trade-off:
+
+\begin{lstlisting}[language=Python]
+class TradeOffPlotter:
+    def plot_pareto_frontier(self, results, pareto_indices):
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Plotar todos pontos
+        ax.scatter(
+            results['f1_score'],
+            results['demographic_parity_diff'],
+            alpha=0.3, label='Todos limiares'
+        )
+
+        # Destacar Pareto frontier
+        pareto_data = results.iloc[pareto_indices]
+        ax.scatter(
+            pareto_data['f1_score'],
+            pareto_data['demographic_parity_diff'],
+            color='red', s=100,
+            marker='*', label='Pareto-otimos'
+        )
+
+        ax.set_xlabel('F1-Score (acuracia)')
+        ax.set_ylabel('Demographic Parity Diff (injustica)')
+        ax.legend()
+        return fig
+\end{lstlisting}
+
+\subsection{Integracao com DeepBridge}
+
+Adicionamos teste de otimizacao de limiar ao framework:
+
+\begin{lstlisting}[language=Python]
+# Em deepbridge/tests/fairness_tests.py
+class ThresholdOptimizationTest(ValidationTest):
+    def run(self):
+        optimizer = ThresholdOptimizer(
+            model=self.model,
+            X=self.X_test,
+            y=self.y_test,
+            sensitive_attr=self.sensitive_attr
+        )
+
+        pareto_front = optimizer.optimize()
+
+        # Gerar relatorio
+        self.report = {
+            'num_pareto_solutions': len(pareto_front),
+            'best_fairness_threshold': ...,
+            'best_accuracy_threshold': ...,
+            'plots': optimizer.visualize()
+        }
+\end{lstlisting}
+
+\subsection{Otimizacoes de Performance}
+
+\begin{itemize}
+    \item \textbf{Vetorizacao}: Uso de NumPy para calculo paralelo de metricas
+    \item \textbf{Caching}: Memoizacao de resultados de metricas para evitar recomputacao
+    \item \textbf{Early stopping}: Interrompe analise se nenhum limiar melhora fronteira Pareto
+\end{itemize}

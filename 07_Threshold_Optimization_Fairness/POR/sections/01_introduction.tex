@@ -1,0 +1,49 @@
+\section{Introducao}
+
+Modelos de machine learning para classificacao binaria utilizam limiares de decisao para converter probabilidades em predicoes categoricas. A escolha deste limiar impacta diretamente tanto a acuracia do modelo quanto metricas de justica (fairness), criando trade-offs complexos que tradicionalmente sao resolvidos manualmente.
+
+\subsection{Motivacao}
+
+Sistemas de ML em dominios criticos---credito, contratacao, saude---frequentemente apresentam disparidades de performance entre grupos demograficos. Um limiar fixo de 0.5, embora comum, raramente e otimo para nenhuma metrica e pode amplificar vieses existentes. Por exemplo:
+
+\begin{itemize}
+    \item \textbf{Credito}: Limiar alto (0.7) minimiza risco mas exclui grupos sub-representados desproporcionalmente
+    \item \textbf{Contratacao}: Limiar baixo (0.3) aumenta diversidade mas pode comprometer qualidade percebida
+    \item \textbf{Saude}: Limiares diferentes podem ser otimos para grupos com prevalencias distintas de doencas
+\end{itemize}
+
+\subsection{Problema}
+
+A selecao manual de limiares apresenta varios desafios:
+
+\begin{enumerate}
+    \item \textbf{Espaco de busca}: Avaliar sistematicamente limiares de 0.1 a 0.9 com metricas multiplas e complexo
+    \item \textbf{Trade-offs ocultos}: Relacoes nao-lineares entre limiar, acuracia e justica nao sao obvias
+    \item \textbf{Subjetividade}: Decisoes ad-hoc sem fundamentacao quantitativa
+    \item \textbf{Otimalidade}: Dificuldade em identificar solucoes Pareto-otimas sem analise exaustiva
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos um framework de otimizacao multi-objetivo que:
+
+\begin{itemize}
+    \item Automatiza analise de limiares no intervalo 10-90\% (passos de 5\%)
+    \item Calcula metricas de justica (demographic parity, equalized odds, equal opportunity) e acuracia (F1, precision, recall)
+    \item Identifica fronteiras de Pareto usando NSGA-II
+    \item Gera visualizacoes interativas de trade-offs
+    \item Integra-se ao DeepBridge para uso em producao
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Framework automatizado}: Primeira solucao integrada para analise sistematica de limiares com foco em justica
+    \item \textbf{Otimizacao multi-objetivo}: Aplicacao de NSGA-II para identificar solucoes Pareto-otimas
+    \item \textbf{Validacao empirica}: Experimentos em 3 dominios reais demonstrando reducao de 40-60\% em violacoes de justica
+    \item \textbf{Ferramenta pratica}: Implementacao open-source integrada ao DeepBridge
+\end{enumerate}
+
+\subsection{Organizacao}
+
+Secao 2 apresenta conceitos de justica e otimizacao multi-objetivo. Secao 3 descreve o design do framework. Secao 4 detalha a implementacao. Secao 5 apresenta experimentos. Secao 6 discute limitacoes e trabalhos futuros. Secao 7 conclui.

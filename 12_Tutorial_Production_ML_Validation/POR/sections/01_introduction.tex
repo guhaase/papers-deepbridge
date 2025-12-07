@@ -1,0 +1,190 @@
+\section{Introdução}
+
+\subsection{Motivação: O Desafio da Validação em Produção}
+
+Modelos de machine learning treinados em ambientes controlados frequentemente falham ao encontrar dados de produção. Três categorias de falhas dominam incidentes em sistemas ML reais:
+
+\begin{enumerate}
+    \item \textbf{Falhas de Robustez}: Performance degrada sob perturbações naturais (mudanças de distribuição, ruído, valores extremos)
+    \item \textbf{Viés Algorítmico}: Decisões discriminatórias violam regulações (EEOC, ECOA) e causam danos sociais
+    \item \textbf{Falta de Calibração}: Modelos produzem predições confiantes mas incorretas, sem quantificação de incerteza
+\end{enumerate}
+
+\subsection{Casos Reais de Falhas}
+
+\subsubsection{Caso 1: Amazon Hiring AI (2018)}
+
+Sistema de triagem de currículos da Amazon demonstrou viés sistemático contra mulheres:
+
+\begin{itemize}
+    \item \textbf{Problema}: Modelo penalizava currículos contendo "women's" (e.g., "women's chess club")
+    \item \textbf{Causa Raiz}: Treinamento em dados históricos (10 anos) refletia predominância masculina em tech
+    \item \textbf{Impacto}: Projeto descontinuado após falha em eliminar viés
+    \item \textbf{Lição}: Testes de fairness pre-deployment poderiam detectar disparate impact
+\end{itemize}
+
+\subsubsection{Caso 2: Healthcare Risk Prediction (2019)}
+
+Algoritmo usado por hospitais americanos para alocar cuidados de saúde:
+
+\begin{itemize}
+    \item \textbf{Problema}: Pacientes negros recebiam scores de risco sistematicamente menores que brancos com mesma condição de saúde
+    \item \textbf{Causa Raiz}: Target proxy (custos históricos de saúde) correlacionado com acesso desigual a cuidados
+    \item \textbf{Impacto}: Reduziu em 50\% o número de pacientes negros qualificados para programa de cuidados intensivos
+    \item \textbf{Lição}: Análise de equalized opportunity detectaria disparidade em false negative rates
+\end{itemize}
+
+\subsubsection{Caso 3: Credit Scoring Instability}
+
+Modelos de credit scoring degradam sob perturbações naturais:
+
+\begin{itemize}
+    \item \textbf{Problema}: Performance drop de 15-20\% quando features apresentam ruído (erros de entrada, missing values)
+    \item \textbf{Causa Raiz}: Modelos não testados para robustez a perturbações realistas
+    \item \textbf{Impacto}: Decisões inconsistentes, reclamações de clientes, custos de auditoria
+    \item \textbf{Lição}: Robustness testing com perturbações quantile-based simularia cenários reais
+\end{itemize}
+
+\subsection{Estado Atual: Gaps em Validação}
+
+Práticas atuais de validação apresentam limitações críticas:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Aspecto} & \textbf{Prática Comum} & \textbf{Limitação} \\
+\midrule
+Robustez & Test set único & Não avalia perturbações \\
+Fairness & Métrica ad-hoc & Não cobre regulações \\
+Incerteza & Threshold fixo 0.5 & Sem intervalos calibrados \\
+Scope & Pre-deployment apenas & Sem monitoramento contínuo \\
+Integração & Testes isolados & Sem orquestração unificada \\
+\bottomrule
+\end{tabular}
+\caption{Gaps entre práticas atuais e necessidades de produção}
+\label{tab:validation_gaps}
+\end{table}
+
+\subsection{Solução: Framework DeepBridge}
+
+DeepBridge é biblioteca Python open-source para validação sistemática de modelos ML:
+
+\subsubsection{Componentes Principais}
+
+\begin{enumerate}
+    \item \textbf{DBDataset}: Container unificado para dados, modelo e predições
+    \item \textbf{Validation Suites}: Testes especializados (Robustness, Fairness, Uncertainty)
+    \item \textbf{Experiment}: Orquestrador de múltiplos testes com configuração consistente
+    \item \textbf{Report System}: Geração automática de relatórios HTML interativos
+\end{enumerate}
+
+\subsubsection{Design Principles}
+
+\begin{itemize}
+    \item \textbf{Model-agnostic}: Funciona com qualquer modelo scikit-learn, XGBoost, PyTorch, TensorFlow
+    \item \textbf{Production-ready}: Configurações quick/medium/full balanceando thoroughness e runtime
+    \item \textbf{Regulatory compliance}: Métricas alinhadas com EEOC, ECOA, frameworks legais
+    \item \textbf{Actionable insights}: Não apenas detecta problemas---recomenda mitigações específicas
+\end{itemize}
+
+\subsection{Objetivos do Tutorial}
+
+Ao final deste tutorial, participantes serão capazes de:
+
+\begin{enumerate}
+    \item \textbf{Implementar robustness testing}: Detectar vulnerabilidades a perturbações, identificar weakspots (regiões de feature space com performance degradada), analisar overfitting localizado
+
+    \item \textbf{Executar fairness audits}: Calcular 15 métricas de fairness, detectar violações regulatórias (disparate impact), aplicar age grouping conforme frameworks legais (ADEA/ECOA)
+
+    \item \textbf{Quantificar incerteza}: Gerar intervalos de predição calibrados via CRQR, analisar reliability por features, validar coverage guarantees
+
+    \item \textbf{Integrar validação em pipelines}: Orquestrar múltiplos testes via Experiment, gerar relatórios profissionais, implementar continuous validation em CI/CD
+\end{enumerate}
+
+\subsection{Pré-requisitos}
+
+\begin{itemize}
+    \item Python 3.8+
+    \item Conhecimento básico de scikit-learn
+    \item Familiaridade com pandas, numpy
+    \item Conceitos fundamentais de ML (classification, regression, train/test split)
+\end{itemize}
+
+\subsection{Estrutura do Tutorial}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}llp{5cm}@{}}
+\toprule
+\textbf{Módulo} & \textbf{Duração} & \textbf{Conteúdo} \\
+\midrule
+1. Introdução & 30 min & Motivação, casos reais, overview DeepBridge \\
+2. Robustness & 30 min & Perturbation tests, weakspot detection, hands-on \\
+3. Fairness & 30 min & Métricas, age grouping, threshold analysis, hands-on \\
+4. Uncertainty & 30 min & CRQR, reliability analysis, hands-on \\
+5. Integration & 30 min & Experiment class, reporting, CI/CD \\
+6. Q\&A & 30 min & Discussão, casos de uso, troubleshooting \\
+\bottomrule
+\end{tabular}
+\caption{Estrutura de 3 horas do tutorial}
+\label{tab:tutorial_structure}
+\end{table}
+
+\subsection{Instalação e Setup}
+
+\begin{lstlisting}[language=bash]
+# Instalar DeepBridge
+pip install deepbridge
+
+# Verificar instalacao
+python -c "import deepbridge; print(deepbridge.__version__)"
+
+# Baixar materiais do tutorial
+git clone https://github.com/deepbridge/tutorial-materials
+cd tutorial-materials
+jupyter notebook
+\end{lstlisting}
+
+\subsection{Datasets do Tutorial}
+
+Utilizaremos 3 datasets com características distintas:
+
+\begin{enumerate}
+    \item \textbf{Breast Cancer Classification} (scikit-learn)
+    \begin{itemize}
+        \item Task: Binary classification (malignant vs. benign)
+        \item Features: 30 numeric (mean radius, texture, perimeter, etc.)
+        \item Samples: 569
+        \item Use case: Robustness testing
+    \end{itemize}
+
+    \item \textbf{Adult Income Prediction} (UCI)
+    \begin{itemize}
+        \item Task: Binary classification (income $>$50k vs. $\leq$50k)
+        \item Features: 14 (age, education, occupation, race, sex, etc.)
+        \item Samples: 48,842
+        \item Use case: Fairness testing (protected attributes: race, sex, age)
+    \end{itemize}
+
+    \item \textbf{California Housing} (scikit-learn)
+    \begin{itemize}
+        \item Task: Regression (median house value prediction)
+        \item Features: 8 numeric (median income, house age, rooms, etc.)
+        \item Samples: 20,640
+        \item Use case: Uncertainty quantification
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Recursos Complementares}
+
+\begin{itemize}
+    \item \textbf{Documentação}: \url{https://deepbridge.readthedocs.io}
+    \item \textbf{Notebooks}: \url{https://github.com/deepbridge/examples}
+    \item \textbf{Paper}: "DeepBridge: A Unified Framework for ML Model Validation"
+    \item \textbf{Slack Community}: \url{https://deepbridge-community.slack.com}
+\end{itemize}
+
+Vamos começar o hands-on com robustness testing!

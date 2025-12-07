@@ -1,0 +1,77 @@
+\section{Introducao}
+
+A adocao de Machine Learning em dominios regulados---banking, finance, healthcare, insurance---enfrenta barreira fundamental: modelos complexos (deep ensembles, gradient boosting, multi-teacher distillation) oferecem acuracia superior mas sao opacos, enquanto regulacoes exigem explicabilidade completa e auditabilidade. ECOA Regulation B requer ``razoes especificas que descrevam com precisao os fatores'', GDPR Article 22 exige ``informacoes significativas sobre a logica'', EU AI Act demanda ``transparencia suficiente para interpretacao'', e SR 11-7 requer ``documentacao para partes nao familiarizadas''. Esta tensao cria dilema: ou sacrificar acuracia para compliance, ou operar em zona cinzenta regulatoria.
+
+\subsection{Motivacao}
+
+Regulacoes anti-discriminacao e de protecao ao consumidor estabelecem requisitos tecnicos inequivocos:
+
+\begin{itemize}
+    \item \textbf{ECOA Regulation B (12 CFR 1002)}: Proibe discriminacao em credito baseada em raca, genero, idade, estado civil. Requer notificacao de decisoes adversas com ``razoes especificas e principais'' identificando fatores usados
+    \item \textbf{GDPR Article 22}: Direito a nao ser sujeito a decisao automatizada sem explicacao. Requer ``informacao significativa sobre a logica envolvida''
+    \item \textbf{EU AI Act (2024)}: Classifica sistemas de credito/emprego como ``high-risk AI''. Exige documentacao tecnica, transparencia, e human oversight
+    \item \textbf{SR 11-7 (Federal Reserve)}: Guidance para model risk management. Requer validacao independente e documentacao ``compreensivel para partes nao-tecnicas''
+\end{itemize}
+
+Violacoes resultam em multas substanciais (GDPR: ate 4\% de receita global; ECOA: \$500k+ por caso), litigos class-action, e danos reputacionais irreparaveis.
+
+\subsection{Problema}
+
+State-of-the-art em ML prioriza acuracia sobre explicabilidade:
+
+\begin{enumerate}
+    \item \textbf{Multi-teacher distillation}: Combina predicoes de multiplos modelos complexos. Opacidade e multiplicativa, nao aditiva---explicar ensemble de 10 XGBoost models e intratavel
+    \item \textbf{Deep neural networks}: Milhoes de parametros criam ``black boxes'' onde relacao input-output e opaca mesmo com SHAP/LIME
+    \item \textbf{Feature engineering automatizado}: AutoML gera features compostas (ratios, interactions, transformacoes) que perdem significado semantico
+    \item \textbf{Post-hoc explanations inadequadas}: SHAP values explicam predicoes individuais mas nao estrutura global do modelo. Reguladores questionam: ``Como sei que SHAP values nao mudam amanha?''
+\end{enumerate}
+
+Industria responde com duas abordagens insatisfatorias:
+
+\begin{itemize}
+    \item \textbf{Regressao logistica simples}: Interpretavel mas perde 10-15\% de acuracia vs. gradient boosting. Inadmissivel para competicao de mercado
+    \item \textbf{``Dual model'' strategy}: Modelo complexo para decisoes + modelo simples para explicacoes. Cria inconsistencias e e legalmente questionavel
+\end{itemize}
+
+\subsection{Nossa Solucao}
+
+Apresentamos framework integrado que combina destilacao interpretavel com validacao rigorosa:
+
+\begin{itemize}
+    \item \textbf{Knowledge Distillation para Decision Trees (KDDT)}: Destila modelos complexos em decision trees com maxima explicabilidade. Trade-off: 2-4\% de perda de acuracia. Beneficio: Cada decisao e human-readable e auditavel
+    \item \textbf{GAM-Based Distillation}: Usa Generalized Additive Models ($f(y) = \beta_0 + f_1(x_1) + ... + f_n(x_n)$) como student. Trade-off: 3-7\% de perda. Beneficio: Efeito de cada feature pode ser examinado independentemente
+    \item \textbf{Compliance-Aware Validation Suite}: Aplica 15 metricas de fairness (EEOC compliant), testes de robustez (perturbacoes Gaussiana/quantile), e uncertainty quantification (Conformal Prediction) em modelos interpretaveis
+    \item \textbf{Performance-Interpretability Analysis}: Quantifica Pareto frontiers entre acuracia e explicabilidade. Permite escolha informada baseada em risk appetite regulatorio
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{KDDT Framework}: Primeira implementacao de Knowledge Distillation especificamente para Decision Trees com garantias matematicas de fidelidade
+    \item \textbf{GAM Distillation}: Extensao de GAMs para receber soft labels de teachers complexos, mantendo estrutura aditiva interpretavel
+    \item \textbf{Integrated Validation}: Suite unificada que valida robustness, fairness, e uncertainty PARA modelos interpretaveis---prova que modelos simples podem passar validacao rigorosa
+    \item \textbf{Regulatory Mapping}: Mapeamento explicito entre metricas tecnicas e requisitos regulatorios (ECOA Section X $\leftrightarrow$ Fairness Metric Y)
+    \item \textbf{Empirical Trade-off Quantification}: Analise em 3 dominios regulados quantificando custo exato de compliance em termos de acuracia
+    \item \textbf{Production-Ready Tool}: Implementacao open-source no DeepBridge com integracao CI/CD e geracao automatica de relatorios de auditoria
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Organizacoes}
+- Deployment de ML em dominios regulados sem risco legal inaceitavel
+- Reducao de custo de auditoria (modelos interpretaveis requerem 60\% menos tempo de revisao)
+- Evidencia quantitativa de due diligence para reguladores
+
+\subsubsection{Para Reguladores}
+- Padronizacao de metricas de interpretabilidade auditaveis
+- Transparencia aumentada via relatorios automatizados
+- Capacidade de auditar decisoes individuais e estrutura global do modelo
+
+\subsubsection{Para Sociedade}
+- Reducao de discriminacao algoritmica via enforcement de fairness
+- Maior accountability de sistemas de IA em decisoes criticas
+- Alinhamento entre inovacao tecnologica e protecao de direitos fundamentais
+
+\subsection{Organizacao}
+
+Secao 2 apresenta background em interpretabilidade, regulacoes, e trabalhos relacionados. Secao 3 descreve design do framework (KDDT, GAMs, validation). Secao 4 detalha implementacao no DeepBridge. Secao 5 apresenta experimentos em lending, hiring, e insurance. Secao 6 discute limitacoes e consideracoes praticas. Secao 7 conclui com direcoes futuras.
