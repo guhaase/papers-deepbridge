@@ -472,9 +472,13 @@ def train_hpmkd(student: nn.Module, teacher: nn.Module,
             # Memory-augmented loss (simplified - just L2 regularization to previous batches)
             if use_memory and len(memory_buffer) > 0:
                 memory_loss = 0
-                for prev_output in memory_buffer[-5:]:  # Last 5 batches
-                    memory_loss += nn.functional.mse_loss(student_output, prev_output)
-                loss += 0.01 * memory_loss / len(memory_buffer[-5:])
+                # Filter memory buffer to only include outputs with same batch size
+                compatible_outputs = [prev_out for prev_out in memory_buffer[-5:]
+                                     if prev_out.size(0) == student_output.size(0)]
+                if len(compatible_outputs) > 0:
+                    for prev_output in compatible_outputs:
+                        memory_loss += nn.functional.mse_loss(student_output, prev_output)
+                    loss += 0.01 * memory_loss / len(compatible_outputs)
 
             loss.backward()
             optimizer.step()
