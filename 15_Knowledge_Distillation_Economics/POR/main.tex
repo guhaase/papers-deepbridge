@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Destilacao de Conhecimento para Economia: Negociando Complexidade por Interpretabilidade em Modelos Econometricos}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Economistas e formuladores de politicas publicas enfrentam um dilema fundamental: modelos de machine learning complexos (ensembles, redes neurais) alcancam alta acuracia preditiva, mas carecem da interpretabilidade economica essencial para analise de politicas, enquanto modelos econometricos tradicionais (regressao linear, logit) sao interpretaveis mas limitados em poder preditivo. Apresentamos framework de \textbf{destilacao de conhecimento econometrica} que transfere conhecimento de modelos complexos (teacher) para modelos interpretaveis (student GAM/Linear), preservando simultaneamente: (1) \textbf{intuicao economica} (coeficientes, efeitos marginais), (2) \textbf{restricoes economicas} (monotonia, consistencia de sinais), e (3) \textbf{estabilidade de coeficientes} (inferencia estatistica valida). Nossa implementacao no DeepBridge permite destilar XGBoost/Neural Networks para GAMs/Linear com \textbf{perda de acuracia de apenas 2-5\%}, enquanto produz coeficientes estaveis sob bootstrap (CV $<$ 0.15), preserva relacoes economicas (income $\uparrow$ $\rightarrow$ default $\downarrow$), e permite analise causal valida. Validacao em tres dominios economicos (risco de credito, economia do trabalho, economia da saude) demonstra: (1) coeficientes do modelo destilado convergem com teoria economica, (2) efeitos marginais sao monotonicos e interpretaveis, (3) \textbf{quebras estruturais} (pre/pos-2008) sao detectadas e interpretadas economicamente. Framework preenche lacuna critica entre ML de alta performance e rigor econometrico.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Knowledge Distillation, Econometrics, Interpretability, GAM, Economic Theory, Policy Analysis}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

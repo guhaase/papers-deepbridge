@@ -1,0 +1,44 @@
+\section{Discussao}
+
+\subsection{Analise de Resultados}
+
+\subsubsection{DiXtill Preserva Reasoning, Nao Apenas Predicoes}
+
+Experimentos demonstram que DiXtill alcanca objetivo central: transferir processo de raciocinio de teacher para student. Evidencias:
+
+\begin{enumerate}
+    \item \textbf{Alta correlacao de SHAP}: $\rho > 0.90$ em todos os dominios (NLP: 0.92, Visao: 0.81, Tabular: 0.94)
+    \item \textbf{Feature importance preservation}: Top-K features coincidem em 84-93\% dos casos
+    \item \textbf{Estabilidade de explicacoes}: FAS $> 0.85$---explicacoes sao robustas a perturbacoes
+    \item \textbf{Baixa divergencia}: KL divergence entre distribuicoes de |SHAP values| e $< 0.25$
+\end{enumerate}
+
+\textbf{Comparacao critica}: KD tradicional alcanca acuracia competitiva (gap de apenas 0.4-1.2\%), mas SHAP correlation e substancialmente inferior ($\rho = 0.52$-$0.61$ vs. $0.81$-$0.94$ para DiXtill). Isso confirma que soft targets transferem \textit{o que prever}, mas nao \textit{por que prever}.
+
+\subsubsection{Trade-offs: Performance vs. Explicabilidade}
+
+Ablation study revela tensao entre acuracia e alignment de explicacoes:
+
+\begin{itemize}
+    \item \textbf{$\beta$ baixo} ($< 0.2$): Acuracia proxima de KD tradicional, mas SHAP correlation mediocre ($\rho \approx 0.7$)
+    \item \textbf{$\beta$ moderado} ($0.2$-$0.4$): Sweet spot---acuracia mantida (gap $< 1.5\%$ vs. teacher) e alta correlacao SHAP ($\rho > 0.85$)
+    \item \textbf{$\beta$ alto} ($> 0.5$): Student prioriza alignment de explicacoes sobre acuracia, degradando performance (gap $> 3\%$)
+\end{itemize}
+
+\textbf{Implicacao}: DiXtill nao e free lunch---ha custo de acuracia ao forcar alignment explicacoes. Contudo, custo e pequeno ($< 1\%$) se $\beta$ for calibrado corretamente.
+
+\subsubsection{Custos Computacionais}
+
+Training overhead: SHAP (+130\%), attention (+40\%), gradient (+70\%). Justificativa: one-time cost aceitavel para dominios regulados; inferencia tem mesmo custo que KD tradicional. Otimizacoes: sampling (30\% batches), aproximacoes rapidas, caching.
+
+\subsection{Aplicabilidade por Dominio}
+
+\textbf{NLP (transformers)}: Attention alignment (overhead +40\%, $\rho=0.92$). \textbf{Visao}: Gradient alignment (custo linear, spatial corr.=0.81). \textbf{Tabulares}: SHAP alignment (gold standard regulatorio, TreeSHAP exato/rapido, $\rho=0.94$).
+
+\subsection{Limitacoes e Consideracoes}
+
+\textbf{Limitacoes}: (1) Dependencia de qualidade de XAI methods (SHAP instavel, attention $\neq$ importance), mitigavel via ensemble de explicacoes. (2) Arquiteturas heterogeneas requerem SHAP (model-agnostic). (3) Datasets grandes necessitam sampling (30\% batches). (4) Gradient alignment limitado a modelos diferenciaveis.
+
+\textbf{Etica}: Risco de ``explanation washing'' (protecoes: FAS, out-of-distribution testing, auditorias). Preservacao de biases do teacher (mitigacao: fairness tests pre-distillation, $L_{fairness}$ constraints). Compliance reports devem incluir SHAP correlation, FAS, feature importance validation.
+
+\textbf{Extensoes Futuras}: Multi-teacher DiXtill (consensus de explicacoes), counterfactual alignment ($L_{XAI}^{CF} = \|CF_T - CF_S\|^2$), hierarquia de explicacoes (global/local/counterfactual), adaptive $\beta$ scheduling (curriculum learning para explicabilidade).

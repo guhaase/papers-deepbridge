@@ -1,0 +1,213 @@
+\section{Avaliacao Experimental}
+
+\subsection{Configuracao}
+
+\subsubsection{Datasets}
+
+\begin{table}[h]
+\centering
+\caption{Datasets Utilizados nos Experimentos}
+\small
+\begin{tabular}{llrrr}
+\toprule
+\textbf{Dominio} & \textbf{Dataset} & \textbf{Samples} & \textbf{Features} & \textbf{Classes} \\
+\midrule
+NLP & Financial Phrasebank & 4,845 & Texto & 3 (sentiment) \\
+Visao & CIFAR-10 & 60,000 & $32 \times 32$ RGB & 10 \\
+Tabular & Adult Income & 48,842 & 14 & 2 (binary) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Modelos}
+
+\begin{table}[h]
+\centering
+\caption{Arquiteturas Teacher e Student}
+\small
+\begin{tabular}{lllr}
+\toprule
+\textbf{Dominio} & \textbf{Teacher} & \textbf{Student} & \textbf{Compressao} \\
+\midrule
+NLP & FinBERT (110M params) & Bi-LSTM (862K params) & 127$\times$ \\
+Visao & ResNet-50 (25.6M params) & MobileNetV2 (3.5M params) & 7.3$\times$ \\
+Tabular & XGBoost (500 trees) & Logistic Regression & 50$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Baselines}
+
+Comparamos DiXtill com:
+\begin{enumerate}
+    \item \textbf{Student Standalone}: Treinamento direto sem distillation
+    \item \textbf{KD Tradicional}: Hinton et al. \cite{hinton2015distilling} ($L = \alpha L_{KD} + (1-\alpha) L_{CE}$)
+    \item \textbf{Attention Transfer}: Zagoruyko et al. \cite{zagoruyko2017paying} (apenas NLP)
+    \item \textbf{Feature KD}: Romero et al. \cite{romero2015fitnets}
+\end{enumerate}
+
+\subsubsection{Metricas}
+
+\paragraph{Performance}:
+\begin{itemize}
+    \item Acuracia (classification accuracy)
+    \item F1-Score (macro-averaged)
+\end{itemize}
+
+\paragraph{Explicabilidade}:
+\begin{itemize}
+    \item \textbf{SHAP Correlation} ($\rho$): Pearson correlation entre SHAP values de teacher e student
+    \item \textbf{Feature Attribution Stability (FAS)}: Consistencia sob perturbacoes (target: $> 0.80$)
+    \item \textbf{Top-K Feature Overlap}: Proporcao de top-K features importantes que coincidem
+    \item \textbf{Explanation Divergence}: $D_{KL}(\text{abs}(\phi_T) \| \text{abs}(\phi_S))$
+\end{itemize}
+
+\paragraph{Eficiencia}:
+\begin{itemize}
+    \item Latencia de inferencia (ms/sample)
+    \item Tamanho do modelo (MB)
+    \item Training time overhead
+\end{itemize}
+
+\subsection{Experimento 1: NLP Financeiro}
+
+\subsubsection{Setup}
+
+\textbf{Tarefa}: Analise de sentimento financeiro (Financial Phrasebank dataset)---classificar noticias financeiras em \{positivo, neutro, negativo\}.
+
+\textbf{Motivacao}: Compliance regulatorio em trading automatizado (MiFID II) exige explicabilidade de decisoes.
+
+\textbf{Teacher}: FinBERT (BERT fine-tuned em corpus financeiro, 110M parametros)
+
+\textbf{Student}: Bi-LSTM (2 layers, 256 hidden units, 862K parametros)
+
+\textbf{XAI Method}: Attention alignment (FinBERT tem 12 attention layers, Bi-LSTM nao tem attention nativa---adicionamos attention layer)
+
+\subsubsection{Resultados: Performance}
+
+\begin{table}[h]
+\centering
+\caption{Resultados - NLP Financeiro (Financial Phrasebank)}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{Acuracia (\%)} & \textbf{F1-Score} & \textbf{Latencia (ms)} & \textbf{Tamanho (MB)} \\
+\midrule
+Teacher (FinBERT) & 85.5 & 0.843 & 42.3 & 438 \\
+\midrule
+Student Standalone & 79.2 & 0.776 & 3.2 & 3.4 \\
+KD Tradicional & 83.1 & 0.821 & 3.2 & 3.4 \\
+Attention Transfer & 83.8 & 0.829 & 3.5 & 3.6 \\
+\textbf{DiXtill (ours)} & \textbf{84.3} & \textbf{0.835} & 3.7 & 3.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Principais Resultados}: DiXtill reteve 98.6\% da acuracia do teacher (gap: 1.2\%), superou KD tradicional (+1.2\%), com latencia 11.4$\times$ menor. SHAP correlation: $\rho = 0.92$ (vs. 0.58 para KD tradicional), FAS=0.87, Top-5 overlap=0.84. Feature importances preservadas (ex: ``strong earnings'' manteve mesmos SHAP values).
+
+\subsection{Experimento 2: Visao Computacional}
+
+\subsubsection{Setup}
+
+\textbf{Tarefa}: Classificacao de imagens (CIFAR-10)
+
+\textbf{Teacher}: ResNet-50 (25.6M parametros)
+
+\textbf{Student}: MobileNetV2 (3.5M parametros, 7.3$\times$ compressao)
+
+\textbf{XAI Method}: Gradient alignment (saliency maps)
+
+\subsubsection{Resultados: Performance}
+
+\begin{table}[h]
+\centering
+\caption{Resultados - Visao Computacional (CIFAR-10)}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{Acuracia (\%)} & \textbf{F1-Score} & \textbf{Latencia (ms)} & \textbf{Tamanho (MB)} \\
+\midrule
+Teacher (ResNet-50) & 94.2 & 0.941 & 18.7 & 98 \\
+\midrule
+Student Standalone & 89.3 & 0.891 & 5.2 & 13.4 \\
+KD Tradicional & 92.1 & 0.920 & 5.2 & 13.4 \\
+Feature KD & 92.7 & 0.925 & 5.4 & 13.4 \\
+\textbf{DiXtill (ours)} & \textbf{93.1} & \textbf{0.929} & 5.8 & 13.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observacoes}:
+\begin{itemize}
+    \item DiXtill reteve \textbf{98.8\%} da acuracia do teacher
+    \item Latencia 3.2$\times$ menor que teacher
+    \item Gap de apenas 1.1 pontos percentuais vs. teacher
+\end{itemize}
+
+\textbf{Principais Resultados}: 98.8\% retencao de acuracia, latencia 3.2$\times$ menor. Spatial correlation de saliency maps: 0.81, IoU (top-20\%): 0.73, gradient similarity: 0.86. Regioes de alta importancia consistentes entre teacher/student.
+
+\subsection{Experimento 3: Dados Tabulares}
+
+\subsubsection{Setup}
+
+\textbf{Tarefa}: Predicao de renda (Adult Income dataset)---prever se renda $>$ \$50K baseado em features demograficas/ocupacionais.
+
+\textbf{Motivacao}: Compliance com EEOC/Fair Lending---decisoes devem ser explicaveis e nao-discriminatorias.
+
+\textbf{Teacher}: XGBoost (500 arvores, 2.3M parametros estimados)
+
+\textbf{Student}: Logistic Regression (14 features $\times$ 2 classes = 28 parametros)
+
+\textbf{XAI Method}: SHAP alignment (TreeSHAP para teacher, exato; KernelSHAP para student)
+
+\subsubsection{Resultados: Performance}
+
+\begin{table}[h]
+\centering
+\caption{Resultados - Dados Tabulares (Adult Income)}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Modelo} & \textbf{Acuracia (\%)} & \textbf{F1-Score} & \textbf{Latencia (ms)} & \textbf{Tamanho (KB)} \\
+\midrule
+Teacher (XGBoost) & 87.3 & 0.861 & 2.1 & 18,400 \\
+\midrule
+Student Standalone & 82.1 & 0.804 & 0.04 & 1.2 \\
+KD Tradicional & 84.7 & 0.835 & 0.04 & 1.2 \\
+\textbf{DiXtill (ours)} & \textbf{86.2} & \textbf{0.852} & 0.05 & 1.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Principais Resultados}: 98.7\% retencao de acuracia, latencia 42$\times$ menor, compressao 15,333$\times$. SHAP correlation: $\rho = 0.94$ (quase perfeita), FAS=0.89, Top-3 overlap=93\%. Features criticas preservadas (``capital-gain'', ``education-num'', ``age'').
+
+\subsection{Ablation Study: Impacto de $\beta$ (Peso XAI)}
+
+Variamos $\beta$ (peso de $L_{XAI}$) em [0, 0.1, 0.2, 0.3, 0.4, 0.5] fixando $\alpha=0.5$.
+
+\begin{table}[h]
+\centering
+\caption{Ablation: Impacto de $\beta$ (NLP Financial Phrasebank)}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{$\beta$} & \textbf{Acuracia (\%)} & \textbf{SHAP Corr. ($\rho$)} & \textbf{FAS} \\
+\midrule
+0.0 (KD puro) & 83.1 & 0.58 & 0.71 \\
+0.1 & 83.6 & 0.72 & 0.78 \\
+0.2 & 84.1 & 0.84 & 0.83 \\
+0.3 (default) & \textbf{84.3} & \textbf{0.92} & \textbf{0.87} \\
+0.4 & 84.0 & 0.94 & 0.89 \\
+0.5 & 83.2 & 0.95 & 0.91 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observacoes}:
+\begin{itemize}
+    \item \textbf{$\beta = 0$}: KD tradicional---alta acuracia, baixa correlacao SHAP
+    \item \textbf{$\beta \in [0.2, 0.4]$}: Sweet spot---acuracia e explicabilidade balanceadas
+    \item \textbf{$\beta > 0.4$}: SHAP correlation aumenta, mas acuracia degrada (student overfits explicacoes)
+\end{itemize}
+
+\textbf{Recomendacao}: $\beta = 0.3$ como default.

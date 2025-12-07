@@ -1,0 +1,252 @@
+\section{Design do Framework DiXtill}
+
+\subsection{Visao Geral}
+
+O framework DiXtill estende knowledge distillation tradicional incorporando alinhamento de explicacoes durante o treinamento. Arquitetura consiste em cinco componentes:
+
+\begin{enumerate}
+    \item \textbf{Teacher Model}: Modelo pre-treinado complexo (BERT, ResNet, ensemble)
+    \item \textbf{Student Model}: Arquitetura compacta a ser treinada (Bi-LSTM, MobileNet, logistic regression)
+    \item \textbf{XAI Engine}: Calcula explicacoes (SHAP, attention, gradients) para ambos modelos
+    \item \textbf{Alignment Module}: Computa perda de alinhamento $L_{XAI}$
+    \item \textbf{Training Orchestrator}: Gerencia otimizacao multi-objetivo
+\end{enumerate}
+
+\subsection{Formulacao Formal}
+
+\subsubsection{Funcao de Perda DiXtill}
+
+DiXtill minimiza tres objetivos simultaneamente:
+
+\begin{equation}
+L_{DiXtill} = (1-\alpha)L_{CE} + \alpha(L_{KD} + \beta L_{XAI})
+\end{equation}
+
+onde:
+\begin{itemize}
+    \item $L_{CE}$: Cross-entropy com hard labels (standard supervised learning)
+    \item $L_{KD}$: Knowledge distillation loss (KL divergence de soft targets)
+    \item $L_{XAI}$: Explanation alignment loss (SHAP, attention, ou gradient)
+    \item $\alpha \in [0,1]$: Balanceia supervision vs. distillation (tipicamente 0.3-0.5)
+    \item $\beta \in [0,1]$: Peso de explanation alignment (tipicamente 0.2-0.4)
+\end{itemize}
+
+\subsubsection{Componentes da Perda}
+
+\paragraph{1. Cross-Entropy Loss}
+Perda de classificacao standard com one-hot labels $y$:
+\begin{equation}
+L_{CE} = -\frac{1}{N} \sum_{i=1}^{N} \sum_{c=1}^{C} y_{ic} \log p_{student}(c|x_i)
+\end{equation}
+
+\paragraph{2. Knowledge Distillation Loss}
+KL divergence entre distribuicoes suavizadas:
+\begin{equation}
+L_{KD} = T^2 \cdot \frac{1}{N} \sum_{i=1}^{N} \text{KL}\left(p_{teacher}^{(T)}(y|x_i) \| p_{student}^{(T)}(y|x_i)\right)
+\end{equation}
+
+Soft targets com temperatura $T$:
+\begin{equation}
+p^{(T)}_c(y|x) = \frac{\exp(z_c/T)}{\sum_{j} \exp(z_j/T)}
+\end{equation}
+
+Temperatura tipica: $T \in [2, 5]$.
+
+\paragraph{3. Explanation Alignment Loss}
+
+Oferecemos tres implementacoes de $L_{XAI}$:
+
+\subsection{XAI Alignment: SHAP-Based}
+
+\subsubsection{Formulacao}
+
+SHAP alignment minimiza distancia L2 entre SHAP values:
+\begin{equation}
+L_{XAI}^{SHAP} = \frac{1}{N} \sum_{i=1}^{N} \|\phi_{teacher}(x_i) - \phi_{student}(x_i)\|^2
+\end{equation}
+
+onde $\phi(x) \in \mathbb{R}^d$ sao SHAP values para cada feature.
+
+\subsubsection{Calculo de SHAP Values}
+
+Para modelos tree-based: TreeSHAP (exato, $O(TLD^2)$ onde $T$ = trees, $L$ = leaves, $D$ = depth).
+
+Para modelos genericos: KernelSHAP (aproximacao):
+\begin{equation}
+\phi_i = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!(|N|-|S|-1)!}{|N|!} [f_x(S \cup \{i\}) - f_x(S)]
+\end{equation}
+
+Aproximacao via weighted linear regression com $M$ samples de coalizoes $S$.
+
+\subsubsection{Normalizacao}
+
+SHAP values tem escalas diferentes entre teacher/student. Normalizamos:
+\begin{equation}
+\hat{\phi}(x) = \frac{\phi(x) - \mu_\phi}{\sigma_\phi}
+\end{equation}
+
+onde $\mu_\phi$, $\sigma_\phi$ sao media/desvio-padrao calculados em batch.
+
+\subsubsection{Propriedades Desejáveis}
+
+\begin{itemize}
+    \item \textbf{Feature Importance Preservation}: Features importantes para teacher permanecem importantes para student
+    \item \textbf{Direction Consistency}: Sinal de $\phi_i$ (positivo/negativo) e preservado
+    \item \textbf{Relative Magnitude}: Ordem de importancia ($|\phi_1| > |\phi_2|$) e mantida
+\end{itemize}
+
+\subsection{XAI Alignment: Attention-Based}
+
+\subsubsection{Formulacao}
+
+Para modelos com attention mechanisms (transformers):
+\begin{equation}
+L_{XAI}^{Attn} = \frac{1}{L} \sum_{l=1}^{L} \|A_{teacher}^{(l)} - A_{student}^{(l)}\|_F^2
+\end{equation}
+
+onde:
+\begin{itemize}
+    \item $A^{(l)} \in \mathbb{R}^{H \times N \times N}$: Attention matrices na camada $l$
+    \item $H$: Numero de attention heads
+    \item $N$: Comprimento da sequencia
+    \item $\|\cdot\|_F$: Frobenius norm
+\end{itemize}
+
+\subsubsection{Tratamento de Arquiteturas Diferentes}
+
+Teacher e student podem ter diferentes numeros de layers/heads:
+\begin{itemize}
+    \item \textbf{Layer Mapping}: Mapeia layers do student para teacher (ex: layer $l_S$ $\rightarrow$ layer $2l_S$ se teacher tem 2$\times$ mais layers)
+    \item \textbf{Head Aggregation}: Se teacher tem $H_T$ heads e student $H_S < H_T$, agregamos via averaging:
+    \begin{equation}
+    \tilde{A}_{teacher} = \frac{1}{H_T} \sum_{h=1}^{H_T} A_{teacher}^{(h)}
+    \end{equation}
+\end{itemize}
+
+\subsubsection{Multi-Head Attention Alignment}
+
+Alternativa: alinhar heads individualmente se student tem multi-head:
+\begin{equation}
+L_{XAI}^{Attn-MH} = \sum_{l=1}^{L} \sum_{h=1}^{H_S} \|A_{teacher}^{(l,h)} - A_{student}^{(l,h)}\|_F^2
+\end{equation}
+
+\subsection{XAI Alignment: Gradient-Based}
+
+\subsubsection{Formulacao}
+
+Alinha gradientes de entrada (input saliency maps):
+\begin{equation}
+L_{XAI}^{Grad} = \frac{1}{N} \sum_{i=1}^{N} \left\|\nabla_x \log p_{teacher}(y^*|x_i) - \nabla_x \log p_{student}(y^*|x_i)\right\|^2
+\end{equation}
+
+onde $y^*$ e classe predita (ou ground truth).
+
+\subsubsection{Calculo de Gradientes}
+
+Via backpropagation:
+\begin{equation}
+\frac{\partial L}{\partial x_j} = \frac{\partial \log p(y^*|x)}{\partial x_j}
+\end{equation}
+
+\textbf{Custo computacional}: Requer backward pass adicional por mini-batch.
+
+\subsubsection{Regularizacao}
+
+Gradientes podem ser ruidosos. Aplicamos smoothing via Gaussian blur:
+\begin{equation}
+\tilde{g}(x) = g(x) * \mathcal{N}(0, \sigma^2)
+\end{equation}
+
+onde $\sigma = 0.1$ (default).
+
+\subsubsection{Variantes}
+
+\paragraph{Integrated Gradients Alignment}: Alinhar IG ao inves de gradientes brutos:
+\begin{equation}
+L_{XAI}^{IG} = \|\text{IG}_{teacher}(x) - \text{IG}_{student}(x)\|^2
+\end{equation}
+
+Mais estavel, mas 10-50$\times$ mais caro computacionalmente.
+
+\subsection{Algoritmo de Treinamento}
+
+\begin{algorithm}
+\caption{DiXtill Training}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Teacher $M_T$, Student architecture $\mathcal{A}_S$, Dataset $\mathcal{D}$, Hyperparams $(\alpha, \beta, T)$, XAI method
+\State \textbf{Output}: Trained student $M_S$
+\State
+\State Initialize $M_S$ with random weights
+\For{epoch $= 1$ to $E$}
+    \For{each mini-batch $(X, Y) \in \mathcal{D}$}
+        \State // Forward pass
+        \State $p_T \gets M_T(X)$ (teacher predictions, no grad)
+        \State $p_S \gets M_S(X)$ (student predictions)
+        \State
+        \State // Compute losses
+        \State $L_{CE} \gets -\sum Y \log p_S$
+        \State $L_{KD} \gets T^2 \cdot \text{KL}(\text{softmax}(p_T/T) \| \text{softmax}(p_S/T))$
+        \State
+        \State // Compute explanations
+        \If{XAI method == "SHAP"}
+            \State $\phi_T \gets \text{SHAP}(M_T, X)$
+            \State $\phi_S \gets \text{SHAP}(M_S, X)$
+            \State $L_{XAI} \gets \|\phi_T - \phi_S\|^2$
+        \ElsIf{XAI method == "Attention"}
+            \State $A_T \gets \text{GetAttention}(M_T, X)$
+            \State $A_S \gets \text{GetAttention}(M_S, X)$
+            \State $L_{XAI} \gets \|A_T - A_S\|_F^2$
+        \ElsIf{XAI method == "Gradient"}
+            \State $g_T \gets \nabla_X \log p_T$
+            \State $g_S \gets \nabla_X \log p_S$
+            \State $L_{XAI} \gets \|g_T - g_S\|^2$
+        \EndIf
+        \State
+        \State // Combined loss
+        \State $L \gets (1-\alpha)L_{CE} + \alpha(L_{KD} + \beta L_{XAI})$
+        \State
+        \State // Backward pass (only student parameters)
+        \State Compute $\nabla_{\theta_S} L$
+        \State Update $\theta_S$ via optimizer (Adam, SGD)
+    \EndFor
+\EndFor
+\State \Return $M_S$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Consideracoes de Design}
+
+\subsubsection{Selecao de XAI Method}
+
+\begin{table}[h]
+\centering
+\caption{Trade-offs entre Mecanismos XAI}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metodo} & \textbf{Custo Comp.} & \textbf{Aplicabilidade} & \textbf{Estabilidade} \\
+\midrule
+SHAP & Alto ($O(2^d)$) & Universal & Alta \\
+Attention & Baixo ($O(N^2)$) & Apenas transformers & Moderada \\
+Gradient & Medio ($O(d)$) & Universal & Baixa (ruidoso) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Recomendacoes}:
+\begin{itemize}
+    \item \textbf{NLP (transformers)}: Attention alignment (mais eficiente)
+    \item \textbf{Dados tabulares}: SHAP alignment (interpretabilidade superior)
+    \item \textbf{Visao computacional}: Gradient alignment (computacionalmente viavel para imagens)
+\end{itemize}
+
+\subsubsection{Hyperparametros}
+
+Valores default baseados em grid search empirico:
+\begin{itemize}
+    \item $\alpha = 0.5$: Balanceia supervision (hard labels) e distillation
+    \item $\beta = 0.3$: Peso moderado para XAI alignment
+    \item $T = 3$: Temperatura para soft targets
+\end{itemize}
+
+\textbf{Sensibilidade}: $\beta$ e critico---valores muito altos ($> 0.5$) degradam acuracia, valores muito baixos ($< 0.1$) nao preservam explicacoes.

@@ -1,0 +1,186 @@
+\section{Fundamentacao e Trabalhos Relacionados}
+
+\subsection{Econometria e Interpretabilidade}
+
+\subsubsection{Modelos Econometricos Classicos}
+
+Economia tradicionalmente utiliza modelos com interpretacao clara:
+
+\begin{itemize}
+    \item \textbf{Regressao Linear}: $y = \beta_0 + \sum_{i=1}^{p} \beta_i x_i + \epsilon$
+    \begin{itemize}
+        \item Coeficientes $\beta_i$ representam efeitos marginais
+        \item Inferencia via intervalos de confianca, testes t
+        \item Limitacao: Apenas relacoes lineares
+    \end{itemize}
+
+    \item \textbf{Logit/Probit}: Para variaveis dependentes binarias
+    \begin{itemize}
+        \item Log-odds ratios interpretaveis
+        \item Efeitos marginais calculaveis
+        \item Limitacao: Forma funcional rigida
+    \end{itemize}
+
+    \item \textbf{Generalized Additive Models (GAM)}: $g(E[y]) = \beta_0 + \sum_{i=1}^{p} f_i(x_i)$
+    \begin{itemize}
+        \item Flexibilidade para nao-linearidades via splines
+        \item Funcoes $f_i$ individualmente interpretaveis
+        \item Preserva aditividade (interpretacao de efeitos parciais)
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Restricoes Economicas}
+
+Teoria economica impoe restricoes que modelos devem respeitar:
+
+\begin{enumerate}
+    \item \textbf{Monotonia}: Funcoes de utilidade sao nao-decrescentes em consumo
+    \item \textbf{Lei da Demanda}: Preco $\uparrow$ $\rightarrow$ Quantidade demandada $\downarrow$
+    \item \textbf{Restricoes de Sinais}: Income $\uparrow$ $\rightarrow$ Default probability $\downarrow$
+    \item \textbf{Homogeneidade}: Funcoes de producao apresentam retornos de escala especificos
+\end{enumerate}
+
+Violacao destas restricoes invalida interpretacao economica.
+
+\subsection{Knowledge Distillation}
+
+\subsubsection{Framework Classico}
+
+Hinton et al. (2015) introduziram destilacao de conhecimento:
+
+\begin{equation}
+\mathcal{L}_{\text{KD}} = \alpha \mathcal{L}_{\text{soft}} + (1-\alpha) \mathcal{L}_{\text{hard}}
+\end{equation}
+
+onde:
+\begin{itemize}
+    \item $\mathcal{L}_{\text{soft}}$: KL divergence entre probabilidades teacher (temperatura $T$) e student
+    \item $\mathcal{L}_{\text{hard}}$: Cross-entropy com labels verdadeiros
+    \item $\alpha$: Peso balanceando soft vs. hard labels
+\end{itemize}
+
+\textbf{Limitacao}: Foco exclusivo em acuracia preditiva, ignorando interpretabilidade.
+
+\subsubsection{Variantes de Distilacao}
+
+\begin{table}[h]
+\centering
+\caption{Abordagens de Knowledge Distillation}
+\begin{tabular}{lp{5cm}l}
+\toprule
+\textbf{Abordagem} & \textbf{Caracteristica} & \textbf{Aplicacao} \\
+\midrule
+Response-based & Soft labels nas saidas & Classificacao \\
+Feature-based & Camadas intermediarias & Vision, NLP \\
+Relation-based & Relacoes entre exemplos & Metric learning \\
+\textbf{Ours: Econometric} & \textbf{Restricoes economicas} & \textbf{Economia} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{ML Interpretavel em Economia}
+
+\subsubsection{Trabalhos em Interpretabilidade Economica}
+
+\begin{itemize}
+    \item \textbf{Mullainathan \& Spiess (2017)}: ``Machine Learning: An Applied Econometric Approach''
+    \begin{itemize}
+        \item Discutem trade-off predicao vs. inferencia causal
+        \item Nao propoe metodologia de reconciliacao
+    \end{itemize}
+
+    \item \textbf{Athey \& Imbens (2019)}: ``Machine Learning Methods Economists Should Know About''
+    \begin{itemize}
+        \item Revisao de metodos ML para economia
+        \item Foco em causal inference, nao destilacao
+    \end{itemize}
+
+    \item \textbf{Lundberg et al. (2020)}: ``From Local Explanations to Global Understanding with Explainable AI''
+    \begin{itemize}
+        \item SHAP values para interpretacao
+        \item Limitacao: Explicacoes post-hoc, nao modelo intrinsecamente interpretavel
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Gap na Literatura}
+
+\textbf{Nenhum trabalho anterior} combina:
+\begin{enumerate}
+    \item Knowledge distillation de modelos complexos
+    \item Preservacao de restricoes economicas
+    \item Garantia de estabilidade de coeficientes
+    \item Validacao em dominios economicos reais
+\end{enumerate}
+
+\subsection{Estabilidade de Coeficientes}
+
+\subsubsection{Importancia em Econometria}
+
+Policy analysis requer coeficientes estaveis:
+
+\begin{itemize}
+    \item \textbf{Inferencia estatistica}: Intervalos de confianca validos exigem estimativas nao-volateis
+    \item \textbf{Reproducibilidade}: Resultados devem ser replicaveis em amostras independentes
+    \item \textbf{Robustez}: Conclusoes nao podem depender de particularidades da amostra
+\end{itemize}
+
+\subsubsection{Metricas de Estabilidade}
+
+\begin{equation}
+CV(\beta_i) = \frac{\sigma(\hat{\beta}_i^{(1)}, \ldots, \hat{\beta}_i^{(B)})}{\mu(\hat{\beta}_i^{(1)}, \ldots, \hat{\beta}_i^{(B)})}
+\end{equation}
+
+onde $\hat{\beta}_i^{(b)}$ e estimativa de $\beta_i$ em bootstrap sample $b$.
+
+\textbf{Criterio}: $CV < 0.15$ indica estabilidade aceitavel para policy analysis.
+
+\subsection{Quebras Estruturais}
+
+\subsubsection{Conceito Economico}
+
+Quebras estruturais ocorrem quando relacoes economicas fundamentais mudam:
+
+\begin{itemize}
+    \item \textbf{Crise Financeira 2008}: Relacao income-default probability mudou drasticamente
+    \item \textbf{Mudancas Regulatorias}: Novas leis alteram comportamento de agentes economicos
+    \item \textbf{Choques Tecnologicos}: Automacao altera funcoes de producao
+\end{itemize}
+
+\subsubsection{Testes Tradicionais}
+
+\begin{itemize}
+    \item \textbf{Chow Test}: Testa igualdade de coeficientes entre periodos
+    \item \textbf{CUSUM}: Detecta mudancas em residuos cumulativos
+    \item \textbf{Limitacao}: Requerem especificacao de ponto de quebra a priori
+\end{itemize}
+
+\textbf{Nossa Abordagem}: Deteccao automatica via analise de coeficientes destilados em janelas temporais.
+
+\subsection{Trabalhos Relacionados em ML Interpretavel}
+
+\begin{table}[h]
+\centering
+\caption{Comparacao com Ferramentas de Interpretabilidade}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Ferramenta} & \textbf{Intrinseco} & \textbf{Restricoes Econ.} & \textbf{Estabilidade} & \textbf{Destilacao} \\
+\midrule
+LIME & \xmark & \xmark & \xmark & \xmark \\
+SHAP & \xmark & \xmark & \xmark & \xmark \\
+InterpretML & \cmark & \xmark & \xmark & \xmark \\
+EconML & \cmark & Parcial & \cmark & \xmark \\
+\textbf{Ours} & \cmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Posicionamento da Contribuicao}
+
+Nossa abordagem preenche lacuna fundamental:
+
+\begin{itemize}
+    \item vs. \textbf{KD classico}: Adiciona restricoes economicas e validacao de estabilidade
+    \item vs. \textbf{Econometria tradicional}: Alcanca acuracia superior via destilacao de modelos complexos
+    \item vs. \textbf{Explainable AI}: Produz modelos intrinsecamente interpretaveis, nao explicacoes post-hoc
+    \item vs. \textbf{EconML}: Foca em destilacao para interpretabilidade, nao apenas causal inference
+\end{itemize}

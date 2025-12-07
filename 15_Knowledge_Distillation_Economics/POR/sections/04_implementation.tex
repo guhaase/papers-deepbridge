@@ -1,0 +1,441 @@
+\section{Implementacao}
+
+\subsection{Arquitetura}
+
+\subsubsection{Stack Tecnologico}
+
+Implementacao baseia-se em:
+
+\begin{itemize}
+    \item \textbf{Python 3.9+}: Linguagem principal
+    \item \textbf{DeepBridge}: Framework de destilacao base
+    \item \textbf{statsmodels}: GAM implementation (GLMGam)
+    \item \textbf{scikit-learn}: Modelos lineares e infraestrutura
+    \item \textbf{NumPy/SciPy}: Operacoes numericas e testes estatisticos
+    \item \textbf{Optuna}: Otimizacao de hiperparametros
+\end{itemize}
+
+\subsubsection{Modulos Principais}
+
+\begin{table}[h]
+\centering
+\caption{Modulos do Framework Econometrico}
+\begin{tabular}{lp{6cm}}
+\toprule
+\textbf{Modulo} & \textbf{Funcionalidade} \\
+\midrule
+\texttt{economics/constraints.py} & Codificacao e validacao de restricoes \\
+\texttt{economics/distillation.py} & Engine de destilacao com constraints \\
+\texttt{economics/stability.py} & Analise bootstrap de estabilidade \\
+\texttt{economics/breaks.py} & Deteccao de quebras estruturais \\
+\texttt{economics/metrics.py} & Metricas economicas especializadas \\
+\texttt{economics/reporting.py} & Relatorios para economistas \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Implementacao de Restricoes Economicas}
+
+\subsubsection{Classe EconomicConstraints}
+
+\begin{lstlisting}[language=Python, caption=Implementacao de Restricoes]
+class EconomicConstraints:
+    def __init__(self):
+        self.sign_constraints = {}
+        self.monotonicity_constraints = {}
+        self.magnitude_bounds = {}
+
+    def add_sign(self, feature: str, sign: int,
+                 justification: str = ""):
+        """
+        Args:
+            feature: Nome da variavel
+            sign: +1 (positivo) ou -1 (negativo)
+            justification: Fundamentacao economica
+        """
+        self.sign_constraints[feature] = {
+            'sign': sign,
+            'justification': justification
+        }
+
+    def evaluate_violations(self, model, X):
+        """Calcula violacoes de restricoes"""
+        violations = {}
+
+        # Sign violations
+        for feat, constraint in self.sign_constraints.items():
+            marginal_effect = self._compute_marginal(
+                model, X, feat
+            )
+            expected_sign = constraint['sign']
+            actual_sign = np.sign(marginal_effect)
+
+            if actual_sign != expected_sign:
+                violations[feat] = {
+                    'type': 'sign',
+                    'expected': expected_sign,
+                    'actual': actual_sign,
+                    'magnitude': abs(marginal_effect)
+                }
+
+        # Monotonicity violations
+        for feat, constraint in self.monotonicity_constraints.items():
+            mono_violations = self._check_monotonicity(
+                model, X, feat, constraint['direction']
+            )
+            if mono_violations > 0:
+                violations[feat] = {
+                    'type': 'monotonicity',
+                    'count': mono_violations
+                }
+
+        return violations
+\end{lstlisting}
+
+\subsubsection{Calculo de Efeitos Marginais}
+
+Para modelos GAM:
+\begin{lstlisting}[language=Python]
+def compute_marginal_effect_gam(model, X, feature, epsilon=1e-5):
+    """Aproximacao numerica de efeito marginal"""
+    X_plus = X.copy()
+    X_plus[feature] += epsilon
+
+    pred_base = model.predict(X)
+    pred_plus = model.predict(X_plus)
+
+    marginal = (pred_plus - pred_base) / epsilon
+    return np.mean(marginal)
+\end{lstlisting}
+
+Para modelos lineares:
+\begin{lstlisting}[language=Python]
+def compute_marginal_effect_linear(model, feature_index):
+    """Efeito marginal = coeficiente"""
+    return model.coef_[feature_index]
+\end{lstlisting}
+
+\subsection{Engine de Destilacao com Restricoes}
+
+\subsubsection{Classe EconomicDistiller}
+
+Extensao do \texttt{KnowledgeDistillation} do DeepBridge:
+
+\begin{lstlisting}[language=Python, caption=Destilacao Econometrica]
+class EconomicDistiller(KnowledgeDistillation):
+    def __init__(self, constraints: EconomicConstraints,
+                 temperature: float = 2.0,
+                 alpha: float = 0.5,
+                 beta: float = 0.3):
+        super().__init__(temperature=temperature, alpha=alpha)
+        self.constraints = constraints
+        self.beta = beta  # Peso de restricoes
+
+    def _combined_loss(self, y_true, p_teacher, p_student, model, X):
+        """Loss modificada com penalizacao de restricoes"""
+        # Loss de destilacao padrao
+        L_kd = self._kl_divergence(p_teacher, p_student)
+        L_hard = self._cross_entropy(y_true, p_student)
+
+        # Penalizacao de restricoes
+        violations = self.constraints.evaluate_violations(model, X)
+        L_constraint = sum(v['magnitude'] for v in violations.values())
+
+        # Loss combinada
+        loss = (self.alpha * L_kd +
+                (1 - self.alpha) * L_hard +
+                self.beta * L_constraint)
+
+        return loss, violations
+
+    def fit(self, X, y, teacher_probs=None):
+        """Treina modelo student com restricoes"""
+        if teacher_probs is None:
+            teacher_probs = self.teacher.predict_proba(X)
+
+        # Inicializa student (GAM ou Linear)
+        self._initialize_student()
+
+        # Otimizacao iterativa
+        for epoch in range(self.n_epochs):
+            for X_batch, y_batch, p_batch in self._get_batches(
+                X, y, teacher_probs
+            ):
+                p_student = self.student.predict_proba(X_batch)
+
+                loss, violations = self._combined_loss(
+                    y_batch, p_batch, p_student,
+                    self.student, X_batch
+                )
+
+                # Gradient descent (via sklearn warm_start)
+                self.student.partial_fit(X_batch, y_batch)
+
+                # Log violations
+                self._log_violations(epoch, violations)
+
+        return self.student
+\end{lstlisting}
+
+\subsection{Stability Analyzer}
+
+\subsubsection{Bootstrap Implementation}
+
+\begin{lstlisting}[language=Python, caption=Analise de Estabilidade]
+class StabilityAnalyzer:
+    def __init__(self, n_bootstrap: int = 1000,
+                 confidence_level: float = 0.95):
+        self.n_bootstrap = n_bootstrap
+        self.confidence_level = confidence_level
+
+    def analyze(self, distiller, X, y, teacher_probs):
+        """Analisa estabilidade via bootstrap"""
+        n_samples = len(X)
+        coefficients = []
+
+        for b in tqdm(range(self.n_bootstrap)):
+            # Bootstrap sample
+            indices = np.random.choice(
+                n_samples, size=n_samples, replace=True
+            )
+            X_boot = X[indices]
+            y_boot = y[indices]
+            p_boot = teacher_probs[indices]
+
+            # Fit student on bootstrap sample
+            student = distiller.fit(X_boot, y_boot, p_boot)
+
+            # Extract coefficients
+            if hasattr(student, 'coef_'):
+                coef = student.coef_
+            else:
+                # Para GAM: extract spline coefficients
+                coef = self._extract_gam_effects(student, X)
+
+            coefficients.append(coef)
+
+        # Compute stability metrics
+        coefficients = np.array(coefficients)
+        results = {
+            'mean': np.mean(coefficients, axis=0),
+            'std': np.std(coefficients, axis=0),
+            'cv': self._compute_cv(coefficients),
+            'ci_lower': np.percentile(coefficients, 2.5, axis=0),
+            'ci_upper': np.percentile(coefficients, 97.5, axis=0),
+            'sign_stability': self._compute_sign_stability(coefficients)
+        }
+
+        return results
+
+    def _compute_cv(self, coefficients):
+        """Coefficient of variation"""
+        mean = np.mean(np.abs(coefficients), axis=0)
+        std = np.std(coefficients, axis=0)
+        return std / (mean + 1e-10)
+
+    def _compute_sign_stability(self, coefficients):
+        """Proporcao de amostras com sinal consistente"""
+        signs = np.sign(coefficients)
+        mode_sign = stats.mode(signs, axis=0)[0]
+        stability = np.mean(signs == mode_sign, axis=0)
+        return stability
+\end{lstlisting}
+
+\subsection{Structural Break Detector}
+
+\subsubsection{Rolling Window Analysis}
+
+\begin{lstlisting}[language=Python, caption=Deteccao de Quebras]
+class StructuralBreakDetector:
+    def __init__(self, window_size: int = 500,
+                 step_size: int = 100):
+        self.window_size = window_size
+        self.step_size = step_size
+
+    def detect(self, X, y, teacher_probs, time_var):
+        """Detecta quebras estruturais em series temporais"""
+        # Sort by time
+        sorted_idx = np.argsort(X[time_var])
+        X_sorted = X.iloc[sorted_idx]
+        y_sorted = y[sorted_idx]
+        p_sorted = teacher_probs[sorted_idx]
+
+        # Rolling windows
+        windows = []
+        coefficients = []
+
+        for start in range(0, len(X) - self.window_size,
+                          self.step_size):
+            end = start + self.window_size
+
+            X_window = X_sorted.iloc[start:end]
+            y_window = y_sorted[start:end]
+            p_window = p_sorted[start:end]
+
+            # Fit student in window
+            distiller = EconomicDistiller(...)
+            student = distiller.fit(X_window, y_window, p_window)
+
+            # Extract coefficients
+            coef = self._extract_coefficients(student)
+
+            windows.append((start, end))
+            coefficients.append(coef)
+
+        # Test for structural breaks
+        breaks = self._test_breaks(coefficients)
+
+        return {
+            'windows': windows,
+            'coefficients': coefficients,
+            'breaks': breaks
+        }
+
+    def _test_breaks(self, coefficients):
+        """Wald test para quebras estruturais"""
+        coefficients = np.array(coefficients)
+        breaks = []
+
+        for t in range(len(coefficients) - 1):
+            coef_t = coefficients[t]
+            coef_t1 = coefficients[t + 1]
+
+            # Wald statistic
+            diff = coef_t1 - coef_t
+            # Simplificado: usar identidade como cov matrix
+            W = np.sum(diff ** 2)
+
+            # Chi-squared test
+            p_value = 1 - stats.chi2.cdf(W, df=len(diff))
+
+            if p_value < 0.05:
+                breaks.append({
+                    'window': t,
+                    'statistic': W,
+                    'p_value': p_value,
+                    'changed_features': self._identify_changed_features(diff)
+                })
+
+        return breaks
+\end{lstlisting}
+
+\subsection{Metricas Economicas}
+
+\subsubsection{Specialized Economic Metrics}
+
+\begin{lstlisting}[language=Python, caption=Metricas Especializadas]
+class EconomicMetrics:
+    @staticmethod
+    def constraint_compliance_rate(model, constraints, X):
+        """Taxa de conformidade com restricoes economicas"""
+        violations = constraints.evaluate_violations(model, X)
+        total_constraints = len(constraints.sign_constraints) + \
+                          len(constraints.monotonicity_constraints)
+        compliance_rate = 1 - (len(violations) / total_constraints)
+        return compliance_rate
+
+    @staticmethod
+    def marginal_effect_preservation(teacher, student, X, features):
+        """Preservacao de efeitos marginais vs. teacher"""
+        preservation = {}
+        for feat in features:
+            me_teacher = compute_marginal_effect(teacher, X, feat)
+            me_student = compute_marginal_effect(student, X, feat)
+
+            # Correlacao de Pearson
+            corr = np.corrcoef(me_teacher, me_student)[0, 1]
+            preservation[feat] = corr
+
+        return np.mean(list(preservation.values()))
+
+    @staticmethod
+    def economic_interpretability_score(model, constraints, stability_results):
+        """Score agregado de interpretabilidade economica"""
+        # Compliance com restricoes
+        w1 = 0.4
+        compliance = constraint_compliance_rate(...)
+
+        # Estabilidade de coeficientes
+        w2 = 0.3
+        avg_cv = np.mean(stability_results['cv'])
+        stability_score = max(0, 1 - avg_cv / 0.15)
+
+        # Sign stability
+        w3 = 0.3
+        sign_score = np.mean(stability_results['sign_stability'])
+
+        score = w1 * compliance + w2 * stability_score + w3 * sign_score
+        return score * 100  # 0-100%
+\end{lstlisting}
+
+\subsection{Otimizacoes de Performance}
+
+\subsubsection{Caching de Probabilidades Teacher}
+
+Pre-computar probabilidades teacher evita re-predicoes:
+
+\begin{lstlisting}[language=Python]
+# Cache teacher probabilities
+teacher_probs = teacher.predict_proba(X_train)
+np.save('teacher_probs.npy', teacher_probs)
+
+# Reusar em bootstrap
+for b in range(n_bootstrap):
+    X_boot, p_boot = bootstrap_sample(X_train, teacher_probs)
+    student.fit(X_boot, p_boot)
+\end{lstlisting}
+
+\subsubsection{Paralelizacao de Bootstrap}
+
+\begin{lstlisting}[language=Python]
+from joblib import Parallel, delayed
+
+def fit_bootstrap_sample(distiller, X, y, p, indices):
+    return distiller.fit(X[indices], y[indices], p[indices])
+
+# Paralelize
+coefficients = Parallel(n_jobs=-1)(
+    delayed(fit_bootstrap_sample)(distiller, X, y, p,
+                                   bootstrap_indices(n))
+    for _ in range(n_bootstrap)
+)
+\end{lstlisting}
+
+\subsection{Integracao com Workflow DeepBridge}
+
+Framework integra-se ao pipeline existente do DeepBridge:
+
+\begin{lstlisting}[language=Python, caption=Pipeline Completo]
+from deepbridge.distillation import AutoDistiller
+from deepbridge.distillation.economics import *
+
+# 1. Carregar dataset
+dataset = DBDataset.from_csv('credit_data.csv')
+
+# 2. Train teacher via AutoDistiller
+auto_distiller = AutoDistiller(
+    dataset=dataset,
+    method='hpm'  # Advanced distillation
+)
+teacher = auto_distiller.best_model()
+
+# 3. Configure economic distillation
+constraints = EconomicConstraints()
+constraints.add_sign('income', -1)
+constraints.add_sign('interest_rate', +1)
+constraints.add_monotonicity('age', 'increasing')
+
+econ_distiller = EconomicDistiller(
+    teacher=teacher,
+    constraints=constraints,
+    student_type=ModelType.GAM_CLASSIFIER
+)
+
+# 4. Fit with stability analysis
+student = econ_distiller.fit(X_train, y_train)
+stability = StabilityAnalyzer().analyze(econ_distiller, X_train, y_train)
+
+# 5. Generate economic report
+report = EconomicReport(student, stability, constraints)
+report.save('economic_analysis.pdf')
+\end{lstlisting}

@@ -1,0 +1,267 @@
+\section{Discussao}
+
+\subsection{Principais Descobertas}
+
+\subsubsection{Trade-off Aceitavel}
+
+Resultados demonstram trade-off favoravel entre acuracia e interpretabilidade:
+
+\begin{itemize}
+    \item \textbf{Perda de acuracia minima}: 2-5\% vs. modelos teacher complexos
+    \item \textbf{Ganho substantivo em interpretabilidade}: +26 pontos vs. KD padrao
+    \item \textbf{Estabilidade de coeficientes}: CV $< 0.15$ permite inferencia estatistica rigorosa
+    \item \textbf{Conformidade economica}: 95\%+ das restricoes preservadas
+\end{itemize}
+
+\textbf{Implicacao}: Para aplicacoes onde interpretabilidade e essencial (policy analysis, regulacao), sacrificio de 2-5\% em acuracia e justificavel.
+
+\subsubsection{Superioridade vs. Modelos Tradicionais}
+
+Economic KD domina abordagens tradicionais:
+
+\begin{itemize}
+    \item \textbf{vs. Linear/Logistic}: +8-12\% AUC, mantendo interpretabilidade
+    \item \textbf{vs. GAM Vanilla}: +3-4\% AUC, mesma interpretabilidade
+    \item \textbf{vs. XAI (SHAP/LIME)}: Interpretabilidade intrinseca (nao post-hoc)
+\end{itemize}
+
+\textbf{Conclusao}: Framework preenche lacuna entre modelos tradicionais limitados e ML opaco.
+
+\subsubsection{Validacao de Estabilidade}
+
+Bootstrap analysis demonstra coeficientes suficientemente estaveis para:
+
+\begin{enumerate}
+    \item \textbf{Inferencia estatistica}: Intervalos de confianca validos
+    \item \textbf{Policy analysis}: Conclusoes nao-volateis sob amostragem
+    \item \textbf{Reproducibilidade}: Resultados consistentes em folds CV
+\end{enumerate}
+
+\textbf{Contraste}: Standard KD produz coeficientes com CV 0.20+ (instavel para inferencia).
+
+\subsection{Implicacoes Praticas}
+
+\subsubsection{Para Industria Financeira}
+
+\textbf{Conformidade Regulatoria}:
+\begin{itemize}
+    \item Basel III / IFRS 9 exigem modelos interpretaveis com fundamentacao estatistica
+    \item Economic KD produz coeficientes GAM auditaveis por reguladores
+    \item Estabilidade permite documentacao de intervalos de confianca
+\end{itemize}
+
+\textbf{Vantagem Competitiva}:
+\begin{itemize}
+    \item Bancos podem usar ensembles complexos internamente (teacher)
+    \item Destilar para GAM interpretavel para submissao regulatoria
+    \item Perda minima de acuracia (2-3\%) vs. uso direto de linear
+\end{itemize}
+
+\subsubsection{Para Formuladores de Politicas Publicas}
+
+\textbf{Analise de Impacto}:
+\begin{itemize}
+    \item Efeitos marginais estaveis permitem projecao de impacto de politicas
+    \item Exemplo: Aumento de 10\% em salario minimo $\rightarrow$ +X\% probabilidade de emprego
+    \item Intervalos de confianca quantificam incerteza
+\end{itemize}
+
+\textbf{Deteccao de Quebras}:
+\begin{itemize}
+    \item Identificacao automatica de mudancas estruturais (e.g., crise 2008)
+    \item Permite adaptacao de politicas a novos regimes economicos
+\end{itemize}
+
+\subsubsection{Para Pesquisa Academica}
+
+\textbf{Integracao ML-Econometria}:
+\begin{itemize}
+    \item Ponte entre poder preditivo de ML e rigor de econometria
+    \item Coeficientes estaveis permitem testes de hipotese
+    \item Compativel com causal inference (IV, diff-in-diff)
+\end{itemize}
+
+\subsection{Limitacoes}
+
+\subsubsection{1. Especificacao de Restricoes}
+
+\textbf{Limitacao}: Framework requer que economista especifique restricoes a priori.
+
+\textbf{Implicacoes}:
+\begin{itemize}
+    \item Restricoes incorretas podem degradar acuracia sem ganho interpretativo
+    \item Economistas podem discordar sobre restricoes apropriadas
+    \item Features sem teoria clara (e.g., ZIP code) sao dificeis de restringir
+\end{itemize}
+
+\textbf{Mitigacao}:
+\begin{itemize}
+    \item Fornecer restricoes baseadas em literatura economica consolidada
+    \item Permitir relaxamento de restricoes se violacao e sistematica
+    \item Validacao empirica: Se modelo sem restricao viola teoria, restricao e justificada
+\end{itemize}
+
+\subsubsection{2. Complexidade de Interacoes}
+
+\textbf{Limitacao}: GAMs sao aditivos---nao capturam interacoes de ordem superior.
+
+\textbf{Exemplo}: Efeito de educacao pode depender de idade (interacao)
+\begin{equation}
+\text{Effect}(\text{education} | \text{age}) \neq \text{constant}
+\end{equation}
+
+\textbf{Extensao Futura}:
+\begin{itemize}
+    \item GA$^2$Ms (Generalized Additive Models com interacoes explicitas)
+    \item Restricoes em termos de interacao especificos
+\end{itemize}
+
+\subsubsection{3. Causalidade vs. Correlacao}
+
+\textbf{Limitacao}: Destilacao preserva correlacoes do teacher, nao necessariamente relacoes causais.
+
+\textbf{Exemplo}: Teacher pode usar proxy variables (e.g., ZIP code $\rightarrow$ race)
+
+\textbf{Implicacao}:
+\begin{itemize}
+    \item Coeficientes sao preditivos, mas nao necessariamente causais
+    \item Policy analysis requer validacao adicional (e.g., instrumental variables)
+\end{itemize}
+
+\textbf{Trabalho Futuro}:
+\begin{itemize}
+    \item Integrar causal discovery no processo de destilacao
+    \item Garantir que restricoes reflitam estruturas causais, nao apenas correlacoes
+\end{itemize}
+
+\subsubsection{4. Escalabilidade}
+
+\textbf{Limitacao}: Bootstrap com 1,000+ amostras e computacionalmente caro.
+
+\textbf{Tempo de Execucao} (dataset credito, 250k samples):
+\begin{itemize}
+    \item Teacher training (XGBoost): 15 min
+    \item Destilacao single run: 8 min
+    \item Bootstrap 1,000 runs: $\sim$130 horas (paralelo: 8 horas em 16 cores)
+\end{itemize}
+
+\textbf{Otimizacoes}:
+\begin{itemize}
+    \item Paralelizacao via joblib/Dask
+    \item Bootstrap em subsamples (e.g., 50\% dos dados)
+    \item Aproximacoes analiticas de variancia (futuro)
+\end{itemize}
+
+\subsubsection{5. Generalidade de Restricoes}
+
+\textbf{Limitacao}: Restricoes podem ser especificas a contexto/periodo.
+
+\textbf{Exemplo}: Relacao age $\rightarrow$ default pode mudar em crises economicas.
+
+\textbf{Abordagem}:
+\begin{itemize}
+    \item Structural break detection identifica mudancas
+    \item Re-especificar restricoes por periodo se necessario
+    \item Restricoes ``soft'' (penalizacao) vs. ``hard'' (constraint absoluto)
+\end{itemize}
+
+\subsection{Implicacoes Teoricas}
+
+\subsubsection{Knowledge Distillation como Regularizacao Economica}
+
+Framework pode ser visto como:
+
+\begin{equation}
+\min_{\theta} \underbrace{\mathcal{L}_{\text{fit}}(\theta)}_{\text{Acuracia}} + \lambda \underbrace{\mathcal{R}_{\text{econ}}(\theta)}_{\text{Regularizacao Economica}}
+\end{equation}
+
+onde $\mathcal{R}_{\text{econ}}$ penaliza violacoes de teoria economica.
+
+\textbf{Interpretacao}: Restricoes economicas agem como prior Bayesiano informado por decadas de pesquisa.
+
+\subsubsection{Reconciliacao Prediction-Inference}
+
+Mullainathan \& Spiess (2017) argumentam que ML foca em predicao, econometria em inferencia.
+
+\textbf{Nossa Contribuicao}: Economic KD reconcilia ambos:
+\begin{itemize}
+    \item \textbf{Predicao}: Destilacao de teacher complexo fornece acuracia
+    \item \textbf{Inferencia}: GAM student + bootstrap fornecem coeficientes estaveis com CIs
+\end{itemize}
+
+\subsubsection{Interpretabilidade como Constraint Optimization}
+
+Definimos interpretabilidade economica como problema de otimizacao:
+
+\begin{align}
+\max \quad & \text{Accuracy}(M) \\
+\text{s.t.} \quad & \text{Compliance}(M, C) \geq \tau_{\text{compliance}} \\
+& \text{Stability}(M) \geq \tau_{\text{stability}} \\
+& M \in \{\text{GAM, Linear}\}
+\end{align}
+
+Framework resolve aproximadamente este problema multi-objetivo.
+
+\subsection{Comparacao com Abordagens Alternativas}
+
+\subsubsection{vs. Constrained Optimization Direto}
+
+\textbf{Alternativa}: Treinar GAM diretamente com restricoes economicas (sem destilacao).
+
+\textbf{Nossos Resultados}: Economic KD supera GAM constrained direto em +3-4\% AUC.
+
+\textbf{Explicacao}: Teacher complexo captura patterns que GAM direta nao consegue, mas destilacao transfere conhecimento preservando restricoes.
+
+\subsubsection{vs. Post-hoc Calibration}
+
+\textbf{Alternativa}: Treinar modelo complexo, ajustar coeficientes post-hoc para conformidade.
+
+\textbf{Problema}:
+\begin{itemize}
+    \item Coeficientes ajustados manualmente nao tem fundamentacao estatistica
+    \item Calibracao pode introduzir inconsistencias
+    \item Nao garante estabilidade
+\end{itemize}
+
+\textbf{Vantagem Economic KD}: Restricoes integradas ao treinamento, nao impostas post-hoc.
+
+\subsubsection{vs. Hybrid Ensembles}
+
+\textbf{Alternativa}: Ensemble de modelo complexo + modelo interpretavel.
+
+\textbf{Exemplo}: $\text{Prediction} = 0.7 \times \text{XGBoost} + 0.3 \times \text{GAM}$
+
+\textbf{Problema}:
+\begin{itemize}
+    \item Interpretabilidade comprometida (ensemble opaco)
+    \item Coeficientes do GAM nao refletem predicao final
+\end{itemize}
+
+\textbf{Vantagem Economic KD}: Modelo student unico, totalmente interpretavel.
+
+\subsection{Direcoes Futuras}
+
+\subsubsection{Extensoes Metodologicas}
+
+\begin{enumerate}
+    \item \textbf{Causal Distillation}: Garantir preservacao de estruturas causais (via grafos causais)
+    \item \textbf{Multi-Task Distillation}: Destilar para multiplos objetivos economicos simultaneamente
+    \item \textbf{Adaptive Constraints}: Aprender restricoes otimas dos dados (nao especificar a priori)
+    \item \textbf{Intersectionality}: Restricoes em subgrupos (e.g., efeito de educacao varia por genero/raca)
+\end{enumerate}
+
+\subsubsection{Novos Dominios}
+
+\begin{itemize}
+    \item \textbf{Macroeconomia}: Forecasting de indicadores (PIB, inflacao) com interpretabilidade
+    \item \textbf{Economia Ambiental}: Carbon pricing models com restricoes de sustentabilidade
+    \item \textbf{Economia Comportamental}: Modelos de decisao preservando premissas de bounded rationality
+\end{itemize}
+
+\subsubsection{Integracao com Ferramentas Existentes}
+
+\begin{itemize}
+    \item \textbf{EconML}: Combinar causal inference com economic distillation
+    \item \textbf{DoWhy}: Integrar causal reasoning no processo de destilacao
+    \item \textbf{Fairlearn}: Adicionar fairness constraints a restricoes economicas
+\end{itemize}

@@ -1,0 +1,146 @@
+\section{Background e Trabalhos Relacionados}
+
+\subsection{Validacao Multi-Dimensional de Modelos ML}
+
+\subsubsection{Robustness Testing}
+
+Validacao de robustez avalia estabilidade de predicoes sob perturbacoes nos dados:
+
+\begin{itemize}
+    \item \textbf{Adversarial Robustness}: Perturbacoes adversariais para DNNs (FGSM~\cite{goodfellow2014}, PGD~\cite{madry2017}, C\&W~\cite{carlini2017}). Limitacao: Requerem gradientes, nao aplicaveis a arvores
+
+    \item \textbf{Input Perturbations}: Gaussian noise, quantile-based perturbations~\cite{ribeiro2016}. Aplicavel a qualquer modelo, mas interpretacao de resultados varia
+
+    \item \textbf{Certified Robustness}: Garantias formais via interval bound propagation~\cite{gowal2018}. Computacionalmente caro, limitado a DNNs pequenas
+\end{itemize}
+
+\textbf{Gap}: Metodos existentes focam em DNNs. Falta metodologia para robustness testing de Decision Trees mantendo interpretabilidade.
+
+\subsubsection{Uncertainty Quantification}
+
+Quantificacao de incerteza estima confianca em predicoes:
+
+\begin{itemize}
+    \item \textbf{Metodos Bayesianos}: Bayesian Neural Networks~\cite{mackay1992}, MC Dropout~\cite{gal2016}. Fornecem distribuicoes de probabilidade, mas requerem retreinamento e sao computacionalmente caros
+
+    \item \textbf{Ensemble Methods}: Variance entre modelos em ensemble~\cite{lakshminarayanan2017}. Efetivo, mas sacrifica interpretabilidade individual
+
+    \item \textbf{Conformal Prediction}: Garantias de coverage distribution-free~\cite{vovk2005}. Model-agnostic, mas intervalos podem ser excessivamente largos
+
+    \item \textbf{Quantile Regression}: Prediz intervalos via quantis condicionais~\cite{koenker2001}. CRQR~\cite{romano2019} combina quantile regression + conformal prediction
+\end{itemize}
+
+\textbf{Gap}: CRQR e promissora para modelos interpretaveis, mas falta otimizacao para producao (caching, feature importance).
+
+\subsubsection{Fairness Testing}
+
+Auditoria de equidade detecta bias demografico:
+
+\begin{itemize}
+    \item \textbf{Frameworks}: AIF360~\cite{bellamy2018}, Fairlearn~\cite{bird2020}, What-If Tool~\cite{wexler2019}
+
+    \item \textbf{Metricas}: Statistical parity, equalized odds, disparate impact~\cite{hardt2016}
+
+    \item \textbf{Compliance Regulatorio}: EEOC 80\% rule, ECOA prohibited basis~\cite{barocas2019}
+\end{itemize}
+
+\textbf{Gap}: Frameworks sao fragmentados (fairness OU interpretabilidade), sem validacao multi-dimensional integrada.
+
+\subsection{Modelos Interpretaveis vs. Complexos}
+
+\subsubsection{Taxonomia de Interpretabilidade}
+
+\begin{table}[h]
+\centering
+\caption{Espectro de Interpretabilidade}
+\begin{tabular}{lll}
+\toprule
+\textbf{Categoria} & \textbf{Modelos} & \textbf{Interpretabilidade} \\
+\midrule
+Intrinsecamente & Decision Trees, & Regras globais \\
+Interpretaveis & Linear Models, GAMs & transparentes \\
+\midrule
+Semi-Interpretaveis & GBM, Random Forest & Feature importance \\
+ & & + partial dependence \\
+\midrule
+Black-Box & DNNs, Ensembles & Explicacoes post-hoc \\
+ & Complexos & (SHAP, LIME) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Accuracy-Interpretability Trade-off}
+
+Percepcao comum: Modelos interpretaveis sacrificam acuracia~\cite{rudin2019}.
+
+\textbf{Contra-evidencias}:
+\begin{itemize}
+    \item Rudin~\cite{rudin2019}: Decision trees competem com black-boxes em dominios tabulares (criminal justice, healthcare)
+    \item Caruana et al.~\cite{caruana2015}: GAMs alcancam performance de DNNs em medical risk prediction
+\end{itemize}
+
+\textbf{Nossa Contribuicao}: Estendemos analise para \textit{robustness-interpretability trade-off}, demonstrando feature parity em validacao multi-dimensional.
+
+\subsection{Frameworks de Validacao Existentes}
+
+\subsubsection{Fairness-Focused}
+
+\begin{itemize}
+    \item \textbf{AIF360}~\cite{bellamy2018}: 70+ metricas de fairness, 10 algoritmos de mitigacao. Limitacao: Nao integra robustness/uncertainty
+    \item \textbf{Fairlearn}~\cite{bird2020}: Threshold optimization, grid search. Limitacao: Foco em pre/pos-processing, sem validacao continua
+\end{itemize}
+
+\subsubsection{Explainability-Focused}
+
+\begin{itemize}
+    \item \textbf{LIME}~\cite{ribeiro2016}: Explicacoes locais via surrogate linear. Limitacao: Instabilidade entre runs, nao e validacao
+    \item \textbf{SHAP}~\cite{lundberg2017}: Valores de Shapley para feature attribution. Limitacao: Computacionalmente caro, aproximacoes para modelos complexos
+    \item \textbf{Alibi}~\cite{klaise2020}: Anchors, counterfactuals. Limitacao: Explicacoes qualitativas, sem metricas quantitativas de robustez
+\end{itemize}
+
+\subsubsection{Integrated Validation}
+
+\begin{itemize}
+    \item \textbf{TensorFlow Model Analysis}~\cite{tensorflow2018}: Metricas de performance + fairness slicing. Limitacao: Integrado a TensorFlow, foco em DNNs
+    \item \textbf{Evidently AI}~\cite{evidently2021}: Drift detection + model monitoring. Limitacao: Nao inclui uncertainty quantification ou fairness rigorosa
+\end{itemize}
+
+\textbf{Gap Critico}: Nenhum framework existente integra robustness + uncertainty + fairness + resilience especificamente para modelos interpretaveis com otimizacoes de producao.
+
+\subsection{Model Distillation para Interpretabilidade}
+
+\subsubsection{Knowledge Distillation}
+
+Tecnica para transferir conhecimento de modelo complexo (teacher) para modelo simples (student)~\cite{hinton2015}:
+
+\begin{itemize}
+    \item \textbf{Soft Targets}: Student treina em probabilidades suavizadas do teacher (temperature scaling)
+    \item \textbf{Aplicacoes}: Compressao de modelos, deployment em dispositivos edge
+\end{itemize}
+
+\subsubsection{Surrogate Models para Explicabilidade}
+
+\begin{itemize}
+    \item \textbf{Global Surrogates}: Aproximar black-box com modelo interpretavel em todo espaco de features~\cite{bastani2017}
+    \item \textbf{Fidelity vs. Accuracy}: Trade-off entre quao bem surrogate aproxima teacher (fidelity) vs. performance no ground truth
+\end{itemize}
+
+\textbf{Nossa Abordagem}: Usamos distillation como componente de explainability, mas foco principal e validacao de modelos \textit{intrinsecamente interpretaveis}, nao surrogates.
+
+\subsection{Gaps na Literatura}
+
+Sintetizando trabalhos relacionados, identificamos gaps criticos:
+
+\begin{enumerate}
+    \item \textbf{Fragmentacao}: Ferramentas existem para fairness OU robustness OU uncertainty, mas nao integradas
+
+    \item \textbf{Bias para Modelos Complexos}: Frameworks de validacao sofisticados assumem DNNs/ensembles, negligenciando modelos interpretaveis
+
+    \item \textbf{Falta de Benchmarks}: Nao existem estudos sistematicos comparando robustez de Decision Trees vs. DNNs em mesmos datasets
+
+    \item \textbf{Otimizacao de Producao}: Metodos academicos (CRQR, conformal prediction) nao otimizados para latencia/throughput de producao
+
+    \item \textbf{Compliance Regulatorio}: Metricas de fairness nao mapeadas para requisitos legais especificos (EEOC, ECOA)
+\end{enumerate}
+
+\textbf{Nossa Contribuicao}: Abordamos todos os gaps via framework integrado, feature parity analysis, otimizacoes de producao, e compliance scoring.

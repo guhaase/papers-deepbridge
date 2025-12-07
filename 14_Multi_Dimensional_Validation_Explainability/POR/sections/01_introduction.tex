@@ -1,0 +1,84 @@
+\section{Introducao}
+
+A implantacao de modelos de Machine Learning em ambientes de producao criticos---saude, financas, justica---requer validacao rigorosa em multiplas dimensoes: robustez a perturbacoes, quantificacao de incerteza, equidade demografica, e resiliencia a drift. Entretanto, frameworks sofisticados de validacao (adversarial robustness, uncertainty quantification, fairness auditing) sao predominantemente aplicados e desenvolvidos para modelos complexos (Deep Neural Networks, ensembles), criando percepcao de que modelos interpretaveis (Decision Trees, GAMs, modelos lineares) nao se beneficiam---ou nao podem passar---por validacao multi-dimensional rigorosa.
+
+\subsection{Motivacao}
+
+A tensao entre interpretabilidade e performance criou dicotomia artificial na pratica de ML em producao:
+
+\begin{itemize}
+    \item \textbf{Modelos Complexos}: Alta acuracia, validacao sofisticada (robustness tests, uncertainty estimation), mas explicabilidade limitada (SHAP/LIME fornecem aproximacoes locais, nao garantias globais)
+    \item \textbf{Modelos Interpretaveis}: Explicabilidade intrinseca (regras de decisao, feature importance transparente), mas validacao ad-hoc, assumindo que simplicidade do modelo substitui necessidade de testes rigorosos
+\end{itemize}
+
+Esta dicotomia e problematica em dominios regulados:
+
+\begin{enumerate}
+    \item \textbf{Regulacoes recentes exigem AMBOS}: GDPR Article 22 (direito a explicacao), EU AI Act (robustness requirements), EEOC guidelines (fairness testing)
+    \item \textbf{Interpretabilidade nao garante robustez}: Decision Tree pode ser interpretavel mas fragil a perturbacoes, ou injusto para grupos demograficos especificos
+    \item \textbf{Producao requer validacao quantitativa}: Due diligence legal e operacional demanda evidencia empirica de robustez, nao apenas interpretabilidade qualitativa
+\end{enumerate}
+
+\subsection{Problema}
+
+Aplicacao de frameworks de validacao multi-dimensional a modelos interpretaveis enfrenta desafios tecnicos e conceituais:
+
+\begin{enumerate}
+    \item \textbf{Adaptacao de metodos}: Robustness testing via perturbacoes adversariais (PGD, FGSM) foi desenvolvido para gradientes de DNNs---como adaptar para Decision Trees sem gradientes?
+    \item \textbf{Uncertainty quantification}: Metodos Bayesianos (Bayesian NNs, MC Dropout) requerem arquiteturas especificas---como quantificar incerteza em modelos deterministicos como arvores?
+    \item \textbf{Percepcao de trade-off inevitavel}: Existe crenca de que modelos interpretaveis necessariamente sacrificam performance em testes de robustez e fairness
+    \item \textbf{Falta de ferramentas integradas}: Frameworks existentes (AIF360, Alibi) focam em deteccao de bias OU explicabilidade, sem integracao de validacao multi-dimensional
+    \item \textbf{Ausencia de benchmarks}: Nao existem estudos empiricos sistematicos comparando robustez de Decision Trees vs. DNNs em mesmos datasets
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos framework de validacao multi-dimensional integrado que prove que modelos interpretaveis podem passar testes rigorosos mantendo explicabilidade:
+
+\begin{itemize}
+    \item \textbf{Robustness Testing Adaptado}: Perturbacoes Gaussianas e Quantile para features tabulares, deteccao de weakspots via slice-based analysis, overfitting localizado em decision paths
+    \item \textbf{Uncertainty Quantification Model-Agnostic}: CRQR (Conformalized Residual Quantile Regression) otimizada com caching de modelos e permutation importance (70-80\% reducao de tempo)
+    \item \textbf{Fairness Multi-Metrica}: 15 metricas (pre e pos-treinamento) com compliance regulatorio (EEOC 80\% rule, ECOA prohibited basis), threshold optimization para equidade
+    \item \textbf{Drift Detection Interpretavel}: PSI, KS tests mantendo transparencia de features afetadas
+    \item \textbf{Explainability via Distillation}: Surrogate models para transformar black-boxes em Decision Trees/Linear models interpretaveis
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Framework Integrado}: Primeira solucao unificada para validacao multi-dimensional de modelos interpretaveis, integrando robustez, incerteza, equidade, e resiliencia em API consistente
+
+    \item \textbf{Feature Parity Analysis}: Demonstracao empirica de que Decision Trees alcancam 85-90\% em robustness tests, 90-95\% em calibration, e drift detection igual ou superior a black-boxes, com trade-off de apenas 5-10\% accuracy loss
+
+    \item \textbf{Metodos Inovadores}:
+    \begin{itemize}
+        \item Weakspot detection via slice-based analysis em decision paths
+        \item Sliced overfitting analysis para deteccao de overfitting localizado
+        \item CRQR otimizada com caching e permutation importance
+    \end{itemize}
+
+    \item \textbf{Validacao Empirica}: Experimentos em 3 datasets reais (credit scoring, hiring, healthcare) com 12 combinacoes de modelos (Decision Trees, Linear, GBM, XGBoost) demonstrando feature parity
+
+    \item \textbf{Ferramenta Pratica}: Implementacao open-source no DeepBridge com relatorios automatizados, integracao CI/CD, e compliance scoring
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Praticantes de ML}
+- Evidencia quantitativa para escolher modelos interpretaveis sem sacrificar validacao rigorosa
+- Reducao de 60-80\% em tempo de auditoria via automacao
+- Deteccao precoce de weakspots e overfitting localizado
+
+\subsubsection{Para Reguladores}
+- Demonstracao de que interpretabilidade e robustez nao sao mutuamente exclusivos
+- Padronizacao de metricas de validacao multi-dimensional
+- Framework auditavel para compliance (GDPR, EEOC, ECOA)
+
+\subsubsection{Para Pesquisa Academica}
+- Metodologia replicavel para comparacao sistematica de modelos interpretaveis vs. complexos
+- Benchmarks em robustez, incerteza, e equidade
+- Direcoes para pesquisa em interpretable ML robusto
+
+\subsection{Organizacao}
+
+Secao 2 apresenta trabalhos relacionados em validacao multi-dimensional, interpretabilidade, e frameworks de ML em producao. Secao 3 descreve design do framework de validacao integrado. Secao 4 detalha implementacao de cada componente (robustness, uncertainty, fairness, resilience). Secao 5 apresenta experimentos em 3 datasets reais com feature parity analysis. Secao 6 discute limitacoes, consideracoes eticas, e direcoes futuras. Secao 7 conclui com implicacoes praticas.

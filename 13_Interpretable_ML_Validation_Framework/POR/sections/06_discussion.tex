@@ -1,0 +1,269 @@
+\section{Discussao}
+
+\subsection{Limitacoes}
+
+\subsubsection{Performance Ceiling}
+
+Modelos interpretaveis tem teto de performance inerente:
+
+\begin{itemize}
+    \item \textbf{Decision Trees}: Estrutura hierarquica limita representacao de interacoes complexas
+    \item \textbf{GAMs}: Estrutura aditiva assume independencia de efeitos---interacoes $x_i \times x_j$ nao sao capturadas
+    \item \textbf{Trade-off inevitavel}: Nossos experimentos mostram 3-7\% de perda vs. ensembles complexos
+\end{itemize}
+
+\textbf{Quando aceitar o trade-off?}
+
+Depende de:
+\begin{enumerate}
+    \item \textbf{Regulatory pressure}: Dominios altamente regulados (banking) devem priorizar compliance
+    \item \textbf{Litigation risk}: Custo de lawsuit $>>$ perda de receita por 3\% de AUC
+    \item \textbf{Reputational risk}: Discriminacao algoritmica causa dano irreparavel a marca
+\end{enumerate}
+
+\textbf{Quando NAO aceitar?}
+
+\begin{itemize}
+    \item Aplicacoes de baixo risco regulatorio (recommendation systems, marketing)
+    \item Contextos onde performance e critico (diagnostico medico com human oversight adicional)
+    \item Mercados competitivos onde 3\% de accuracy = diferenca entre lucro e prejuizo
+\end{itemize}
+
+\subsubsection{Interpretabilidade nao Garante Fairness}
+
+Modelo interpretavel pode ser discriminatorio:
+
+\begin{verbatim}
+if income < 30k:
+    reject
+elif zip_code in [redlined_areas]:
+    reject
+else:
+    approve
+\end{verbatim}
+
+Este decision tree e perfeitamente interpretavel mas viola Fair Housing Act (redlining).
+
+\textbf{Implicacao}: Interpretabilidade e NECESSARIA mas NAO SUFICIENTE. Framework combina interpretabilidade com fairness validation.
+
+\subsubsection{Post-hoc Rationalization Risk}
+
+Reguladores podem questionar: ``Modelo foi escolhido por interpretabilidade ou para justificar decisoes pre-determinadas?''
+
+Mitigacao:
+\begin{itemize}
+    \item Documentar processo de selecao de modelo ANTES de deployment
+    \item Demonstrar que multiple architectures foram consideradas
+    \item Mostrar trade-off analysis quantitativo
+\end{itemize}
+
+\subsubsection{Computational Cost}
+
+\begin{itemize}
+    \item \textbf{Hyperparameter Optimization}: 50 trials com CV 5-fold = 250 model fits
+    \item \textbf{Tempo}: KDDT optimization leva 10-30 min em CPU (vs. 2-5 min para XGBoost vanilla)
+    \item \textbf{Mitigacao}: Caching, early stopping, GPU acceleration para GAMs
+\end{itemize}
+
+\subsection{Consideracoes Praticas}
+
+\subsubsection{Deployment em Producao}
+
+\textbf{CI/CD Integration}:
+
+Framework permite continuous compliance monitoring:
+
+\begin{verbatim}
+# .gitlab-ci.yml
+model-validation:
+  stage: test
+  script:
+    - python run_kddt_distillation.py
+    - python run_fairness_tests.py --threshold 0.80
+    - python run_robustness_tests.py
+  artifacts:
+    reports:
+      compliance: compliance_report.json
+\end{verbatim}
+
+Pipeline falha se:
+\begin{itemize}
+    \item Disparate impact $< 0.80$
+    \item Compliance score $< 75\%$
+    \item Performance degradation $> 10\%$ under perturbations
+\end{itemize}
+
+\textbf{Model Monitoring}:
+
+Em producao, monitore:
+\begin{itemize}
+    \item \textbf{Prediction drift}: Distribuicao de predicoes mudando?
+    \item \textbf{Feature drift}: Input distribution mudando?
+    \item \textbf{Fairness drift}: Disparate impact aumentando?
+    \item \textbf{Performance drift}: AUC degradando?
+\end{itemize}
+
+Alertas automatizados quando thresholds sao violados.
+
+\subsubsection{Human-in-the-Loop}
+
+Modelos interpretaveis facilitam human oversight:
+
+\textbf{Caso de Uso: Lending}
+
+\begin{enumerate}
+    \item \textbf{Low confidence predictions}: Se interval width $> 0.5$, encaminhar para analise humana
+    \item \textbf{Adverse actions}: Mostrar decision path para loan officer
+    \item \textbf{Appeals}: Cliente pode questionar razoes especificas (ECOA right)
+\end{enumerate}
+
+\textbf{Exemplo de Decision Path}:
+
+\begin{verbatim}
+Applicant ID: 12345
+Decision: DENIED
+Confidence Interval: [0.18, 0.42] (width=0.24)
+
+Decision Path:
+1. debt_to_income_ratio > 0.45? YES
+   └─> 2. number_of_delinquencies > 2? YES
+       └─> 3. revolving_utilization > 0.80? YES
+           └─> REJECT (node 14, n=1,247 samples, 92% reject)
+
+Top Adverse Factors:
+1. debt_to_income_ratio = 0.52 (threshold: 0.45)
+2. number_of_delinquencies = 3 (threshold: 2)
+3. revolving_utilization = 0.87 (threshold: 0.80)
+\end{verbatim}
+
+Cliente pode apresentar evidencias para contestar (e.g., delinquencies foram erros de bureau).
+
+\subsubsection{Regulatory Documentation}
+
+Framework gera relatorios formatados para auditoria:
+
+\textbf{Secoes do Relatorio}:
+\begin{enumerate}
+    \item \textbf{Model Card}: Arquitetura, parametros, performance
+    \item \textbf{Fairness Assessment}: 15 metricas com interpretacoes
+    \item \textbf{Robustness Analysis}: Degradation curves, weakspots
+    \item \textbf{Uncertainty Quantification}: Coverage, intervals
+    \item \textbf{Interpretability Evidence}: Tree visualization, GAM plots
+    \item \textbf{Validation Summary}: Compliance score, violacoes detectadas
+\end{enumerate}
+
+Formato: PDF + HTML interativo + JSON machine-readable.
+
+\subsection{Implicacoes Eticas}
+
+\subsubsection{Transparency vs. Gaming}
+
+Modelos interpretaveis sao vulneraveis a gaming:
+
+\textbf{Exemplo}: Se decision tree usa ``credit\_score $< 650$'', applicants podem manipular score (e.g., abrir cartoes de credito temporarios).
+
+\textbf{Mitigacao}:
+\begin{itemize}
+    \item Nao publicar thresholds exatos
+    \item Monitorar comportamento estrategico (spike em applications com score=651?)
+    \item Usar features harder-to-game (payment history vs. score pontual)
+\end{itemize}
+
+\subsubsection{Accessibility de Explicacoes}
+
+ECOA requer razoes ``compreensíveis para consumidor medio''.
+
+\textbf{Problema}: ``revolving\_utilization $> 0.80$'' e tecnico demais.
+
+\textbf{Solucao}: Traduzir para linguagem natural:
+
+\begin{verbatim}
+Technical: revolving_utilization > 0.80
+Consumer-friendly: "You are using more than 80% of your
+available credit limit, which indicates higher financial risk."
+\end{verbatim}
+
+Framework pode integrar templates de linguagem natural.
+
+\subsubsection{Fairness vs. Accuracy Trade-off}
+
+Em alguns contextos, fairness constraints reduzem accuracy para grupos protegidos:
+
+\textbf{Exemplo}: Enforcar equal opportunity pode requerer aceitar mais false positives em grupo protegido.
+
+\textbf{Consideracao Etica}: Isso e justo? Ou perpetua paternalismo?
+
+Literatura sem consenso. Framework permite quantificar trade-off mas decisao e normativa, nao tecnica.
+
+\subsection{Generalizacao para Outros Dominios}
+
+Framework foi testado em lending/hiring/recidivism, mas e generalizavel para:
+
+\begin{itemize}
+    \item \textbf{Healthcare}: HIPAA compliance, clinical decision support
+    \item \textbf{Insurance}: Actuarial fairness, anti-discrimination laws
+    \item \textbf{Education}: FERPA compliance, admissions decisions
+    \item \textbf{Government benefits}: Due process, equal protection
+\end{itemize}
+
+\textbf{Requisitos Especificos por Dominio}:
+
+\begin{table}[h]
+\centering
+\caption{Domain-Specific Requirements}
+\begin{tabular}{lll}
+\toprule
+\textbf{Dominio} & \textbf{Regulacao} & \textbf{Metricas Criticas} \\
+\midrule
+Healthcare & HIPAA, FDA & Calibration, false negative rate \\
+Insurance & State laws & Actuarial fairness, transparency \\
+Education & FERPA & Equalized odds, privacy \\
+Criminal Justice & Due Process & Equal opportunity, error rates \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Direcoes Futuras}
+
+\subsubsection{Extensoes Tecnicas}
+
+\begin{enumerate}
+    \item \textbf{Neural Additive Models (NAMs)}: Combinar expressividade de NNs com estrutura aditiva de GAMs
+    \item \textbf{Rule Extraction}: Destilar para rule sets (e.g., RuleFit) em vez de trees/GAMs
+    \item \textbf{Monotonic Neural Networks}: NNs com constraints de monotonicidade
+    \item \textbf{Causal Interpretability}: Integrar causal inference para explicacoes contrafactuais
+\end{enumerate}
+
+\subsubsection{Regulatory Engagement}
+
+Trabalhar com reguladores para:
+\begin{itemize}
+    \item Padronizar definicoes de interpretabilidade
+    \item Criar safe harbors para modelos interpretaveis validados
+    \item Desenvolver certification programs
+\end{itemize}
+
+\subsubsection{Industry Adoption}
+
+Barreiras para adocao:
+\begin{itemize}
+    \item \textbf{Legacy systems}: Substituir modelos em producao e custoso
+    \item \textbf{Organizational inertia}: ``Sempre usamos XGBoost, por que mudar?''
+    \item \textbf{Skill gap}: Time pode nao ter expertise em GAMs/distillation
+\end{itemize}
+
+Facilitadores:
+\begin{itemize}
+    \item Demonstrar ROI via reducao de risco legal
+    \item Criar tooling user-friendly (DeepBridge)
+    \item Publicar case studies de sucesso
+\end{itemize}
+
+\subsubsection{Open Questions}
+
+\begin{enumerate}
+    \item \textbf{Optimal temperature}: Existe formula fechada para $T^*$ em funcao de dataset?
+    \item \textbf{Fidelity vs. Accuracy}: Como balancear quando objetivos conflitam?
+    \item \textbf{Interpretability metrics}: Como quantificar interpretabilidade objetivamente?
+    \item \textbf{Multi-objective optimization}: Otimizar simultaneamente accuracy, fairness, interpretability?
+\end{enumerate}

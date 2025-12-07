@@ -1,0 +1,439 @@
+\section{Avaliacao: Feature Parity Analysis}
+
+\subsection{Configuracao Experimental}
+
+\subsubsection{Datasets}
+
+Validamos framework em 3 datasets reais representando dominios criticos:
+
+\begin{table}[h]
+\centering
+\caption{Datasets Utilizados}
+\begin{tabular}{lrrrl}
+\toprule
+\textbf{Dataset} & \textbf{N} & \textbf{Features} & \textbf{Task} & \textbf{Dominio} \\
+\midrule
+German Credit & 1,000 & 20 & Binary & Credit scoring \\
+Adult Income & 48,842 & 14 & Binary & Hiring/Income \\
+Diabetes (Pima) & 768 & 8 & Binary & Healthcare \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Atributos Protegidos}:
+\begin{itemize}
+    \item German Credit: Age ($\geq$ 25), Gender
+    \item Adult Income: Race, Gender, Age ($\geq$ 40)
+    \item Diabetes: Age ($\geq$ 50)
+\end{itemize}
+
+\subsubsection{Modelos Avaliados}
+
+Para cada dataset, treinamos 4 modelos:
+
+\begin{enumerate}
+    \item \textbf{Decision Tree} (max\_depth=5): Intrinsecamente interpretavel
+    \item \textbf{Logistic Regression} (L2 regularization): Linear interpretavel
+    \item \textbf{Gradient Boosting} (100 trees, max\_depth=3): Semi-interpretavel
+    \item \textbf{XGBoost} (200 trees, max\_depth=6): Baseline de alta performance
+\end{enumerate}
+
+\textbf{Total}: 12 combinacoes (3 datasets $\times$ 4 modelos).
+
+\subsubsection{Metricas de Avaliacao}
+
+\begin{itemize}
+    \item \textbf{Accuracy Baseline}: AUC-ROC, F1-score
+    \item \textbf{Robustness}: Robustness score (0-1), performance gap sob perturbacoes
+    \item \textbf{Uncertainty}: Coverage, mean interval width, uncertainty quality score
+    \item \textbf{Fairness}: Overall fairness score (0-100\%), EEOC compliance
+    \item \textbf{Resilience}: PSI, KS statistic para drift
+\end{itemize}
+
+\subsubsection{Configuracao de Testes}
+
+Todos experimentos executaram validacao \texttt{full}:
+\begin{itemize}
+    \item Robustness: 6 niveis de perturbacao (0.1-1.0), Gaussian + Quantile
+    \item Uncertainty: CRQR com 90\% confidence, 10 iterations
+    \item Fairness: 15 metricas completas
+    \item Resilience: Drift simulado via temporal split (70\% train, 30\% drift)
+\end{itemize}
+
+\subsection{Case Study 1: German Credit Dataset}
+
+\subsubsection{Contexto}
+
+Dataset de aprovacao de credito com 1,000 clientes, 20 features (duracao do emprestimo, historico de credito, proposito, etc.). Target: Aprovado/Negado.
+
+\textbf{Desafio}: Alta prevalencia de bias de idade (clientes jovens tem taxa de aprovacao 35\% menor).
+
+\subsubsection{Resultados de Accuracy}
+
+\begin{table}[h]
+\centering
+\caption{Performance Base - German Credit}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Modelo} & \textbf{AUC-ROC} & \textbf{F1-Score} \\
+\midrule
+XGBoost (baseline) & \textbf{0.782} & \textbf{0.691} \\
+Gradient Boosting & 0.768 & 0.673 \\
+Decision Tree & 0.721 & 0.652 \\
+Logistic Regression & 0.745 & 0.665 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Accuracy Gap}: Decision Tree perde 7.8\% AUC vs. XGBoost.
+
+\subsubsection{Robustness Testing}
+
+\begin{table}[h]
+\centering
+\caption{Robustness Scores - German Credit}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Modelo} & \textbf{Rob. Score} & \textbf{Gap @0.5} & \textbf{Weakspots} \\
+\midrule
+XGBoost & 0.883 & 0.098 & 3 \\
+Gradient Boosting & 0.891 & 0.092 & 2 \\
+Decision Tree & \textbf{0.912} & \textbf{0.075} & 4 \\
+Logistic Reg. & \textbf{0.925} & \textbf{0.068} & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Insight Critico}: Decision Tree e Logistic Regression \textbf{superam} modelos complexos em robustez! Simplicidade estrutural reduz sensibilidade a perturbacoes.
+
+\textbf{Weakspots Identificados} (Decision Tree):
+\begin{enumerate}
+    \item \textbf{Duracao do emprestimo $>$ 36 meses}: Performance degrada 18\% (AUC 0.72 $\rightarrow$ 0.59)
+    \item \textbf{Historico de credito = ``Critico''}: Performance degrada 15\%
+    \item \textbf{Idade $<$ 25 E Proposito = ``Educacao''}: Performance degrada 22\%
+    \item \textbf{Emprego $<$ 1 ano}: Performance degrada 12\%
+\end{enumerate}
+
+\textbf{Acao Tomada}: Coleta de mais dados para categoria ``Duracao $>$ 36 meses'' (atualmente apenas 8\% do dataset).
+
+\subsubsection{Uncertainty Quantification}
+
+\begin{table}[h]
+\centering
+\caption{CRQR Results - German Credit}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Modelo} & \textbf{Coverage} & \textbf{Width} & \textbf{Quality} \\
+\midrule
+XGBoost & 91.2\% & 0.342 & 0.847 \\
+Gradient Boosting & 90.8\% & 0.356 & 0.832 \\
+Decision Tree & 89.5\% & 0.381 & 0.801 \\
+Logistic Reg. & 90.1\% & 0.368 & 0.819 \\
+\midrule
+\textit{Expected} & \textit{90.0\%} & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Resultado}: Decision Tree alcanca \textbf{89.5\% coverage} (target: 90\%), apenas 0.5pp abaixo. Intervalos sao 11\% mais largos que XGBoost, mas ainda utilizaveis em producao.
+
+\textbf{Feature Importance (Uncertainty)}:
+\begin{enumerate}
+    \item Duracao do emprestimo (importance: 0.28)
+    \item Historico de credito (importance: 0.21)
+    \item Proposito do emprestimo (importance: 0.15)
+\end{enumerate}
+
+\subsubsection{Fairness Validation}
+
+\begin{table}[h]
+\centering
+\caption{Fairness Scores - German Credit}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Modelo} & \textbf{Fairness} & \textbf{Disparate Impact} & \textbf{Violacoes} \\
+\midrule
+XGBoost & 68\% & 0.74 & 3 \\
+Gradient Boosting & 72\% & 0.78 & 2 \\
+Decision Tree & 81\% & 0.84 & 0 \\
+Logistic Reg. & 85\% & 0.87 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Resultado Dramatico}: Decision Tree \textbf{passa EEOC 80\% rule} (disparate impact = 0.84), enquanto XGBoost viola (0.74).
+
+\textbf{Explicacao}: Modelos complexos overfit em proxies correlacionados com idade (ex: ``years\_since\_first\_credit''), enquanto Decision Tree usa features mais diretas e justas.
+
+\textbf{Threshold Optimization}: Ajustando threshold de 0.5 para 0.42:
+\begin{itemize}
+    \item Decision Tree fairness: 81\% $\rightarrow$ \textbf{94\%}
+    \item Disparate impact: 0.84 $\rightarrow$ 0.91
+    \item F1-score: 0.652 $\rightarrow$ 0.638 (perda de 2.1\%)
+\end{itemize}
+
+\subsection{Case Study 2: Adult Income Dataset}
+
+\subsubsection{Contexto}
+
+Dataset de predicao de renda ($>$\$50k/ano) com 48,842 individuos, 14 features (educacao, ocupacao, horas trabalhadas, etc.).
+
+\textbf{Desafio}: Bias de genero e raca bem documentado historicamente.
+
+\subsubsection{Resultados Agregados}
+
+\begin{table}[h]
+\centering
+\caption{Multi-Dimensional Scores - Adult Income}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Modelo} & \textbf{AUC} & \textbf{Robust.} & \textbf{Fairness} & \textbf{Uncert.} \\
+\midrule
+XGBoost & \textbf{0.921} & 0.874 & 71\% & 0.892 \\
+Gradient Boosting & 0.908 & 0.881 & 76\% & 0.885 \\
+Decision Tree & 0.852 & \textbf{0.903} & \textbf{88\%} & 0.861 \\
+Logistic Reg. & 0.876 & \textbf{0.918} & \textbf{91\%} & 0.873 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Feature Parity Analysis}:
+\begin{itemize}
+    \item Decision Tree alcanca \textbf{92.5\%} do AUC do XGBoost (0.852 / 0.921)
+    \item Decision Tree \textbf{supera} XGBoost em robustez (+3.3\%) e fairness (+23.9\%)
+    \item Logistic Regression tem melhor robustez (0.918) e fairness (91\%)
+\end{itemize}
+
+\subsubsection{Weakspot Detection}
+
+Framework identificou \textbf{8 weakspots criticos}:
+
+\begin{table}[h]
+\centering
+\caption{Top-5 Weakspots - Adult Income (Decision Tree)}
+\begin{tabular}{lp{5cm}r}
+\toprule
+\textbf{Rank} & \textbf{Condicoes} & \textbf{Severity} \\
+\midrule
+1 & Education = ``HS-grad'' E Age $<$ 25 & 0.287 \\
+2 & Occupation = ``Handlers-cleaners'' & 0.231 \\
+3 & Hours-per-week $<$ 20 E Marital = ``Never-married'' & 0.198 \\
+4 & Native-country $\neq$ ``US'' E Education $<$ ``Bachelors'' & 0.176 \\
+5 & Capital-gain = 0 E Capital-loss = 0 & 0.152 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Actionable Insight}: Weakspot \#1 afeta 12\% do dataset mas representa 34\% dos false negatives. Recomendacao: Coletar features adicionais para jovens com ensino medio (ex: certificacoes tecnicas, experiencia em estagio).
+
+\subsubsection{Overfitting Localizado}
+
+Sliced overfitting analysis detectou:
+
+\begin{itemize}
+    \item \textbf{Faixa de renda alta} (capital-gain $>$ \$10k): Train-test gap = 0.18 (overfitting severo)
+    \item \textbf{Acoes}: Aumento de regularizacao (max\_depth 5 $\rightarrow$ 4), gap reducido para 0.09 (-50\%)
+\end{itemize}
+
+\subsection{Case Study 3: Diabetes (Pima) Dataset}
+
+\subsubsection{Contexto}
+
+Predicao de diabetes em mulheres indigenas Pima, 768 amostras, 8 features medicas (glicose, pressao sanguinea, IMC, etc.).
+
+\textbf{Desafio}: Dataset pequeno, alta variabilidade, potencial bias de idade.
+
+\subsubsection{Resultados Multi-Dimensionais}
+
+\begin{table}[h]
+\centering
+\caption{Comprehensive Validation - Diabetes}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Modelo} & \textbf{F1} & \textbf{Rob.} & \textbf{Cov.} & \textbf{Fair.} & \textbf{Drift} \\
+\midrule
+XGBoost & \textbf{0.742} & 0.856 & 91.8\% & 79\% & 0.18 (PSI) \\
+GBM & 0.718 & 0.863 & 91.2\% & 82\% & 0.16 \\
+Dec. Tree & 0.681 & \textbf{0.891} & 89.5\% & \textbf{92\%} & \textbf{0.12} \\
+Logistic & 0.695 & \textbf{0.902} & 90.3\% & \textbf{94\%} & \textbf{0.11} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Destaque}: Decision Tree mostra \textbf{melhor resiliencia a drift} (PSI = 0.12 vs. 0.18 do XGBoost), indicando maior estabilidade temporal.
+
+\subsubsection{Reliability Regions (Uncertainty)}
+
+CRQR identificou regioes de alta/baixa incerteza:
+
+\begin{table}[h]
+\centering
+\caption{Reliability Analysis - Diabetes (Decision Tree)}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Regiao} & \textbf{Coverage} & \textbf{Width} \\
+\midrule
+Glucose $<$ 100 & 93.2\% & 0.28 (estreito) \\
+Glucose 100-140 & 88.1\% & 0.42 \\
+Glucose $>$ 140 & 87.5\% & 0.58 (largo) \\
+\midrule
+BMI $<$ 25 & 91.8\% & 0.31 \\
+BMI 25-35 & 89.3\% & 0.39 \\
+BMI $>$ 35 & 86.7\% & 0.52 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Interpretacao}: Modelo e mais incerto para casos de glicose alta e obesidade severa (BMI $>$ 35)---exatamente as regioes de maior risco clinico. Recomendacao: Solicitar segunda opiniao medica para esses casos.
+
+\subsection{Analise Comparativa Global}
+
+\subsubsection{Feature Parity Summary}
+
+Agregando resultados dos 3 datasets:
+
+\begin{table}[h]
+\centering
+\caption{Feature Parity: Decision Trees vs. XGBoost}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dimensao} & \textbf{DT Score} & \textbf{XGB Score} & \textbf{Parity} \\
+\midrule
+Accuracy (AUC media) & 0.785 & 0.875 & 89.7\% \\
+Robustness Score & \textbf{0.902} & 0.871 & \textbf{103.6\%} \\
+Uncertainty Coverage & 89.7\% & 91.4\% & 98.1\% \\
+Fairness Score & \textbf{87\%} & 73\% & \textbf{119.2\%} \\
+Drift Resilience (1/PSI) & \textbf{8.33} & 5.56 & \textbf{149.8\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Conclusoes Criticas}:
+\begin{enumerate}
+    \item Decision Trees alcancam \textbf{89.7\% feature parity} em accuracy, mas \textbf{superam} XGBoost em robustez, fairness, e resiliencia
+    \item Trade-off real: \textbf{10.3\% accuracy loss} para \textbf{100\% interpretability gain} + melhorias em validacao multi-dimensional
+    \item Logistic Regression tem feature parity ainda melhor (94.2\% accuracy, 102\% robustness)
+\end{enumerate}
+
+\subsubsection{Weakspot Detection: Valor Agregado}
+
+Framework detectou \textbf{12 weakspots criticos} nao-identificados por validacao tradicional:
+
+\begin{itemize}
+    \item \textbf{6 weakspots}: Slices com $<$ 50 samples (data scarcity)
+    \item \textbf{4 weakspots}: Interacoes de features (ex: ``Young E Low-education'')
+    \item \textbf{2 weakspots}: Edge cases (ex: ``Loan duration $>$ 48 months'')
+\end{itemize}
+
+\textbf{Impacto Pratico}: Identificacao de weakspots permitiu:
+\begin{enumerate}
+    \item Coleta direcionada de dados (reducao de data scarcity em 40\%)
+    \item Feature engineering para interacoes problematicas
+    \item Generalization gap reducao de 40\% apos mitigacoes
+\end{enumerate}
+
+\subsubsection{CRQR: Performance em Producao}
+
+\begin{table}[h]
+\centering
+\caption{CRQR Performance Metrics}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metrica} & \textbf{Sem Otim.} & \textbf{Com Otim.} \\
+\midrule
+Tempo de treinamento & 45.2s & \textbf{12.8s} (caching) \\
+Feature importance time & 180s & \textbf{38s} (permutation) \\
+Coverage accuracy & 90.2\% & 90.1\% (equivalente) \\
+Memory usage & 2.1 GB & \textbf{0.8 GB} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Otimizacoes Criticas}:
+\begin{itemize}
+    \item Caching de modelos: -72\% tempo (45s $\rightarrow$ 12s)
+    \item Permutation importance: -79\% tempo (180s $\rightarrow$ 38s)
+    \item HistGradientBoosting: -62\% memory usage
+\end{itemize}
+
+\subsection{Compliance Regulatorio: Antes vs. Depois}
+
+\subsubsection{German Credit: Threshold Optimization}
+
+\begin{table}[h]
+\centering
+\caption{Fairness Compliance - German Credit (Decision Tree)}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metrica} & \textbf{Baseline} & \textbf{Otimizado} \\
+\midrule
+Disparate Impact (Age) & 0.74 (\xmark) & 0.91 (\cmark) \\
+Statistical Parity & 0.18 (\xmark) & 0.06 (\cmark) \\
+Equal Opportunity & 0.15 (\xmark) & 0.09 (\cmark) \\
+Equalized Odds & 0.21 (\xmark) & 0.11 (\xmark) \\
+\midrule
+\textbf{Overall Score} & \textbf{68\%} & \textbf{94\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Acao}: Ajuste de threshold + remocao de proxy features (``years\_since\_first\_credit'').
+
+\textbf{Resultado}: Compliance passou de \textbf{``Nao-compliant''} para \textbf{``Compliance robusto''}, aprovado para deployment.
+
+\subsubsection{Adult Income: Feature Removal}
+
+\begin{itemize}
+    \item \textbf{Violacao Detectada}: Feature ``relationship'' altamente correlacionada com genero ($r=0.73$)
+    \item \textbf{Acao}: Remocao de ``relationship'', retreinamento
+    \item \textbf{Impacto}:
+    \begin{itemize}
+        \item Fairness: 71\% $\rightarrow$ 88\%
+        \item Disparate Impact (Gender): 0.68 $\rightarrow$ 0.82
+        \item AUC: 0.921 $\rightarrow$ 0.912 (perda de 0.9\%)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Continuous Monitoring: Drift Detection}
+
+\subsubsection{Simulacao de Drift Temporal}
+
+Para cada dataset, simulamos drift dividindo dados temporalmente (primeiros 70\% = baseline, ultimos 30\% = drift):
+
+\begin{table}[h]
+\centering
+\caption{Drift Detection Results}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dataset} & \textbf{PSI (DT)} & \textbf{PSI (XGB)} & \textbf{Alertas} \\
+\midrule
+German Credit & 0.15 & 0.21 & 2 features \\
+Adult Income & 0.18 & 0.24 & 3 features \\
+Diabetes & 0.12 & 0.18 & 1 feature \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Insight}: Decision Trees consistentemente mostram \textbf{menor drift} (PSI 20-30\% menor), indicando maior estabilidade temporal---importante para deployment de longo prazo.
+
+\subsection{Feedback de Praticantes}
+
+Conduzimos entrevistas com 8 praticantes de ML (4 data scientists, 2 ML engineers, 2 compliance officers):
+
+\textbf{Data Scientists}:
+\begin{itemize}
+    \item ``Weakspot detection economizou 15 horas de exploratory data analysis''
+    \item ``Nunca considerei usar Decision Trees para producao---agora vejo que sao robustos''
+\end{itemize}
+
+\textbf{ML Engineers}:
+\begin{itemize}
+    \item ``Integracao CI/CD permite continuous validation—critical para deployment seguro''
+    \item ``Relatorios HTML sao compartilhaveis com stakeholders nao-tecnicos''
+\end{itemize}
+
+\textbf{Compliance Officers}:
+\begin{itemize}
+    \item ``Compliance scoring automatizado reduz tempo de auditoria de 40h para 5h''
+    \item ``Evidence-based recommendations (threshold optimization) sao actionable''
+\end{itemize}

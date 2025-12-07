@@ -1,0 +1,101 @@
+\section{Trabalhos Relacionados}
+
+\subsection{Knowledge Distillation}
+
+\subsubsection{KD Classico}
+
+Hinton et al. \cite{hinton2015distilling} introduziram destilacao de conhecimento: teacher complexo gera soft targets para treinar student compacto. Intuicao: distribuicao suavizada de probabilidades (via temperature $T$) contem informacao de ``dark knowledge''---relacoes entre classes nao-target.
+
+\textbf{Formulacao}:
+\begin{align}
+p_i^{(T)} &= \frac{\exp(z_i/T)}{\sum_j \exp(z_j/T)} \\
+L_{KD} &= T^2 \cdot \text{KL}(p_{teacher}^{(T)} \| p_{student}^{(T)})
+\end{align}
+
+\textbf{Resultados tipicos}: Compressao 10-50$\times$ com gap de acuracia 1-5\%.
+
+\subsubsection{Tecnicas Avancadas de KD}
+
+\paragraph{Attention Transfer} \cite{zagoruyko2017paying}: Transfere attention maps entre teacher e student. Minimiza:
+\begin{equation}
+L_{AT} = \sum_{l} \|A_T^{(l)} - A_S^{(l)}\|_2
+\end{equation}
+onde $A^{(l)}$ sao activation maps na camada $l$.
+
+\textbf{Limitacao}: Requer architectures similares (ambos devem ter attention mechanisms).
+
+\paragraph{Feature-Based KD} \cite{romero2015fitnets}: Alinham representacoes intermediarias ($L_{Feat} = \sum_{l} \|h_T^{(l)} - W_l h_S^{(l)}\|^2$). \textbf{Limitacao}: Features nao sao interpretaveis---similaridade nao garante reasoning similar.
+
+\subsubsection{Gap em KD Tradicional}
+
+\textbf{Nenhuma tecnica garante transferencia de reasoning}:
+\begin{itemize}
+    \item Soft targets transferem correlacoes inter-classes, nao feature importances
+    \item Attention transfer assume que attention $\approx$ interpretability (assuncao nao-validada)
+    \item Feature alignment nao e human-interpretable
+\end{itemize}
+
+\subsection{Explainable AI (XAI)}
+
+\subsubsection{Metodos de Atribuicao}
+
+\paragraph{SHAP (SHapley Additive exPlanations)} \cite{lundberg2017unified}: Unifica multiplas tecnicas de XAI via teoria de jogos cooperativos. Shapley values garantem propriedades desejáveis:
+\begin{itemize}
+    \item \textbf{Local accuracy}: $\sum_i \phi_i(x) = f(x) - E[f(X)]$
+    \item \textbf{Missingness}: Se feature nao usada, $\phi_i = 0$
+    \item \textbf{Consistency}: Se modelo muda para aumentar importancia de feature, $\phi_i$ nao diminui
+\end{itemize}
+
+Calculo:
+\begin{equation}
+\phi_i(x) = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!(|N|-|S|-1)!}{|N|!} [f(S \cup \{i\}) - f(S)]
+\end{equation}
+
+\textbf{Propriedades}: Teoricamente fundamentado, model-agnostic. Custo $O(2^n)$ mitigado por aproximacoes (KernelSHAP, TreeSHAP). Outras tecnicas (LIME \cite{ribeiro2016should}, Integrated Gradients \cite{sundararajan2017axiomatic}) existem, mas SHAP e preferido por fundamentacao teorica.
+
+\subsubsection{Metricas de Avaliacao de XAI}
+
+\paragraph{Feature Attribution Stability (FAS)}: Mede consistencia de explicacoes sob perturbacoes:
+\begin{equation}
+\text{FAS} = 1 - \frac{1}{M} \sum_{j=1}^{M} \|\phi(x) - \phi(x + \delta_j)\|
+\end{equation}
+
+\paragraph{Correlation de SHAP Values}: Pearson correlation entre $\phi_{teacher}$ e $\phi_{student}$:
+\begin{equation}
+\rho = \frac{\text{Cov}(\phi_T, \phi_S)}{\sigma_{\phi_T} \sigma_{\phi_S}}
+\end{equation}
+
+Valores tipicos: $\rho < 0.5$ (ruim), $0.5 \leq \rho < 0.8$ (moderado), $\rho \geq 0.8$ (bom).
+
+\subsection{Interpretabilidade e Compressao}
+
+Trabalhos relacionados focam em pruning com interpretabilidade \cite{molchanov2019importance}, destilacao para modelos interpretaveis \cite{tang2019distilling}, ou uso de XAI para explicar KD \cite{chen2021explaining}. \textbf{Gap na Literatura}:
+
+\textbf{Nenhum trabalho existente}:
+\begin{enumerate}
+    \item Incorpora alignment de explicacoes na funcao de perda de KD
+    \item Valida empiricamente preservacao de reasoning (SHAP correlation, FAS)
+    \item Oferece framework modular para multiplas tecnicas XAI (SHAP, attention, gradients)
+    \item Demonstra aplicabilidade em dominios regulados (financas, saude)
+\end{enumerate}
+
+\subsection{Posicionamento do DiXtill}
+
+\begin{table}[h]
+\centering
+\caption{Comparacao: DiXtill vs. Trabalhos Relacionados}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Metodo} & \textbf{Compressao} & \textbf{Soft Targets} & \textbf{XAI Align} & \textbf{Multi-XAI} & \textbf{Validacao} \\
+\midrule
+KD Classico \cite{hinton2015distilling} & \cmark & \cmark & \xmark & \xmark & Acuracia \\
+Attention Transfer \cite{zagoruyko2017paying} & \cmark & \cmark & Partial & \xmark & Acuracia \\
+Feature KD \cite{romero2015fitnets} & \cmark & \cmark & \xmark & \xmark & Acuracia \\
+SHAP Post-Hoc & \xmark & \xmark & \xmark & \cmark & Explicabilidade \\
+\textbf{DiXtill (ours)} & \cmark & \cmark & \cmark & \cmark & Ambos \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Contribuicao chave}: DiXtill e primeira abordagem que (1) comprime modelos via KD, (2) preserva reasoning via alignment de explicacoes, (3) valida com metricas quantitativas de interpretabilidade (SHAP correlation, FAS), e (4) suporta multiplas tecnicas XAI (SHAP, attention, gradients).

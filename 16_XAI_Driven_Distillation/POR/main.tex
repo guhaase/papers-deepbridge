@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{DiXtill: Destilacao de Conhecimento Guiada por XAI -- Transferindo Raciocinio, Nao Apenas Predicoes}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Destilacao de conhecimento (KD) tradicional transfere predicoes de um modelo teacher complexo para um student compacto via soft targets, mas nao preserva o \textit{processo de raciocinio} que fundamenta essas decisoes. Explicabilidade (XAI) post-hoc revela como students funcionam, mas nao garante que o reasoning aprendido seja consistente com o teacher. Apresentamos \textbf{DiXtill}, framework de destilacao guiada por explicabilidade que transfere nao apenas ``o que prever'', mas ``por que prever''. Nossa contribuicao central e a funcao de perda $L = (1-\alpha)L_{CE} + \alpha(L_{KD} + L_{XAI})$, onde $L_{XAI}$ alinha explicacoes (SHAP values, attention weights, gradientes de entrada) entre teacher e student durante o treinamento. Implementamos DiXtill no framework DeepBridge com tres mecanismos de alinhamento: (1) \textbf{SHAP Alignment} ($\|\text{SHAP}_{teacher} - \text{SHAP}_{student}\|^2$), (2) \textbf{Attention Alignment} para transformers, e (3) \textbf{Gradient Alignment} ($\|\nabla_x^{teacher} - \nabla_x^{student}\|^2$). Validacao em tres dominios (NLP financeiro, visao computacional, dados tabulares) demonstra: \textbf{98-99\%} retencao de acuracia com compressao de \textbf{127$\times$} (FinBERT $\rightarrow$ Bi-LSTM), correlacao de SHAP values \textbf{$\rho > 0.90$} entre teacher/student, e estabilidade de feature importance (FAS $> 0.85$). DiXtill permite criar modelos compactos interpretaveis-por-design, essencial para deployment em ambientes regulados (financas, saude, contratacao) onde explicabilidade e compliance sao mandatorios.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Knowledge Distillation, Explainable AI, SHAP, Model Compression, Interpretability, Neural Network Compression}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

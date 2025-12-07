@@ -1,0 +1,72 @@
+\section{Implementacao no DeepBridge}
+
+\subsection{Arquitetura de Software}
+
+DiXtill foi implementado como extensao do modulo de destilacao do framework DeepBridge, framework Python para ML em producao. Arquitetura modular permite uso standalone ou integracao em pipelines de MLOps.
+
+\subsubsection{Componentes Principais}
+
+\begin{enumerate}
+    \item \textbf{DiXtillDistiller}: Classe principal que orquestra treinamento
+    \item \textbf{XAIAlignmentModule}: Interface abstrata para mecanismos de alinhamento
+    \item \textbf{SHAPAligner}: Implementacao de SHAP-based alignment
+    \item \textbf{AttentionAligner}: Implementacao de attention-based alignment
+    \item \textbf{GradientAligner}: Implementacao de gradient-based alignment
+    \item \textbf{ExplanationMetrics}: Calculo de metricas de avaliacao (FAS, correlation)
+\end{enumerate}
+
+\subsection{API e Uso}
+
+\subsubsection{Exemplo de Uso}
+
+\begin{lstlisting}[caption=API DiXtill]
+from deepbridge.distillation import DiXtillDistiller
+
+distiller = DiXtillDistiller(
+    teacher_model=pretrained_bert,
+    student_model_type=ModelType.BILSTM,
+    xai_method='shap',  # ou 'attention', 'gradient'
+    alpha=0.5, beta=0.3, temperature=3.0
+)
+student = distiller.fit(X_train, y_train)
+metrics = distiller.evaluate_explanation_alignment(X_test, y_test)
+# Output: {'shap_correlation': 0.92, 'fas': 0.87}
+\end{lstlisting}
+
+\subsection{Detalhes de Implementacao}
+
+\subsubsection{SHAP Alignment}
+
+Usa TreeSHAP (exato, $O(TLD^2)$) para teachers tree-based ou KernelSHAP para modelos genericos. Otimizacoes: (1) sampling de 32 samples/batch (8$\times$ speedup), (2) caching de background dataset, (3) normalizacao por batch. Perda: $L_{XAI}^{SHAP} = \|\text{normalize}(\phi_T) - \text{normalize}(\phi_S)\|^2$.
+
+\subsubsection{Attention Alignment}
+
+Extrai attention weights via \texttt{output\_attentions=True} (Hugging Face Transformers). Mapeia layers student$\rightarrow$teacher (estrategias: uniform, last-N, skip). Agrega multi-heads via averaging se numero de heads difere. Perda: $L_{XAI}^{Attn} = \frac{1}{L}\sum_l \|A_T^{(l)} - A_S^{(l)}\|_F^2$. Default: uniform mapping.
+
+\subsubsection{Gradient Alignment}
+
+Calcula gradientes de entrada via backpropagation ($\nabla_x \log p(y|x)$). Normaliza gradientes por batch. Opcionalmente aplica SmoothGrad \cite{smilkov2017smoothgrad} para reduzir ruido (media de 50 samples com ruido Gaussiano). Perda: $L_{XAI}^{Grad} = \|\text{normalize}(\nabla_x^T) - \text{normalize}(\nabla_x^S)\|^2$.
+
+\subsection{Metricas e Otimizacao}
+
+\textbf{SHAP Correlation}: $\rho = \text{corrcoef}(\phi_T.\text{flatten}(), \phi_S.\text{flatten}())$. \textbf{FAS}: Media de estabilidade sob 20 perturbacoes ($\epsilon=0.01$). \textbf{Hyperparameter Tuning}: Optuna otimiza $(\alpha, \beta, T)$ maximizando $0.6 \cdot \text{acc} + 0.4 \cdot \rho$ (50 trials).
+
+\subsection{Custos Computacionais}
+
+\begin{table}[h]
+\centering
+\caption{Overhead Computacional de XAI Alignment}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metodo} & \textbf{Overhead por Batch} & \textbf{Memoria Extra} & \textbf{Total Training Time} \\
+\midrule
+KD Tradicional (baseline) & 1.0$\times$ & 1.0$\times$ & 1.0$\times$ \\
++ SHAP Alignment & 2.5$\times$ & 1.2$\times$ & 2.3$\times$ \\
++ Attention Alignment & 1.3$\times$ & 1.5$\times$ & 1.4$\times$ \\
++ Gradient Alignment & 1.8$\times$ & 1.1$\times$ & 1.7$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Nota}: Custos medidos em FinBERT $\rightarrow$ Bi-LSTM distillation (dataset: 50k samples, batch size: 64).

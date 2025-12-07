@@ -1,0 +1,90 @@
+\section{Introducao}
+
+A aplicacao de machine learning em economia enfrenta tensao fundamental entre poder preditivo e interpretabilidade economica. Modelos complexos (gradient boosting, redes neurais) alcancam acuracia superior mas produzem ``caixas-pretas'' inadequadas para analise de politicas publicas, inferencia causal, e validacao teorica. Modelos econometricos tradicionais (regressao linear, logit, GAM) oferecem coeficientes interpretaveis e fundamentacao estatistica, mas limitacoes em capacidade de capturar relacoes nao-lineares complexas.
+
+\subsection{Motivacao}
+
+Economistas e formuladores de politicas requerem modelos que simultaneamente:
+
+\begin{itemize}
+    \item \textbf{Interpretacao economica}: Coeficientes representam efeitos marginais, elasticidades, ou relacoes causais interpretaveis
+    \item \textbf{Conformidade teorica}: Modelos respeitam restricoes economicas (monotonia de funcoes de utilidade, lei da demanda)
+    \item \textbf{Auditabilidade}: Nao-especialistas em ML (reguladores, policy makers) podem validar premissas e resultados
+    \item \textbf{Inferencia estatistica}: Intervalos de confianca, testes de hipotese, e estabilidade de coeficientes permitem conclusoes rigorosas
+    \item \textbf{Alta acuracia}: Decisoes economicas de alto impacto (politica monetaria, regulacao financeira) exigem predicoes precisas
+\end{itemize}
+
+Aplicacoes criticas incluem:
+\begin{enumerate}
+    \item \textbf{Risco de credito}: Reguladores exigem coeficientes interpretaveis (Basel III), mas bancos querem acuracia maxima
+    \item \textbf{Economia do trabalho}: Analise de impacto de salario minimo requer efeitos marginais validos, nao apenas predicoes
+    \item \textbf{Saude publica}: Politicas de intervencao baseiam-se em relacoes causais, nao correlacoes de caixa-preta
+\end{enumerate}
+
+\subsection{Problema}
+
+Pesquisa em knowledge distillation ignora requisitos especificos de economia:
+
+\begin{enumerate}
+    \item \textbf{Perda de interpretacao economica}: Destilacao tradicional otimiza apenas acuracia---coeficientes do modelo student podem violar teoria economica
+    \item \textbf{Instabilidade de coeficientes}: Modelos destilados nao garantem estabilidade necessaria para inferencia estatistica (bootstrap, cross-validation)
+    \item \textbf{Violacao de restricoes}: Modelos student podem apresentar relacoes contra-intuitivas (e.g., income $\uparrow$ $\rightarrow$ default $\uparrow$)
+    \item \textbf{Ausencia de validacao causal}: Frameworks existentes nao verificam se destilacao preserva estruturas causais
+    \item \textbf{Deteccao de quebras estruturais}: Mudancas em relacoes economicas (e.g., crise 2008) nao sao identificadas ou interpretadas
+\end{enumerate}
+
+\subsection{Nossa Solucao}
+
+Apresentamos framework de \textbf{destilacao de conhecimento econometrica} que:
+
+\begin{itemize}
+    \item \textbf{Preserva intuicao economica}: Destilacao para GAM/Linear mantendo coeficientes e efeitos marginais interpretaveis
+    \item \textbf{Garante restricoes economicas}: Constraints de monotonia, consistencia de sinais, e conformidade teorica durante destilacao
+    \item \textbf{Valida estabilidade}: Bootstrap resampling demonstra que coeficientes sao estaveis ($CV < 0.15$)
+    \item \textbf{Detecta quebras estruturais}: Identifica mudancas em relacoes economicas e mantem interpretabilidade
+    \item \textbf{Suporta inferencia causal}: Framework compativel com instrumental variables, diff-in-diff
+\end{itemize}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Framework de destilacao econometrica}: Primeira metodologia que combina knowledge distillation com rigor econometrico
+    \item \textbf{Preservacao de restricoes economicas}: Tecnicas de destilacao com constraints (monotonia, sinais, marginal effects)
+    \item \textbf{Analise de estabilidade de coeficientes}: Metodologia bootstrap demonstrando confiabilidade para policy analysis
+    \item \textbf{Deteccao de quebras estruturais}: Identificacao automatizada de mudancas em relacoes economicas
+    \item \textbf{Validacao empirica}: Case studies em credito, trabalho, e saude demonstrando aplicabilidade pratica
+    \item \textbf{Implementacao pratica}: Framework integrado ao DeepBridge para uso em producao
+\end{enumerate}
+
+\subsection{Resultados Principais}
+
+Validacao em tres dominios economicos demonstra:
+
+\begin{itemize}
+    \item \textbf{Trade-off acuracia-interpretabilidade}: Perda de 2-5\% em acuracia vs. modelo teacher complexo
+    \item \textbf{Estabilidade de coeficientes}: $CV < 0.15$ para coeficientes principais sob bootstrap (10,000 amostras)
+    \item \textbf{Conformidade economica}: 95\%+ das restricoes de sinais e monotonia preservadas
+    \item \textbf{Deteccao de quebras}: Identificacao precisa de mudancas estruturais pre/pos-2008 em credito
+    \item \textbf{Comparacao com baselines}: Superioridade vs. linear regression direta (sem destilacao) em acuracia (+8-12\%)
+\end{itemize}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Economistas}
+- Modelos com acuracia proxima a ML de ponta, mas com interpretabilidade de econometria classica
+- Coeficientes estaveis permitindo inferencia estatistica rigorosa
+- Validacao automatica de conformidade com teoria economica
+
+\subsubsection{Para Formuladores de Politicas}
+- Evidencia quantitativa interpretavel para decisoes de politica publica
+- Transparencia total (auditabilidade por nao-especialistas)
+- Analise de efeitos marginais e elasticidades confiavel
+
+\subsubsection{Para Industria Financeira}
+- Conformidade regulatoria (coeficientes interpretaveis para Basel III, IFRS 9)
+- Poder preditivo superior a modelos lineares tradicionais
+- Capacidade de explicar decisoes de credito para reguladores
+
+\subsection{Organizacao}
+
+Secao 2 apresenta fundamentacao em econometria e knowledge distillation. Secao 3 descreve design do framework de destilacao econometrica. Secao 4 detalha implementacao no DeepBridge. Secao 5 apresenta case studies em credito, trabalho, e saude. Secao 6 discute limitacoes e implicacoes teoricas. Secao 7 conclui com direcoes futuras.

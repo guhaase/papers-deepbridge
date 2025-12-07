@@ -1,0 +1,368 @@
+\section{Design do Framework}
+
+\subsection{Visao Geral}
+
+O framework de validacao multi-dimensional para modelos interpretaveis consiste em cinco componentes principais integrados:
+
+\begin{enumerate}
+    \item \textbf{Robustness Suite}: Perturbacoes Gaussianas/Quantile, weakspot detection, sliced overfitting analysis
+    \item \textbf{Uncertainty Suite}: CRQR otimizada, reliability regions, feature importance
+    \item \textbf{Fairness Suite}: 15 metricas, compliance scoring (EEOC/ECOA), threshold optimization
+    \item \textbf{Resilience Suite}: Drift detection (PSI, KS), feature distribution monitoring
+    \item \textbf{Distillation Module}: Knowledge transfer, surrogate models para explainability
+\end{enumerate}
+
+Todos componentes compartilham API consistente e sao orquestrados por \texttt{Experiment} framework central.
+
+\subsection{Robustness Suite}
+
+\subsubsection{Perturbation Testing}
+
+Avalia estabilidade de predicoes sob ruido nos dados:
+
+\begin{algorithm}
+\caption{Robustness Testing via Perturbacoes}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Model $M$, Dataset $D=(X, y)$, Perturbation levels $\alpha \in [0.1, 1.0]$
+\State \textbf{Output}: Robustness score, feature impacts
+\State
+\For{each $\alpha$}
+    \State $X_{\text{pert}} \gets X + \mathcal{N}(0, \alpha \cdot \sigma_X)$ \Comment{Gaussian}
+    \State $y_{\text{pred}} \gets M(X_{\text{pert}})$
+    \State $\text{score}_{\alpha} \gets \text{Metric}(y, y_{\text{pred}})$
+    \State $\text{gap}_{\alpha} \gets |\text{score}_{\text{baseline}} - \text{score}_{\alpha}|$
+\EndFor
+\State
+\State $\text{robustness\_score} \gets 1 - \text{mean}(\text{gap}_{\alpha})$
+\State \Return robustness\_score, gaps per feature
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Metodos de Perturbacao}:
+\begin{itemize}
+    \item \textbf{Gaussian (Raw)}: $X' = X + \epsilon$, onde $\epsilon \sim \mathcal{N}(0, \alpha^2 \sigma^2)$
+    \item \textbf{Quantile-Based}: Perturbacao baseada em quantis da distribuicao empirica de cada feature (preserva ranges plausiveis)
+\end{itemize}
+
+\subsubsection{Weakspot Detection}
+
+Identifica regioes do espaco de features onde modelo degrada:
+
+\begin{algorithm}
+\caption{Weakspot Detection via Slice Analysis}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Predictions $\hat{y}$, True labels $y$, Features $X$, Severity threshold $\tau$
+\State \textbf{Output}: List of weakspots ranked by severity
+\State
+\For{each feature $f$ in $X$}
+    \State Divide $f$ into $n$ slices (uniform, quantile, ou tree-based)
+    \For{each slice $s$}
+        \State $\text{perf}_s \gets \text{Metric}(y_s, \hat{y}_s)$
+        \State $\text{perf}_{\text{global}} \gets \text{Metric}(y, \hat{y})$
+        \State $\text{severity}_s \gets \text{perf}_{\text{global}} - \text{perf}_s$
+        \If{$\text{severity}_s > \tau$}
+            \State Add $(f, s, \text{severity}_s)$ to weakspots
+        \EndIf
+    \EndFor
+\EndFor
+\State
+\State Sort weakspots by severity (descending)
+\State \Return weakspots
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Interpretabilidade}: Cada weakspot e descrito por condicoes explicitas (ex: ``Modelo falha para clientes com income < \$30k E age > 60'').
+
+\subsubsection{Sliced Overfitting Analysis}
+
+Detecta overfitting localizado em slices especificos:
+
+\begin{itemize}
+    \item \textbf{Train-Test Gap por Slice}: Calcula $|\text{perf}_{\text{train}} - \text{perf}_{\text{test}}|$ para cada slice de feature
+    \item \textbf{Identificacao de Regioes Problematicas}: Slices com gap $> \tau$ indicam overfitting localizado
+    \item \textbf{Actionable Insights}: ``Modelo overfit em high-income bracket (>\$100k)---considere regularizacao ou mais dados''
+\end{itemize}
+
+\subsection{Uncertainty Suite}
+
+\subsubsection{CRQR (Conformalized Residual Quantile Regression)}
+
+Metodo model-agnostic para intervalos de predicao com garantias de coverage:
+
+\begin{algorithm}
+\caption{CRQR Optimized}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Training data $(X_{\text{train}}, y_{\text{train}})$, Calibration data $(X_{\text{cal}}, y_{\text{cal}})$, Confidence $\alpha$
+\State \textbf{Output}: Prediction intervals with coverage $\geq 1-\alpha$
+\State
+\State \textbf{Step 1: Train Quantile Regressors (with caching)}
+\If{models not in cache}
+    \State Train $\hat{q}_{\text{low}}(X)$ for quantile $\alpha/2$
+    \State Train $\hat{q}_{\text{high}}(X)$ for quantile $1 - \alpha/2$
+    \State Cache models keyed by $(X_{\text{hash}}, \alpha)$
+\Else
+    \State Load cached models
+\EndIf
+\State
+\State \textbf{Step 2: Calibrate}
+\State Compute residuals $R_i = \max(\hat{q}_{\text{low}}(X_{\text{cal},i}) - y_{\text{cal},i}, y_{\text{cal},i} - \hat{q}_{\text{high}}(X_{\text{cal},i}))$
+\State $Q \gets$ $(1-\alpha)(1 + 1/n)$-quantile of $\{R_i\}$
+\State
+\State \textbf{Step 3: Predict}
+\State \Return intervals $[\hat{q}_{\text{low}}(X_{\text{new}}) - Q, \hat{q}_{\text{high}}(X_{\text{new}}) + Q]$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Otimizacoes}:
+\begin{itemize}
+    \item \textbf{Model Caching}: Evita retreinamento de quantile regressors para mesmos dados
+    \item \textbf{HistGradientBoosting}: Modelo rapido com early stopping (5-10x mais rapido que XGBoost para CRQR)
+    \item \textbf{Permutation Importance}: Feature importance 70-80\% mais rapida que retreinamento iterativo
+\end{itemize}
+
+\subsubsection{Reliability Regions}
+
+Analisa qualidade de uncertainty por regioes do espaco de features:
+
+\begin{itemize}
+    \item \textbf{Coverage por Bins}: Divide features em bins, calcula coverage empirico em cada bin
+    \item \textbf{Width Analysis}: Identifica regioes com intervalos excessivamente largos (alta incerteza) ou estreitos (overconfidence)
+    \item \textbf{Feature Importance}: Quais features mais contribuem para incerteza
+\end{itemize}
+
+\subsection{Fairness Suite}
+
+\subsubsection{Metricas Pre-Treinamento}
+
+Detectam bias nos dados antes do treinamento:
+
+\begin{table}[h]
+\centering
+\caption{Metricas de Fairness Pre-Treinamento}
+\begin{tabular}{lp{6cm}}
+\toprule
+\textbf{Metrica} & \textbf{Descricao} \\
+\midrule
+Class Balance & Proporcao de classes positivas/negativas por grupo demografico \\
+Concept Balance & Distribuicao de features por grupo \\
+KL Divergence & Divergencia entre distribuicoes de grupos \\
+JS Divergence & Versao simetrica de KL \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Metricas Pos-Treinamento}
+
+Avaliam fairness das predicoes:
+
+\begin{table}[h]
+\centering
+\caption{Metricas de Fairness Pos-Treinamento}
+\begin{tabular}{lp{5cm}l}
+\toprule
+\textbf{Metrica} & \textbf{Definicao} & \textbf{Threshold} \\
+\midrule
+Statistical Parity & $P(\hat{y}=1|A=0) = P(\hat{y}=1|A=1)$ & $\pm 0.1$ \\
+Equal Opportunity & $P(\hat{y}=1|y=1,A=0) = P(\hat{y}=1|y=1,A=1)$ & $\pm 0.1$ \\
+Disparate Impact & $\frac{P(\hat{y}=1|A=1)}{P(\hat{y}=1|A=0)}$ & $\geq 0.8$ (EEOC) \\
+Equalized Odds & EO + Equal FPR & $\pm 0.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Total}: 15 metricas implementadas (4 pre-train, 11 pos-train).
+
+\subsubsection{Compliance Scoring}
+
+Agrega resultados de fairness em pontuacao 0-100\%:
+
+\begin{equation}
+\text{Fairness Score} = \frac{\sum_{i} w_i \cdot \mathbb{1}[\text{pass}_i]}{\sum_{i} w_i}
+\end{equation}
+
+onde $w_i$ sao pesos baseados em severidade regulatoria:
+\begin{itemize}
+    \item Disparate Impact (EEOC 80\% rule): $w=3$ (CRITICAL)
+    \item Statistical Parity: $w=2$ (HIGH)
+    \item Outras metricas: $w=1$ (MEDIUM)
+\end{itemize}
+
+\subsubsection{Threshold Optimization}
+
+Ajusta limiar de classificacao para maximizar fairness mantendo performance:
+
+\begin{algorithm}
+\caption{Threshold Optimization for Fairness}
+\begin{algorithmic}[1]
+\State \textbf{Input}: Probabilities $P$, True labels $y$, Protected attrs $A$, Fairness metric $\mathcal{F}$
+\State \textbf{Output}: Optimal threshold $t^*$
+\State
+\State $\text{thresholds} \gets \{0.1, 0.15, 0.2, \ldots, 0.9\}$
+\State $\text{best\_score} \gets -\infty$
+\For{each $t$ in thresholds}
+    \State $\hat{y} \gets \mathbb{1}[P \geq t]$
+    \State $\text{fairness} \gets \mathcal{F}(\hat{y}, A)$
+    \State $\text{performance} \gets \text{F1}(y, \hat{y})$
+    \State $\text{score} \gets 0.6 \cdot \text{fairness} + 0.4 \cdot \text{performance}$
+    \If{score $>$ best\_score}
+        \State $\text{best\_score} \gets \text{score}$
+        \State $t^* \gets t$
+    \EndIf
+\EndFor
+\State \Return $t^*$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Resilience Suite}
+
+\subsubsection{Drift Detection}
+
+Monitora mudancas na distribuicao de features ao longo do tempo:
+
+\begin{itemize}
+    \item \textbf{PSI (Population Stability Index)}: $\text{PSI} = \sum_{i} (p_{\text{new},i} - p_{\text{baseline},i}) \ln\frac{p_{\text{new},i}}{p_{\text{baseline},i}}$
+    \begin{itemize}
+        \item PSI $< 0.1$: No significant shift
+        \item PSI $\in [0.1, 0.2]$: Moderate shift
+        \item PSI $> 0.2$: Significant shift (requer acao)
+    \end{itemize}
+
+    \item \textbf{KS Test (Kolmogorov-Smirnov)}: Testa se duas distribuicoes sao diferentes
+    \begin{itemize}
+        \item $p < 0.05$: Reject null (distribuicoes diferentes)
+    \end{itemize}
+
+    \item \textbf{Chi-Square Test}: Para features categoricas
+\end{itemize}
+
+\subsubsection{Interpretabilidade de Drift}
+
+\begin{itemize}
+    \item \textbf{Feature-level Reporting}: ``Feature 'income' sofreu drift significativo (PSI=0.23): mediana aumentou de \$45k para \$52k''
+    \item \textbf{Critical Features}: Identifica top-k features com maior drift
+    \item \textbf{Impact on Predictions}: Estima impacto de drift em performance do modelo
+\end{itemize}
+
+\subsection{Distillation Module}
+
+\subsubsection{Surrogate Models}
+
+Transforma modelos black-box em interpretaveis:
+
+\begin{lstlisting}[language=Python, caption=Surrogate Model API]
+from deepbridge.distillation import SurrogateModel
+from deepbridge.utils import ModelType
+
+# Treinar surrogate interpretavel
+surrogate = SurrogateModel(
+    model_type=ModelType.DECISION_TREE,
+    model_params={'max_depth': 5}
+)
+
+# Destilar conhecimento do teacher
+teacher_probas = complex_model.predict_proba(X_train)
+surrogate.fit(X_train, teacher_probas)
+
+# Usar surrogate para explicacoes
+predictions = surrogate.predict_proba(X_new)
+feature_importance = surrogate.model.feature_importances_
+\end{lstlisting}
+
+\textbf{Metricas de Qualidade}:
+\begin{itemize}
+    \item \textbf{Fidelity}: Acordo entre teacher e surrogate (accuracy, F1)
+    \item \textbf{Ground Truth Performance}: Performance do surrogate em labels reais
+    \item \textbf{Interpretabilidade}: Profundidade maxima da arvore, numero de features usadas
+\end{itemize}
+
+\subsection{Experiment Framework}
+
+\subsubsection{Orquestracao de Testes}
+
+Framework central coordena execucao de todos componentes:
+
+\begin{lstlisting}[language=Python, caption=Experiment API Unificada]
+from deepbridge.core import Experiment, DBDataset
+
+# Criar dataset
+dataset = DBDataset(
+    features=X,
+    target=y,
+    model=trained_model
+)
+
+# Configurar validacao multi-dimensional
+experiment = Experiment(
+    dataset=dataset,
+    experiment_type='binary_classification',
+    tests=['robustness', 'uncertainty', 'fairness', 'resilience'],
+    feature_subset=['income', 'age', 'credit_score'],
+    protected_attributes=['gender', 'race'],
+    test_size=0.2,
+    random_state=42
+)
+
+# Executar todos testes
+results = experiment.run_tests('full')  # 'quick', 'medium', 'full'
+\end{lstlisting}
+
+\subsubsection{Test Strategies}
+
+\begin{table}[h]
+\centering
+\caption{Configuracoes de Teste}
+\begin{tabular}{llll}
+\toprule
+\textbf{Strategy} & \textbf{Tempo} & \textbf{Coverage} & \textbf{Uso} \\
+\midrule
+Quick & 2-5 min & 2-3 niveis & Dev/CI \\
+Medium & 10-20 min & 4-5 niveis & Pre-deployment \\
+Full & 30-60 min & 6-12 niveis & Auditoria completa \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Report Generation}
+
+\subsubsection{Tipos de Relatorios}
+
+\begin{enumerate}
+    \item \textbf{Executive Summary}: 1-2 paginas com scores agregados, violacoes criticas
+    \item \textbf{Technical Report}: HTML interativo com charts, tabelas, detalhes estatisticos
+    \item \textbf{Compliance Report}: Formatado para auditores (EEOC, ECOA compliance)
+\end{enumerate}
+
+\subsubsection{Secoes do Relatorio Tecnico}
+
+\begin{itemize}
+    \item \textbf{Overall Scores}: Robustness, Uncertainty Quality, Fairness, Resilience (0-100\%)
+    \item \textbf{Robustness}: Performance gaps por perturbacao, weakspots identificados
+    \item \textbf{Uncertainty}: Coverage vs. expected, interval widths, feature importance
+    \item \textbf{Fairness}: Breakdown de 15 metricas, compliance score, threshold recommendations
+    \item \textbf{Resilience}: Drift por feature (PSI, KS), critical features
+    \item \textbf{Recommendations}: Acoes priorizadas para mitigacao
+\end{itemize}
+
+\subsection{Integracao CI/CD}
+
+Framework permite continuous validation em pipelines de desenvolvimento:
+
+\begin{lstlisting}[language=Python, caption=Exemplo de Pipeline CI/CD]
+# Em .gitlab-ci.yml ou GitHub Actions
+validation-check:
+  stage: test
+  script:
+    - python run_validation.py --config full
+    - python check_minimum_scores.py \
+        --robustness 0.80 \
+        --fairness 0.75 \
+        --uncertainty 0.85
+  artifacts:
+    reports:
+      validation: validation_report.json
+  only:
+    - merge_requests
+    - main
+\end{lstlisting}
+
+Pipeline falha se algum score estiver abaixo do threshold configurado, bloqueando deployment de modelos nao-validados.

@@ -1,0 +1,359 @@
+\section{Discussao}
+
+\subsection{Limitacoes}
+
+\subsubsection{Limitacoes Tecnicas}
+
+\begin{enumerate}
+    \item \textbf{Escopo de Modelos Interpretaveis}:
+    \begin{itemize}
+        \item Framework foca em Decision Trees, modelos lineares, e GBMs
+        \item GAMs (Generalized Additive Models) e NAMs (Neural Additive Models) nao implementados nativamente
+        \item \textbf{Mitigacao}: Podem ser integrados via ModelRegistry customizado ou distillation
+    \end{itemize}
+
+    \item \textbf{Robustness Testing para Dados Nao-Tabulares}:
+    \begin{itemize}
+        \item Perturbacoes Gaussianas/Quantile otimizadas para features tabulares
+        \item Imagens, texto, series temporais requerem adaptacoes especificas
+        \item \textbf{Trabalho Futuro}: Perturbacoes contextuais (ex: paraphrasing para texto, cropping para imagens)
+    \end{itemize}
+
+    \item \textbf{CRQR em Datasets Muito Pequenos}:
+    \begin{itemize}
+        \item CRQR requer calibration set separado (tipicamente 20-30\% dos dados)
+        \item Para $n < 200$, intervalos podem ser excessivamente largos
+        \item \textbf{Mitigacao}: Usar cross-conformal prediction para datasets pequenos
+    \end{itemize}
+
+    \item \textbf{Fairness Metrics para Multi-Class}:
+    \begin{itemize}
+        \item Metricas implementadas focam em classificacao binaria
+        \item Extensao para multi-class requer adaptacoes (ex: one-vs-rest)
+        \item \textbf{Roadmap}: Suporte a multi-class em versao futura
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Limitacoes de Generalizacao}
+
+\begin{enumerate}
+    \item \textbf{Datasets Avaliados}:
+    \begin{itemize}
+        \item Experimentos em 3 datasets (n=768 a n=48,842)
+        \item Nao cobrimos datasets massivos ($>$1M samples) ou alta dimensionalidade ($>$1000 features)
+        \item \textbf{Evidencia Adicional Necessaria}: Validacao em big data e high-dimensional domains
+    \end{itemize}
+
+    \item \textbf{Dominios Nao-Tabulares}:
+    \begin{itemize}
+        \item Foco em dados tabulares (credit, hiring, healthcare)
+        \item Computer vision, NLP, speech nao avaliados
+        \item \textbf{Justificativa}: Modelos interpretaveis sao mais comuns/aplicaveis em dominios tabulares
+    \end{itemize}
+
+    \item \textbf{Feature Parity em Tarefas Complexas}:
+    \begin{itemize}
+        \item Resultados demonstram parity em binary classification
+        \item Tarefas mais complexas (ranking, recommendation) podem ter trade-offs diferentes
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Limitacoes de Usabilidade}
+
+\begin{enumerate}
+    \item \textbf{Expertise Requerida}:
+    \begin{itemize}
+        \item Interpretacao de resultados (ex: PSI thresholds, EEOC compliance) requer conhecimento de dominio
+        \item Nao e ferramenta ``plug-and-play'' para nao-especialistas
+        \item \textbf{Mitigacao}: Relatorios incluem interpretacoes e recomendacoes actionable
+    \end{itemize}
+
+    \item \textbf{Tempo de Execucao}:
+    \begin{itemize}
+        \item Configuracao \texttt{full} requer 30-60 minutos para validacao completa
+        \item Pode ser proibitivo em iteracoes rapidas de desenvolvimento
+        \item \textbf{Solucao}: Configuracoes \texttt{quick} (2-5 min) e \texttt{medium} (10-20 min) para dev/CI
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Consideracoes Eticas}
+
+\subsubsection{Fairness Metrics: Suficiencia vs. Independencia}
+
+Framework implementa metricas baseadas em \textit{independence} (statistical parity, disparate impact) e \textit{separation} (equalized odds, equal opportunity).
+
+\textbf{Limitacao Fundamental}: Impossibilidade de satisfazer simultaneamente independence e sufficiency (calibration) para grupos demograficos~\cite{kleinberg2016}.
+
+\textbf{Nossa Abordagem}:
+\begin{itemize}
+    \item Reportamos \textbf{multiplas metricas} (15 total), permitindo stakeholders escolherem prioridades
+    \item Compliance scoring pesa metricas regulatorias (EEOC, ECOA) mais fortemente
+    \item \textbf{Nao impomos} definicao unica de fairness---reconhecemos contexto-dependencia
+\end{itemize}
+
+\subsubsection{Automation Bias}
+
+Automacao de testes pode criar \textit{false sense of security}:
+
+\begin{itemize}
+    \item Scores altos (ex: 95\% fairness) nao garantem ausencia de discriminacao
+    \item Metricas capturam apenas disparidades \textit{observaveis}---bias estrutural pode persistir
+\end{itemize}
+
+\textbf{Recomendacao}: Framework deve ser usado como \textit{ferramenta de auditoria}, nao substituto para analise qualitativa e participacao de stakeholders afetados.
+
+\subsubsection{Interpretability vs. Accuracy Trade-off: Consequencias}
+
+Demonstramos que Decision Trees podem alcancer 85-90\% do accuracy de modelos complexos. Mas:
+
+\begin{itemize}
+    \item Em dominios criticos (ex: diagnostico medico), \textbf{10\% accuracy loss} pode significar vidas
+    \item \textbf{Escolha etica}: Quando interpretabilidade justifica perda de accuracy?
+\end{itemize}
+
+\textbf{Nossa Posicao}:
+\begin{itemize}
+    \item Em \textbf{high-stakes domains} (justica criminal, saude): Interpretabilidade deve ser \textit{priorizavel} se accuracy loss $<$ 5\%
+    \item Framework fornece \textbf{evidencia quantitativa} para informed trade-offs, nao prescreve decisoes
+\end{itemize}
+
+\subsection{Ameacas a Validade}
+
+\subsubsection{Validade Interna}
+
+\begin{enumerate}
+    \item \textbf{Hyperparameter Tuning}:
+    \begin{itemize}
+        \item Modelos usaram hyperparametros padrao (ex: max\_depth=5 para Decision Trees)
+        \item Tuning extensivo pode alterar feature parity
+        \item \textbf{Mitigacao}: Experimentos adicionais com grid search mostraram variacao de $\pm$3\% em robustness scores
+    \end{itemize}
+
+    \item \textbf{Random Seed Variance}:
+    \begin{itemize}
+        \item Resultados baseados em single train-test split
+        \item \textbf{Mitigacao}: Repetimos experimentos com 5 seeds diferentes---desvio padrao $<$ 2\% em todas metricas
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Validade Externa}
+
+\begin{enumerate}
+    \item \textbf{Dataset Selection Bias}:
+    \begin{itemize}
+        \item Escolhemos datasets publicos classicos (German Credit, Adult, Diabetes)
+        \item Podem nao representar dados proprietarios de empresas
+        \item \textbf{Validacao Necessaria}: Case studies em dados industriais
+    \end{itemize}
+
+    \item \textbf{Temporal Generalization}:
+    \begin{itemize}
+        \item Datasets sao estaticos (nao capturam drift real ao longo de anos)
+        \item Drift simulado via split temporal pode nao replicar mudancas de distribuicao reais
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Validade de Construcao}
+
+\begin{enumerate}
+    \item \textbf{Operacionalizacao de ``Interpretabilidade''}:
+    \begin{itemize}
+        \item Definimos interpretabilidade via transparencia estrutural (profundidade de arvore, linearidade)
+        \item Nao medimos interpretabilidade \textit{percebida} por usuarios finais
+        \item \textbf{Trabalho Futuro}: User studies com stakeholders nao-tecnicos
+    \end{itemize}
+
+    \item \textbf{Compliance Scoring Weights}:
+    \begin{itemize}
+        \item Pesos de metricas (CRITICAL=3, HIGH=2) sao baseados em literatura regulatoria
+        \item Escolhas alternativas de pesos podem alterar compliance scores
+        \item \textbf{Flexibilidade}: Framework permite customizacao de pesos
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Licoes Aprendidas}
+
+\subsubsection{Desenvolvimento de Framework}
+
+\begin{enumerate}
+    \item \textbf{Modularidade e Essencial}:
+    \begin{itemize}
+        \item Separacao de suites (Robustness, Uncertainty, Fairness) permitiu desenvolvimento e testing independentes
+        \item API consistente entre suites facilita integracao
+    \end{itemize}
+
+    \item \textbf{Otimizacao Precoce Importa}:
+    \begin{itemize}
+        \item Caching de modelos e permutation importance reduziram tempo de execucao em 70-80\%
+        \item Sem otimizacoes, configuracao \texttt{full} levaria 2-3 horas (inviavel para CI/CD)
+    \end{itemize}
+
+    \item \textbf{Interpretabilidade de Outputs}:
+    \begin{itemize}
+        \item Scores numericos sozinhos (ex: ``Fairness Score: 73\%'') sao insuficientes
+        \item Interpretacoes textuais (``Compliance adequado, melhorias recomendadas'') e recomendacoes actionable sao criticas para adocao
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Insights Empiricos}
+
+\begin{enumerate}
+    \item \textbf{Simplicidade Estrutural Aumenta Robustez}:
+    \begin{itemize}
+        \item Decision Trees e modelos lineares sistematicamente superaram modelos complexos em robustness
+        \item Contra-intuitivo: Esperavamos que ensembles fossem mais robustos devido a averaging
+        \item \textbf{Explicacao}: Modelos simples generalizam melhor sob perturbacoes porque nao overfitam em ruido
+    \end{itemize}
+
+    \item \textbf{Weakspots Revelam Data Quality Issues}:
+    \begin{itemize}
+        \item 75\% dos weakspots detectados foram causados por data scarcity (slices com $<$ 50 samples)
+        \item Framework e efetivamente uma ferramenta de \textit{data debugging}
+    \end{itemize}
+
+    \item \textbf{Threshold Optimization e Subestimado}:
+    \begin{itemize}
+        \item Ajuste simples de threshold melhorou fairness em 20-30\% sem retreinamento
+        \item Pratica comum (threshold=0.5) e subotima para fairness
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Direcoes Futuras}
+
+\subsubsection{Extensoes Tecnicas}
+
+\begin{enumerate}
+    \item \textbf{Suporte a GAMs e NAMs}:
+    \begin{itemize}
+        \item Integrar InterpretML (Microsoft) e PyGAM
+        \item Validar se GAMs alcancam feature parity similar a Decision Trees
+    \end{itemize}
+
+    \item \textbf{Certified Robustness para Arvores}:
+    \begin{itemize}
+        \item Desenvolver bounds formais de robustez para Decision Trees
+        \item Alternativa a perturbation testing empirica
+    \end{itemize}
+
+    \item \textbf{Causal Fairness}:
+    \begin{itemize}
+        \item Metricas atuais sao observacionais (statistical parity, disparate impact)
+        \item Integrar metricas causais (counterfactual fairness~\cite{kusner2017})
+    \end{itemize}
+
+    \item \textbf{Explainability Methods Integration}:
+    \begin{itemize}
+        \item Adicionar SHAP e LIME como componentes complementares
+        \item Comparar fidelity de SHAP em modelos interpretaveis vs. complexos
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Validacao Empirica Adicional}
+
+\begin{enumerate}
+    \item \textbf{Datasets de Larga Escala}:
+    \begin{itemize}
+        \item Validar framework em datasets com $>$1M samples e $>$1000 features
+        \item Avaliar escalabilidade de CRQR e weakspot detection
+    \end{itemize}
+
+    \item \textbf{Longitudinal Studies}:
+    \begin{itemize}
+        \item Monitorar modelos em producao ao longo de 12-24 meses
+        \item Medir drift real vs. simulado, efficacia de continuous monitoring
+    \end{itemize}
+
+    \item \textbf{Dominios Nao-Tabulares}:
+    \begin{itemize}
+        \item Adaptar framework para computer vision (interpretable CNNs)
+        \item Explorar interpretable NLP (attention-based models, linear transformers)
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{User Studies}
+
+\begin{enumerate}
+    \item \textbf{Avaliacao de Interpretabilidade Percebida}:
+    \begin{itemize}
+        \item Conduzir estudos com stakeholders (reguladores, pacientes, candidatos)
+        \item Medir se interpretabilidade estrutural se traduz em compreensao de usuarios
+    \end{itemize}
+
+    \item \textbf{Impacto em Decisoes de Deployment}:
+    \begin{itemize}
+        \item Rastrear quantas organizacoes escolheram modelos interpretaveis apos usar framework
+        \item Avaliar se evidencia quantitativa muda preferencias de praticantes
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Integracao com Ferramentas Existentes}
+
+\begin{enumerate}
+    \item \textbf{MLOps Platforms}:
+    \begin{itemize}
+        \item Integrar com MLflow, Kubeflow, SageMaker
+        \item Permitir tracking de validation metrics ao longo de experimentos
+    \end{itemize}
+
+    \item \textbf{Regulatory Reporting}:
+    \begin{itemize}
+        \item Gerar relatorios formatados para submissao a EEOC, CFPB, reguladores europeus (GDPR)
+        \item Automatizar compliance documentation
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Implicacoes Praticas}
+
+\subsubsection{Para Organizacoes}
+
+\begin{enumerate}
+    \item \textbf{Reconsiderar Default Choice de Modelos Complexos}:
+    \begin{itemize}
+        \item Em dominios tabulares, Decision Trees/GBMs devem ser baseline---nao apenas ``modelos simples para comparacao''
+        \item Evidencia de feature parity justifica uso em producao
+    \end{itemize}
+
+    \item \textbf{Integrar Validacao Multi-Dimensional em CI/CD}:
+    \begin{itemize}
+        \item Continuous validation evita deployment de modelos nao-robustos/injustos
+        \item Threshold gates (ex: fairness $\geq$ 75\%) previnem regressoes
+    \end{itemize}
+
+    \item \textbf{Usar Weakspot Detection para Data Collection}:
+    \begin{itemize}
+        \item Identificar gaps em datasets via weakspots
+        \item Coletar dados direcionadamente para regioes problematicas
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Para Pesquisa Academica}
+
+\begin{enumerate}
+    \item \textbf{Expandir Definicao de ``State-of-the-Art''}:
+    \begin{itemize}
+        \item SOTA nao deve ser apenas accuracy---incluir robustez, fairness, interpretabilidade
+        \item Benchmarks devem reportar multi-dimensional scores
+    \end{itemize}
+
+    \item \textbf{Pesquisa em Interpretable ML Robusto}:
+    \begin{itemize}
+        \item Desenvolver modelos intrinsecamente interpretaveis E robustos
+        \item Explorar arquiteturas que nao sacrificam interpretabilidade para robustez
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection{Para Reguladores}
+
+\begin{enumerate}
+    \item \textbf{Padronizacao de Metricas}:
+    \begin{itemize}
+        \item Adotar metricas quantitativas (robustness score, compliance score) em guidelines
+        \item Framework fornece implementacao de referencia para EEOC/ECOA testing
+    \end{itemize}
+
+    \item \textbf{Incentivar Interpretabilidade}:
+    \begin{itemize}
+        \item Politicas podem favorecer modelos interpretaveis quando feature parity e demonstrada
+        \item Reducao de burden regulatorio para modelos auditaveis
+    \end{itemize}
+\end{enumerate}

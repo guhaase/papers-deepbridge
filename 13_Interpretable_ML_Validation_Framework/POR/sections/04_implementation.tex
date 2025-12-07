@@ -1,0 +1,500 @@
+\section{Implementacao no DeepBridge}
+
+\subsection{Arquitetura do Sistema}
+
+Framework implementado em Python 3.9+ como parte do DeepBridge (versao 0.1.59+):
+
+\begin{verbatim}
+deepbridge/
+├── distillation/
+│   ├── techniques/
+│   │   └── knowledge_distillation.py  # KDDT
+│   └── auto_distiller.py              # Orquestracao
+├── utils/
+│   └── model_registry.py              # GAMs
+├── validation/
+│   ├── fairness/
+│   │   ├── metrics.py                 # 15 metricas
+│   │   └── visualizations.py
+│   └── wrappers/
+│       ├── fairness_suite.py
+│       ├── robustness_suite.py
+│       └── uncertainty_suite.py
+└── core/
+    ├── experiment/
+    │   ├── experiment.py              # Orquestracao
+    │   └── report/                    # Relatorios
+    └── db_data.py                     # Dataset wrapper
+\end{verbatim}
+
+\subsection{Implementacao KDDT}
+
+\subsubsection{Classe Principal}
+
+\begin{lstlisting}[language=Python]
+class KnowledgeDistillation(BaseEstimator, ClassifierMixin):
+    """
+    Knowledge Distillation para modelos interpretaveis
+
+    Parametros:
+    -----------
+    student_model_type : ModelType
+        DECISION_TREE, LOGISTIC_GAM, LINEAR_GAM, etc.
+    temperature : float
+        Temperatura para soft labels [1.0, 10.0]
+    alpha : float
+        Balance soft/hard loss [0.0, 1.0]
+    n_trials : int
+        Trials para Optuna optimization
+    """
+
+    def __init__(self, student_model_type, temperature=2.0,
+                 alpha=0.5, n_trials=50):
+        self.student_model_type = student_model_type
+        self.temperature = temperature
+        self.alpha = alpha
+        self.n_trials = n_trials
+        self.student_model = None
+
+    def from_probabilities(cls, probabilities, X, y,
+                          student_model_type, **kwargs):
+        """
+        Construtor para destilar de probabilidades pre-calculadas
+
+        Parametros:
+        -----------
+        probabilities : array-like, shape (n_samples, n_classes)
+            Soft labels do teacher
+        """
+        instance = cls(student_model_type, **kwargs)
+        instance.teacher_probs = probabilities
+        return instance
+\end{lstlisting}
+
+\subsubsection{Treinamento com Hyperparameter Optimization}
+
+\begin{lstlisting}[language=Python]
+def fit(self, X, y):
+    """Treina student com Optuna optimization"""
+
+    def objective(trial):
+        # Otimizar hiperparametros
+        if self.student_model_type == ModelType.DECISION_TREE:
+            params = {
+                'max_depth': trial.suggest_int('max_depth', 3, 15),
+                'min_samples_split': trial.suggest_int(
+                    'min_samples_split', 2, 100
+                ),
+                'min_samples_leaf': trial.suggest_int(
+                    'min_samples_leaf', 1, 50
+                )
+            }
+            student = DecisionTreeClassifier(**params)
+
+        elif self.student_model_type == ModelType.LOGISTIC_GAM:
+            params = {
+                'n_splines': trial.suggest_int('n_splines', 5, 25),
+                'spline_order': trial.suggest_int('spline_order', 3, 5),
+                'lam': trial.suggest_float('lam', 0.001, 10.0, log=True)
+            }
+            student = LogisticGAM(**params)
+
+        # Treinar com soft labels
+        soft_labels = self._apply_temperature(
+            self.teacher_probs, self.temperature
+        )
+        student.fit(X, soft_labels)
+
+        # Avaliar fidelity ao teacher
+        student_probs = student.predict_proba(X_val)
+        kl_div = self._kl_divergence(
+            self.teacher_probs[val_idx], student_probs
+        )
+
+        # Combinar com hard accuracy
+        accuracy = accuracy_score(y_val, student.predict(X_val))
+
+        # Score = fidelity + accuracy
+        return self.alpha * (1 - kl_div) + (1 - self.alpha) * accuracy
+
+    # Executar otimizacao
+    study = optuna.create_study(direction='maximize')
+    study.optimize(objective, n_trials=self.n_trials)
+
+    # Retreinar com melhores parametros
+    self.student_model = self._build_student(study.best_params)
+    self.student_model.fit(X, y)
+
+    return self
+\end{lstlisting}
+
+\subsubsection{Soft Label Generation}
+
+\begin{lstlisting}[language=Python]
+def _apply_temperature(self, logits, temperature):
+    """Aplica temperature scaling para suavizacao"""
+    # logits: [n_samples, n_classes]
+    logits_scaled = logits / temperature
+
+    # Softmax com temperatura
+    exp_logits = np.exp(logits_scaled - np.max(logits_scaled, axis=1, keepdims=True))
+    probs = exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+    return probs
+
+def _kl_divergence(self, p, q):
+    """Calcula KL(P || Q)"""
+    # Adiciona epsilon para estabilidade numerica
+    epsilon = 1e-10
+    p = np.clip(p, epsilon, 1 - epsilon)
+    q = np.clip(q, epsilon, 1 - epsilon)
+
+    return np.sum(p * np.log(p / q), axis=1).mean()
+\end{lstlisting}
+
+\subsection{Implementacao GAM Distillation}
+
+\subsubsection{GAM Classes}
+
+\begin{lstlisting}[language=Python]
+class LogisticGAM(StatsModelsGAM):
+    """GAM para classificacao binaria (familia Binomial)"""
+
+    def __init__(self, n_splines=10, spline_order=3, lam=0.6):
+        self.n_splines = n_splines
+        self.spline_order = spline_order
+        self.lam = lam
+        self.family = sm.families.Binomial()
+
+    def fit(self, X, y):
+        """Treina GAM com B-splines"""
+        # Construir B-spline basis para cada feature
+        n_features = X.shape[1]
+
+        formula_parts = []
+        for i in range(n_features):
+            # B-spline basis
+            formula_parts.append(
+                f"bs(x{i}, df={self.n_splines}, degree={self.spline_order})"
+            )
+
+        # Formula aditiva
+        formula = "y ~ " + " + ".join(formula_parts)
+
+        # Criar dataframe
+        data = pd.DataFrame(X, columns=[f'x{i}' for i in range(n_features)])
+        data['y'] = y
+
+        # Fit GLM com B-splines
+        self.model_ = smf.glm(
+            formula=formula,
+            data=data,
+            family=self.family
+        ).fit()
+
+        return self
+
+    def predict_proba(self, X):
+        """Predicao de probabilidades"""
+        data = pd.DataFrame(X, columns=[f'x{i}' for i in range(X.shape[1])])
+        probs = self.model_.predict(data)
+
+        # Retorna [P(0), P(1)]
+        return np.column_stack([1 - probs, probs])
+
+    def get_feature_effects(self, feature_idx, X_range):
+        """
+        Retorna efeito f_i(x_i) para feature especifica
+
+        CRITICO para compliance: permite visualizar efeito isolado
+        """
+        # Criar grid de valores para feature
+        n_points = len(X_range)
+        X_eval = np.zeros((n_points, self.n_features_))
+        X_eval[:, feature_idx] = X_range
+
+        # Avaliar contribuicao dessa feature
+        contribution = self._evaluate_feature_contribution(
+            X_eval, feature_idx
+        )
+
+        return contribution
+\end{lstlisting}
+
+\subsection{Fairness Validation Implementation}
+
+\subsubsection{Disparate Impact (EEOC 80\% Rule)}
+
+\begin{lstlisting}[language=Python]
+class FairnessMetrics:
+    """15 metricas de fairness EEOC-compliant"""
+
+    MIN_REPRESENTATION_PCT = 2.0  # EEOC Flip-Flop Rule
+
+    @staticmethod
+    def disparate_impact(y_pred, sensitive_feature, threshold=0.8):
+        """
+        EEOC Uniform Guidelines Section 4D
+
+        Impact Ratio = (Selection Rate Protected) / (Selection Rate Reference)
+
+        Passa se >= 0.80 (four-fifths rule)
+        """
+        # Identificar grupos
+        unique_groups = np.unique(sensitive_feature)
+
+        # Calcular selection rates
+        rates = {}
+        for group in unique_groups:
+            mask = (sensitive_feature == group)
+            rates[group] = y_pred[mask].mean()
+
+        # Encontrar grupo com menor/maior rate
+        min_rate = min(rates.values())
+        max_rate = max(rates.values())
+
+        # Impact ratio
+        impact_ratio = min_rate / max_rate if max_rate > 0 else 0
+
+        # Passa threshold?
+        passes = impact_ratio >= threshold
+
+        # Interpretacao
+        if impact_ratio >= 0.80:
+            interpretation = "GOOD: Passes EEOC 80% rule"
+        elif impact_ratio >= 0.70:
+            interpretation = "WARNING: Marginal compliance"
+        else:
+            interpretation = "CRITICAL: High legal risk"
+
+        return {
+            'metric': 'disparate_impact',
+            'impact_ratio': impact_ratio,
+            'passes_threshold': passes,
+            'threshold': threshold,
+            'interpretation': interpretation,
+            'group_rates': rates
+        }
+\end{lstlisting}
+
+\subsubsection{Statistical Parity}
+
+\begin{lstlisting}[language=Python]
+@staticmethod
+def statistical_parity(y_pred, sensitive_feature, threshold=0.1):
+    """
+    |P(Y_hat=1 | protected) - P(Y_hat=1 | reference)| < threshold
+
+    Equivalente a disparate impact mas como diferenca absoluta
+    """
+    groups = np.unique(sensitive_feature)
+
+    rates = []
+    for group in groups:
+        mask = (sensitive_feature == group)
+        rate = y_pred[mask].mean()
+        rates.append(rate)
+
+    # Disparity = diferenca maxima
+    disparity = max(rates) - min(rates)
+
+    passes = disparity <= threshold
+
+    return {
+        'metric': 'statistical_parity',
+        'disparity': disparity,
+        'passes_threshold': passes,
+        'interpretation': 'GOOD' if passes else 'FAIL'
+    }
+\end{lstlisting}
+
+\subsection{Robustness Suite Implementation}
+
+\subsubsection{Data Perturbation}
+
+\begin{lstlisting}[language=Python]
+class DataPerturber:
+    """Aplica perturbacoes controladas aos dados"""
+
+    def gaussian_perturbation(self, X, epsilon=0.1, n_iterations=10):
+        """
+        Adiciona ruido Gaussiano proporcional a std
+
+        X_perturbed = X + epsilon * sigma_X * N(0, 1)
+        """
+        results = []
+
+        for _ in range(n_iterations):
+            noise = np.random.randn(*X.shape)
+            sigma_X = X.std(axis=0)
+
+            X_perturbed = X + epsilon * sigma_X * noise
+            results.append(X_perturbed)
+
+        return results
+
+    def quantile_perturbation(self, X, epsilon=0.1, n_iterations=10):
+        """
+        Perturbacao baseada em quantis da distribuicao
+
+        X_perturbed = X + epsilon * IQR
+        """
+        results = []
+        Q25 = np.percentile(X, 25, axis=0)
+        Q75 = np.percentile(X, 75, axis=0)
+        IQR = Q75 - Q25
+
+        for _ in range(n_iterations):
+            noise = np.random.randn(*X.shape)
+            X_perturbed = X + epsilon * IQR * noise
+            results.append(X_perturbed)
+
+        return results
+\end{lstlisting}
+
+\subsubsection{Robustness Evaluator}
+
+\begin{lstlisting}[language=Python]
+class RobustnessEvaluator:
+    """Avalia degradacao de performance sob perturbacoes"""
+
+    def evaluate(self, model, X_test, y_test, epsilon_levels):
+        """
+        Testa modelo em multiplos niveis de perturbacao
+
+        Returns: Curve de degradacao + confidence intervals
+        """
+        results = {'epsilon': [], 'auc': [], 'auc_std': [], 'ci_lower': [], 'ci_upper': []}
+
+        # Baseline (sem perturbacao)
+        baseline_auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+
+        for epsilon in epsilon_levels:
+            aucs = []
+
+            # Multiplas iteracoes para CI
+            for _ in range(100):
+                X_perturbed = self.perturber.gaussian_perturbation(
+                    X_test, epsilon=epsilon, n_iterations=1
+                )[0]
+
+                y_proba = model.predict_proba(X_perturbed)[:, 1]
+                auc = roc_auc_score(y_test, y_proba)
+                aucs.append(auc)
+
+            # Estatisticas
+            mean_auc = np.mean(aucs)
+            std_auc = np.std(aucs)
+            ci = np.percentile(aucs, [2.5, 97.5])
+
+            results['epsilon'].append(epsilon)
+            results['auc'].append(mean_auc)
+            results['auc_std'].append(std_auc)
+            results['ci_lower'].append(ci[0])
+            results['ci_upper'].append(ci[1])
+
+        return results
+\end{lstlisting}
+
+\subsection{Uncertainty Suite Implementation}
+
+\subsubsection{Conformal Prediction}
+
+\begin{lstlisting}[language=Python]
+class ConformalPredictor:
+    """Quantificacao de incerteza via Conformal Prediction"""
+
+    def __init__(self, model, alpha=0.1):
+        """
+        alpha: Nivel de significancia (e.g., 0.1 para 90% coverage)
+        """
+        self.model = model
+        self.alpha = alpha
+        self.conformity_scores = None
+
+    def calibrate(self, X_cal, y_cal):
+        """Calcula non-conformity scores em calibration set"""
+        y_pred = self.model.predict_proba(X_cal)[:, 1]
+
+        # Non-conformity score = |y - y_hat|
+        self.conformity_scores = np.abs(y_cal - y_pred)
+
+        # Calcula quantil
+        n = len(self.conformity_scores)
+        q_level = np.ceil((n + 1) * (1 - self.alpha)) / n
+        self.threshold = np.quantile(self.conformity_scores, q_level)
+
+    def predict_with_interval(self, X_test):
+        """Retorna predicoes + intervalos de confianca"""
+        y_pred = self.model.predict_proba(X_test)[:, 1]
+
+        # Intervalo = [y_hat - threshold, y_hat + threshold]
+        intervals = np.column_stack([
+            y_pred - self.threshold,
+            y_pred + self.threshold
+        ])
+
+        # Clip para [0, 1]
+        intervals = np.clip(intervals, 0, 1)
+
+        return y_pred, intervals
+
+    def evaluate_coverage(self, X_test, y_test):
+        """Avalia se coverage empirica = 1 - alpha"""
+        _, intervals = self.predict_with_interval(X_test)
+
+        # Coverage = proporcao de y_true dentro do intervalo
+        in_interval = (y_test >= intervals[:, 0]) & (y_test <= intervals[:, 1])
+        coverage = in_interval.mean()
+
+        # Width medio
+        width = (intervals[:, 1] - intervals[:, 0]).mean()
+
+        return {
+            'coverage': coverage,
+            'expected_coverage': 1 - self.alpha,
+            'interval_width': width
+        }
+\end{lstlisting}
+
+\subsection{Orquestracao via AutoDistiller}
+
+\begin{lstlisting}[language=Python]
+# Exemplo de uso completo
+from deepbridge import AutoDistiller, DBDataset
+
+# 1. Criar dataset com soft labels
+dataset = DBDataset(
+    features=X,
+    target=y,
+    probabilities=teacher_probs  # De ensemble complexo
+)
+
+# 2. Inicializar distiller
+distiller = AutoDistiller(
+    dataset=dataset,
+    method='auto',
+    n_trials=50
+)
+
+# 3. Executar distilacao
+results = distiller.run(use_probabilities=True)
+
+# 4. Obter melhor modelo interpretavel
+best_model = distiller.best_model(metric='test_ks_statistic')
+
+# 5. Validar fairness/robustness/uncertainty
+from deepbridge.core import Experiment
+
+experiment = Experiment(
+    dataset=dataset,
+    experiment_type="binary_classification",
+    tests=["fairness", "robustness", "uncertainty"],
+    protected_attributes=['gender', 'race']
+)
+
+validation_results = experiment.run_all_tests(config='full')
+
+# 6. Gerar relatorio
+distiller.generate_report(report_type='interactive')
+\end{lstlisting}

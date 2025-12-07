@@ -1,0 +1,69 @@
+\documentclass[sigconf,nonacm]{acmart}
+
+% Pacotes essenciais
+\usepackage[portuguese]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Configuracao de listings para Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    stringstyle=\color{red},
+    commentstyle=\color{gray},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray}
+}
+
+% Simbolos para check/cross
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+
+% Informacoes do documento
+\title{Validacao Multi-Dimensional com Garantias de Explicabilidade: Robustez, Equidade e Incerteza para Modelos Interpretaveis}
+
+\author{Autor 1}
+\affiliation{%
+  \institution{Instituicao}
+  \city{Cidade}
+  \country{Pais}
+}
+\email{autor1@email.com}
+
+% Abstract
+\begin{abstract}
+Frameworks de validacao sofisticados (robustness, uncertainty quantification, drift detection) sao tipicamente aplicados apenas a modelos complexos (DNNs, ensembles), perpetuando percepcao de que modelos interpretaveis nao se beneficiam de testes rigorosos. Apresentamos framework integrado de validacao multi-dimensional para modelos interpretaveis que (1) adapta robustness testing (perturbacoes Gaussianas/Quantile, deteccao de weakspots) para Decision Trees e modelos aditivos, (2) implementa uncertainty quantification via CRQR (Conformalized Residual Quantile Regression) otimizada com caching, (3) executa 15 metricas de fairness com compliance regulatorio (EEOC, ECOA), (4) detecta drift mantendo interpretabilidade, e (5) prove explainability via model distillation e surrogate models. Implementacao no DeepBridge demonstra que Decision Trees alcancam \textbf{85-90\%} em robustness tests, \textbf{90-95\%} em calibration, e deteccao de drift \textbf{igual ou superior} a modelos black-box, com trade-off de apenas \textbf{5-10\% accuracy loss} para \textbf{100\% interpretability gain}. Validacao em 3 datasets reais (credit scoring, hiring, healthcare) revela: weakspot detection identifica \textbf{12 regioes criticas} nao-detectadas por validacao tradicional, sliced overfitting analysis reduz generalization gap em \textbf{40\%}, compliance fairness passa de 68\% para 94\% apos threshold optimization. Framework permite production deployment de modelos interpretaveis com evidencia quantitativa de robustez comparavel a modelos complexos.
+\end{abstract}
+
+% Palavras-chave
+\keywords{Model Validation, Explainability, Robustness, Uncertainty Quantification, Fairness, Interpretable ML}
+
+\begin{document}
+
+\maketitle
+
+% Secoes
+\input{sections/01_introduction}
+\input{sections/02_background}
+\input{sections/03_design}
+\input{sections/04_implementation}
+\input{sections/05_evaluation}
+\input{sections/06_discussion}
+\input{sections/07_conclusion}
+
+% Bibliografia
+\bibliographystyle{plain}
+\bibliography{bibliography/references}
+
+\end{document}

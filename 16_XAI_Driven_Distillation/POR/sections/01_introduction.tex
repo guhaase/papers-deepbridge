@@ -1,0 +1,121 @@
+\section{Introducao}
+
+Deployment de modelos de machine learning em producao enfrenta tensao critica entre performance e praticabilidade: modelos state-of-the-art (transformers, ensembles, deep networks) alcancam acuracia superior, mas exigem recursos computacionais proibitivos para latencia real-time, edge deployment, ou servicos de alto volume. Knowledge distillation (KD) resolve parcialmente esse dilema comprimindo conhecimento de um teacher complexo em um student compacto, mas KD tradicional transfere apenas \textit{predicoes} (soft targets), nao o \textit{processo de raciocinio} subjacente.
+
+\subsection{Motivacao}
+
+Em dominios regulados---financas, saude, contratacao, credito---explicabilidade nao e opcional: regulacoes como GDPR Article 22, ECOA, e EEOC exigem que decisoes algoritmicas sejam interpretaveis e justificaveis. Organizacoes precisam de modelos que sejam simultaneamente:
+
+\begin{itemize}
+    \item \textbf{Compactos}: Baixa latencia ($<$ 100ms), deployable em edge devices (smartphones, IoT)
+    \item \textbf{Acurados}: Performance competitiva com teachers SOTA (gap $<$ 2-3\%)
+    \item \textbf{Interpretaveis}: Explicacoes consistentes, feature importances preservadas, audit trails completos
+\end{itemize}
+
+\textbf{Exemplo motivador} (analise de sentimento financeiro para compliance):
+\begin{itemize}
+    \item \textbf{Teacher}: FinBERT (110M parametros, BERT-based, acuracia 85.5\%)
+    \item \textbf{Necessidade}: Modelo compacto para processamento em tempo real de noticias financeiras (10k docs/hora)
+    \item \textbf{Restricao regulatoria}: Decisoes de trading automatizado requerem audit trail com razoes especificas (MiFID II)
+\end{itemize}
+
+KD tradicional comprime FinBERT em Bi-LSTM (1M parametros, 127$\times$ compressao), mantendo 84.3\% acuracia---mas \textit{explicacoes mudam drasticamente}: attention weights do student nao correlacionam com teacher ($\rho = 0.43$), feature importances diferem (palavras-chave criticas recebem pesos inconsistentes), criando risco de compliance.
+
+\subsection{Problema}
+
+\subsubsection{Limitacoes de KD Tradicional}
+
+Knowledge distillation classica \cite{hinton2015distilling} transfere soft targets:
+\begin{equation}
+L_{KD} = \text{KL}(p_{teacher}(y|x, T) \| p_{student}(y|x, T))
+\end{equation}
+onde $T$ e temperatura de softmax. Perda combinada:
+\begin{equation}
+L = \alpha L_{KD} + (1-\alpha) L_{CE}
+\end{equation}
+
+\textbf{Gap critico}: Soft targets capturam \textit{o que prever} (distribuicao de classes), mas nao \textit{por que prever}---quais features sao importantes, como evidencias sao ponderadas, quais padroes sao relevantes.
+
+\subsubsection{Limitacoes de XAI Post-Hoc}
+
+Tecnicas de explicabilidade post-hoc (SHAP \cite{lundberg2017unified}, LIME \cite{ribeiro2016should}, Integrated Gradients) revelam como students funcionam \textit{apos} treinamento, mas:
+
+\begin{enumerate}
+    \item \textbf{Sem garantias de consistencia}: Explicacoes podem divergir arbitrariamente entre teacher/student
+    \item \textbf{Instabilidade}: Pequenas perturbacoes em inputs causam mudancas drasticas em SHAP values
+    \item \textbf{Post-hoc vs. by-design}: Explicabilidade e aproximada retrospectivamente, nao incorporada no processo de aprendizado
+\end{enumerate}
+
+\textbf{Exemplo empirico}: KD de ResNet-50 (teacher) para MobileNetV2 (student) em ImageNet:
+\begin{itemize}
+    \item Acuracia: 76.2\% (teacher) vs. 74.8\% (student)---gap aceitavel
+    \item Saliency maps (Grad-CAM): Correlacao espacial $\rho = 0.52$---student foca regioes diferentes
+    \item Feature importance: Top-5 features do teacher tem overlap de apenas 40\% com student
+\end{itemize}
+
+\subsection{Nossa Solucao: DiXtill Framework}
+
+Apresentamos \textbf{DiXtill} (Distillation with eXplainability), framework que adiciona termo de alinhamento de explicacoes durante destilacao:
+
+\begin{equation}
+L = (1-\alpha)L_{CE} + \alpha(L_{KD} + L_{XAI})
+\end{equation}
+
+onde $L_{XAI}$ minimiza distancia entre explicacoes de teacher e student. Oferecemos tres opcoes:
+
+\paragraph{1. SHAP Alignment}
+\begin{equation}
+L_{XAI}^{SHAP} = \frac{1}{N} \sum_{i=1}^{N} \|\phi_{teacher}(x_i) - \phi_{student}(x_i)\|^2
+\end{equation}
+onde $\phi(x)$ sao SHAP values (Shapley values para features).
+
+\paragraph{2. Attention Alignment}
+Para modelos com attention mechanisms (transformers):
+\begin{equation}
+L_{XAI}^{Attn} = \frac{1}{L} \sum_{l=1}^{L} \|A_{teacher}^{(l)} - A_{student}^{(l)}\|_F^2
+\end{equation}
+onde $A^{(l)}$ sao attention matrices na camada $l$, $\|\cdot\|_F$ e Frobenius norm.
+
+\paragraph{3. Gradient Alignment}
+Minimiza diferenca de gradientes de entrada (input saliency):
+\begin{equation}
+L_{XAI}^{Grad} = \frac{1}{N} \sum_{i=1}^{N} \|\nabla_x \log p_{teacher}(y|x_i) - \nabla_x \log p_{student}(y|x_i)\|^2
+\end{equation}
+
+\subsection{Contribuicoes}
+
+\begin{enumerate}
+    \item \textbf{Framework DiXtill}: Primeira abordagem integrada de destilacao guiada por explicabilidade com multiplas opcoes de alinhamento (SHAP, attention, gradients)
+    \item \textbf{Preservacao de reasoning}: Students herdam processo de raciocinio do teacher, nao apenas predicoes---correlacao de SHAP values $\rho > 0.90$
+    \item \textbf{Estabilidade de explicacoes}: Feature Attribution Stability (FAS) $> 0.85$ pre/pos-distillation
+    \item \textbf{Validacao empirica}: Case studies em 3 dominios (NLP financeiro, visao, tabular) demonstrando 98-99\% retencao de acuracia com compressao 50-127$\times$
+    \item \textbf{Implementacao pratica}: Integracao no framework DeepBridge com API unificada para SHAP/attention/gradient alignment
+    \item \textbf{Analise de trade-offs}: Caracterizacao de custos computacionais vs. ganhos de interpretabilidade
+\end{enumerate}
+
+\subsection{Impacto Esperado}
+
+\subsubsection{Para Deployment de Modelos}
+\begin{itemize}
+    \item Modelos compactos interpretaveis-por-design, eliminando necessidade de XAI post-hoc
+    \item Reducao de 50-90\% em latencia mantendo explicabilidade
+    \item Audit trails consistentes entre desenvolvimento e producao
+\end{itemize}
+
+\subsubsection{Para Compliance Regulatorio}
+\begin{itemize}
+    \item Garantia de reasoning consistency em modelos comprimidos
+    \item Documentacao automatica de feature importances preservadas
+    \item Evidencia quantitativa para auditorias (correlacao de SHAP $> 0.90$)
+\end{itemize}
+
+\subsubsection{Para Pesquisa em ML}
+\begin{itemize}
+    \item Framework modular para experimentacao com diferentes mecanismos XAI
+    \item Metricas de avaliacao de explanation alignment (FAS, SHAP correlation, gradient similarity)
+    \item Extensivel para novas tecnicas de explicabilidade
+\end{itemize}
+
+\subsection{Organizacao}
+
+Secao 2 apresenta trabalhos relacionados em knowledge distillation e explainable AI. Secao 3 descreve design do framework DiXtill com especificacao formal dos componentes. Secao 4 detalha implementacao no DeepBridge (SHAP, attention, gradient alignment). Secao 5 apresenta experimentos em NLP, visao, e dados tabulares. Secao 6 discute limitacoes, custos computacionais, e aplicabilidade. Secao 7 conclui com direcoes futuras (multi-teacher XAI, counterfactual alignment).
