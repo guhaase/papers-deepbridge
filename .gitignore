@@ -140,6 +140,9 @@ logs/
 # data/
 # datasets/
 
+# Experiment data directories
+01_HPM-KD_Framework/POR/experiments/experimento_01b_compression_ratios/scripts/data/
+
 # ============================================================================
 # IDE & Editor Files
 # ============================================================================
