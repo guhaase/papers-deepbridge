@@ -1,0 +1,37 @@
+# Requirements para execução dos experimentos com GPU
+# Instalar com: pip install -r requirements_gpu.txt
+
+# Core ML libraries
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+scipy>=1.11.0
+
+# Gradient boosting
+xgboost>=2.0.0  # GPU support built-in
+lightgbm>=4.0.0  # GPU support
+catboost>=1.2.0  # GPU support
+
+# Deep Learning (PyTorch with CUDA)
+torch>=2.1.0  # Install with: pip install torch --index-url https://download.pytorch.org/whl/cu118
+torchvision>=0.16.0
+torchaudio>=2.1.0
+
+# Fairness libraries
+aif360>=0.5.0
+fairlearn>=0.9.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Data loading
+openpyml>=0.14.0
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# DeepBridge (local)
+# Instalar com: pip install -e /home/guhaase/projetos/DeepBridge
