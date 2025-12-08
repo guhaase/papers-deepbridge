@@ -13,8 +13,9 @@ from typing import Dict, List, Tuple, Any
 import json
 
 
-def setup_logging(experiment_name: str, log_dir: Path) -> logging.Logger:
+def setup_logging(log_dir, experiment_name: str) -> logging.Logger:
     """Setup logging for experiments"""
+    log_dir = Path(log_dir)  # Ensure it's a Path object
     log_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

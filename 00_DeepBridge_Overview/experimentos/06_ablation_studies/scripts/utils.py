@@ -16,17 +16,18 @@ from typing import Dict, List, Any
 import numpy as np
 
 
-def setup_logging(name: str, log_dir: Path) -> logging.Logger:
+def setup_logging(log_dir, name: str) -> logging.Logger:
     """
     Setup logging configuration
 
     Args:
+        log_dir: Directory to save log files (Path or str)
         name: Logger name
-        log_dir: Directory to save log files
 
     Returns:
         Configured logger instance
     """
+    log_dir = Path(log_dir)  # Ensure it's a Path object
     log_dir.mkdir(exist_ok=True, parents=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
