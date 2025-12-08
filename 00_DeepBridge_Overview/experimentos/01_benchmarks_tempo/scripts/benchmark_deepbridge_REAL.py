@@ -121,12 +121,13 @@ class DeepBridgeBenchmarkReal:
 
         return model
 
-    def run_validation_tests(self, dataset: DBDataset) -> Dict[str, Any]:
+    def run_validation_tests(self, dataset: DBDataset, protected_attrs: list = None) -> Dict[str, Any]:
         """
         Executa testes de validação usando DeepBridge REAL
 
         Args:
             dataset: DBDataset configurado
+            protected_attrs: Lista de atributos protegidos
 
         Returns:
             Dicionário com resultados e tempos
@@ -140,22 +141,16 @@ class DeepBridgeBenchmarkReal:
             # Criar experimento
             self.logger.info("Creating Experiment...")
 
-            # Identificar atributos protegidos no Adult dataset
-            # sex, race, age são as colunas sensíveis típicas
-            protected_attrs = []
-            if 'sex' in dataset.features:
-                protected_attrs.append('sex')
-            if 'race' in dataset.features:
-                protected_attrs.append('race')
-            if 'age' in dataset.features:
-                protected_attrs.append('age')
-
-            self.logger.info(f"Protected attributes identified: {protected_attrs}")
+            # Use os atributos protegidos passados como parâmetro
+            if protected_attrs:
+                self.logger.info(f"Protected attributes: {protected_attrs}")
+            else:
+                self.logger.warning("No protected attributes provided - fairness tests may be skipped")
 
             exp = Experiment(
                 dataset=dataset,
                 experiment_type='binary_classification',
-                protected_attributes=protected_attrs if protected_attrs else None,
+                protected_attributes=protected_attrs,
                 tests=['robustness', 'uncertainty', 'resilience', 'fairness']  # CRÍTICO: especificar quais testes executar!
             )
 
@@ -201,15 +196,24 @@ class DeepBridgeBenchmarkReal:
             total_expected = sum(expected_times.values())
 
             # Distribuir tempo real proporcionalmente
-            if self.config['tests']['fairness']['enabled']:
+            if self.config['tests']['fairness']['enabled'] and protected_attrs:
                 try:
-                    fairness_data = exp.run_fairness_tests()  # Disponível na API
+                    # Tentar obter resultados de fairness (já executados por run_tests)
+                    # Se não houver método get_fairness_results, usar test_results
+                    fairness_data = None
+                    if hasattr(exp, 'get_fairness_results'):
+                        fairness_data = exp.get_fairness_results()
+                    elif hasattr(test_results, 'fairness'):
+                        fairness_data = test_results.fairness
+
                     proportion = expected_times['fairness'] / total_expected
                     times['fairness'] = total_tests_time * proportion
                     results['fairness'] = {'status': 'completed', 'has_data': fairness_data is not None}
-                    self.logger.info(f"  ✓ Fairness tests completed (data type: {type(fairness_data).__name__})")
+                    self.logger.info(f"  ✓ Fairness tests completed (has data: {fairness_data is not None})")
                 except Exception as e:
                     self.logger.warning(f"  ⚠ Could not retrieve fairness results: {e}")
+                    import traceback
+                    traceback.print_exc()
 
             if self.config['tests']['robustness']['enabled']:
                 try:
@@ -355,9 +359,19 @@ class DeepBridgeBenchmarkReal:
         # DeepBridge espera DataFrames com índices reset
         test_df = test_df.reset_index(drop=True)
 
-        # Detectar atributos protegidos (sex, age, race, etc.)
-        # NOTA: Ajustar baseado nas colunas reais do dataset
-        protected_attrs = self.config['dataset'].get('protected_attributes', [])
+        # Identificar atributos protegidos ANTES de criar o dataset
+        # Verificar quais colunas existem no DataFrame
+        protected_attrs = []
+        potential_protected = ['sex', 'race', 'age']
+        for attr in potential_protected:
+            if attr in test_df.columns:
+                protected_attrs.append(attr)
+                self.logger.info(f"  Found protected attribute: {attr} (dtype: {test_df[attr].dtype})")
+
+        if not protected_attrs:
+            self.logger.warning("  No protected attributes found in dataset - fairness tests will be skipped")
+        else:
+            self.logger.info(f"  Protected attributes: {protected_attrs}")
 
         # Criar DBDataset
         try:
@@ -365,7 +379,6 @@ class DeepBridgeBenchmarkReal:
                 data=test_df,
                 target_column='target',
                 model=model,
-                # protected_attributes=protected_attrs  # Se suportado
             )
             self.logger.info(f"✓ DBDataset created successfully")
 
@@ -373,9 +386,9 @@ class DeepBridgeBenchmarkReal:
             self.logger.error(f"Error creating DBDataset: {e}")
             raise
 
-        # 3. Executar testes
+        # 3. Executar testes (passando protected_attrs explicitamente)
         self.logger.info("\n=== Running Validation Tests ===")
-        times, results = self.run_validation_tests(dataset)
+        times, results = self.run_validation_tests(dataset, protected_attrs=protected_attrs)
 
         return times
 

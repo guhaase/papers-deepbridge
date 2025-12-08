@@ -1,0 +1,34 @@
+================================================================================
+VALIDATION REPORT - FRAGMENTED WORKFLOW
+================================================================================
+
+1. FAIRNESS TESTS
+----------------------------------------
+  disparate_impact: {'sex_0': np.float64(0.2977165796311713), 'race_0': np.float64(0.9883227256274131), 'race_1': np.float64(0.623546511627907), 'race_2': np.float64(0.42622295968534907), 'race_4': np.float64(0.3400135869565218)}
+  equal_opportunity: {}
+  demographic_parity_diff: {'sex': np.float64(0.18897259291755303), 'race': np.float64(0.14768926725448464)}
+  equalized_odds_diff: {'sex': 0.083399209486166, 'race': 0.22807017543859653}
+  num_metrics_computed: 9
+  tools_used: ['aif360', 'fairlearn']
+  num_conversions: 2
+
+2. ROBUSTNESS TESTS
+----------------------------------------
+  baseline_accuracy: 0.8598628314054663
+  perturbed_accuracies: {'noise_0.01': 0.8595557375371071, 'noise_0.05': 0.8603746545193981, 'noise_0.1': 0.860067560651039}
+  adversarial_robustness: 0.8598628314054663
+
+3. UNCERTAINTY TESTS
+----------------------------------------
+  calibration_error: 0.031608558742814076
+  conformal_coverage: 0.709182106663937
+  mean_confidence: 0.36976338417442933
+
+4. RESILIENCE TESTS
+----------------------------------------
+  drift_detected: True
+  psi_score: 164.87604801577572
+
+================================================================================
+Report generated: /home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/01_benchmarks_tempo/results/fragmented_report_REAL.txt
+Figures saved: /home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/01_benchmarks_tempo/results/fragmented_report_figures.png

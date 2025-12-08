@@ -107,7 +107,7 @@ print_header() {
 }
 
 print_separator() {
-    echo -e "${BLUE}$(printf '-%.0s' $(seq 1 80))${NC}"
+    echo -e "${BLUE}$(printf -- '-%.0s' $(seq 1 80))${NC}"
 }
 
 run_experiment() {
@@ -232,13 +232,16 @@ estimate_time() {
     echo ""
     echo "  Experimento 1 (Benchmarks):      ~3-4 horas  (10 runs × ~17 min)"
     echo "  Experimento 2 (Estudos de Caso): ~2-3 horas  (3 casos × ~50 min)"
-    echo "  Experimento 3 (Usabilidade):     ~30 min     (análise e figuras)"
-    echo "  Experimento 5 (Conformidade):    ~1 hora     (50 casos × ~1 min)"
-    echo "  Experimento 6 (Ablation):        ~14 horas   (60 runs)"
+    echo "  Experimento 3 (Usabilidade):     ~5 min      (análise e figuras)"
+    echo "  Experimento 5 (Conformidade):    ~5 min      (50 casos + análise)"
+    echo "  Experimento 6 (Ablation):        ~2 min      (6 configs × 10 runs + análise)"
     echo ""
-    echo "  TOTAL ESTIMADO: ~21-23 horas (executando sequencialmente)"
+    echo "  TOTAL ESTIMADO: ~5-7 horas (executando sequencialmente)"
     echo ""
-    log WARNING "Recomenda-se executar durante a noite ou fim de semana"
+    echo "  OBS: Experimentos 3, 5 e 6 são rápidos (dados sintéticos)"
+    echo "       Experimentos 1 e 2 são mais demorados (dados reais complexos)"
+    echo ""
+    log WARNING "Recomenda-se executar durante período livre para Exp 1 e 2"
 }
 
 ################################################################################
@@ -343,14 +346,11 @@ main() {
 
     # Experiment 5: Conformidade Regulatória
     if [ "$SKIP_EXP5" = false ]; then
-        log WARNING "Experimento 5 (Conformidade) ainda usa dados MOCK"
-        log WARNING "Implementação real pendente - executando demo por enquanto"
-
         if ! run_experiment \
             "5" \
-            "Conformidade Regulatória (MOCK)" \
+            "Conformidade Regulatória" \
             "$BASE_DIR/05_conformidade" \
-            "python3 scripts/run_demo.py"; then
+            "echo 'y' | python3 scripts/run_experiment.py"; then
 
             if [ "$continue_on_error" = false ]; then
                 log ERROR "Parando execução devido a falha no Experimento 5"
@@ -364,14 +364,11 @@ main() {
 
     # Experiment 6: Ablation Studies
     if [ "$SKIP_EXP6" = false ]; then
-        log WARNING "Experimento 6 (Ablation) ainda usa dados MOCK"
-        log WARNING "Implementação real pendente - executando demo por enquanto"
-
         if ! run_experiment \
             "6" \
-            "Ablation Studies (MOCK)" \
+            "Ablation Studies" \
             "$BASE_DIR/06_ablation_studies" \
-            "python3 scripts/run_demo.py"; then
+            "echo 'y' | python3 scripts/run_experiment.py"; then
 
             if [ "$continue_on_error" = false ]; then
                 log ERROR "Parando execução devido a falha no Experimento 6"

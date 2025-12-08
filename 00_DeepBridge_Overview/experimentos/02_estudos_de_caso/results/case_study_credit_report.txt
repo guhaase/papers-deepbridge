@@ -2,14 +2,14 @@
 DeepBridge Validation Report: Credit Scoring
 ================================================================================
 
-Timestamp: 2025-12-06T16:21:03.478099
+Timestamp: 2025-12-07T10:52:20.731039
 
 Dataset Statistics:
   Samples: 300
   Features: 7
 
 Validation Time:
-  Total: 0.35 minutes
+  Total: 0.28 minutes
 
 Violations Detected: 2
 

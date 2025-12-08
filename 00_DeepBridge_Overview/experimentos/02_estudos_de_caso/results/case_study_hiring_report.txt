@@ -2,14 +2,14 @@
 DeepBridge Validation Report: Hiring
 ================================================================================
 
-Timestamp: 2025-12-06T16:21:16.843537
+Timestamp: 2025-12-07T10:52:34.873855
 
 Dataset Statistics:
   Samples: 2165
   Features: N/A
 
 Validation Time:
-  Total: 0.20 minutes
+  Total: 0.23 minutes
 
 Violations Detected: 1
 

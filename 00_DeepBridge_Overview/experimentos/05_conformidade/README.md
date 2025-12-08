@@ -1,20 +1,33 @@
 # Experimento 5: Conformidade Regulatória
 
-**Objetivo**: Comprovar que DeepBridge detecta automaticamente violações de conformidade regulatória (EEOC/ECOA) com **100% de precisão** e **0 falsos positivos**.
+**Status**: ✅ **CORRIGIDO E VALIDADO COM DADOS REAIS** (2025-12-07)
 
-## Visão Geral
+Validação de detecção de violações de fairness usando DeepBridge vs AIF360.
 
-Este experimento valida a capacidade do DeepBridge de detectar violações de conformidade regulatória com precisão perfeita, comparando com ferramentas fragmentadas (AIF360, Fairlearn).
+## 🎯 Objetivo
 
-## Métricas Alvo
+Comparar DeepBridge com a biblioteca AIF360 (baseline) na detecção de violações de Disparate Impact (regra dos 80% da EEOC).
 
-| Métrica | DeepBridge (Alvo) | Baseline | Melhoria |
-|---------|-------------------|----------|----------|
-| **Precision** | 100% | ~87% | +13 pp |
-| **Recall** | 100% | ~80% | +20 pp |
-| **F1-Score** | 100% | ~83% | +17 pp |
-| **Feature Coverage** | 100% (10/10) | 20% (2/10) | +80 pp |
-| **Audit Time** | 48 min | 285 min | -83% |
+## ✅ Correções Implementadas
+
+**Data da correção**: 2025-12-07
+
+**Mudanças principais**:
+1. ✅ Baseline agora usa **AIF360 real** (não simulação)
+2. ✅ Ground truth **recalculado dos dados reais**
+3. ✅ Tempos de execução **medidos** (não estimados)
+
+## 📊 Resultados Reais Obtidos
+
+| Métrica | DeepBridge | AIF360 Real | Diferença |
+|---------|-----------|-------------|-----------|
+| **Precision** | 100.0% | 100.0% | 0.0pp |
+| **Recall** | 100.0% | 100.0% | 0.0pp |
+| **F1-Score** | 100.0% | 100.0% | 0.0pp |
+| **Tempo Total** | 0.18s | 0.53s | **2.94× mais rápido** |
+| **Tempo/Caso** | 0.0036s | 0.0106s | **2.94× mais rápido** |
+
+**Conclusão**: DeepBridge iguala AIF360 em acurácia, mas é ~3× mais rápido.
 
 ## Regulamentações Cobertas
 
@@ -195,34 +208,39 @@ Este experimento demonstra **capacidades únicas** do DeepBridge:
 
 ## Status Atual
 
-🟡 **INFRAESTRUTURA COMPLETA** - Mock funcional, aguarda execução real
+✅ **COMPLETO E VALIDADO COM DADOS REAIS** (2025-12-07)
 
 - ✅ Estrutura de diretórios
-- ✅ Scripts base (utils, generate_ground_truth, run_demo)
-- ✅ Documentação completa
-- ⏳ Geração de 50 casos de teste (pendente)
-- ⏳ Validação DeepBridge real (pendente)
-- ⏳ Validação baseline (AIF360/Fairlearn) (pendente)
-- ⏳ Análise estatística completa (pendente)
-- ⏳ Visualizações (pendente)
+- ✅ 50 casos de teste gerados
+- ✅ Ground truth recalculado dos dados reais
+- ✅ Validação DeepBridge executada
+- ✅ Validação AIF360 real executada
+- ✅ Análise estatística completa
+- ✅ 6 visualizações detalhadas geradas
+- ✅ Documentação completa (2 relatórios)
 
-## Próximos Passos
+## 📖 Documentação Detalhada
 
-### Imediato (Testar)
-1. Executar `run_demo.py` para validar infraestrutura
-2. Verificar outputs gerados
+Para entender completamente os resultados, **LEIA**:
 
-### Curto Prazo (1 semana)
-1. Gerar 50 casos de teste reais
-2. Implementar validação DeepBridge
-3. Implementar validação baseline
+1. **`RELATORIO_FINAL.md`** (RECOMENDADO)
+   - Relatório completo com 25+ páginas
+   - Análise de adequação para publicação
+   - Insights principais e limitações
+   - Comparação antes/depois das correções
 
-### Médio Prazo (2 semanas)
-1. Executar todos os 50 casos
-2. Calcular métricas completas
-3. Análise estatística
-4. Gerar visualizações
-5. Integrar no paper
+2. **`RESULTADOS_ATUALIZADOS.md`** (Resumo)
+   - O que foi corrigido
+   - Por que era problemático
+   - Resultados após correção
+
+3. **`figures/`** (Visualizações)
+   - 6 gráficos detalhados PNG
+   - Comparações DeepBridge vs AIF360
+
+## 📁 Estrutura Completa de Arquivos
+
+Ver seção "Estrutura do Projeto" acima para navegação completa.
 
 ## Dependências
 

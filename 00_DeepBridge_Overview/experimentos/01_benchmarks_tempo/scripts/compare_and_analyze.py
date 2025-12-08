@@ -43,7 +43,7 @@ class BenchmarkAnalysis:
         self.logger.info("Loading benchmark results...")
 
         # DeepBridge
-        deepbridge_path = self.results_dir / 'deepbridge_times.json'
+        deepbridge_path = self.results_dir / 'deepbridge_times_REAL.json'
         if not deepbridge_path.exists():
             raise FileNotFoundError(f"DeepBridge results not found: {deepbridge_path}")
 

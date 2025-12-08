@@ -48,7 +48,7 @@ class FigureGenerator:
         self.logger.info("Loading results...")
 
         # DeepBridge
-        with open(self.results_dir / 'deepbridge_times.json', 'r') as f:
+        with open(self.results_dir / 'deepbridge_times_REAL.json', 'r') as f:
             deepbridge = json.load(f)
 
         # Fragmented

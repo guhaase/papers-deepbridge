@@ -1,0 +1,356 @@
+{
+  "meta": {
+    "data_avaliacao": "2025-12-07",
+    "avaliador": "Claude Code - Análise Rigorosa",
+    "criterio": "Padrões de Publicação Científica - Conferências Tier 1/2",
+    "total_experimentos": 6,
+    "status_geral": "NECESSITA CORREÇÕES SIGNIFICATIVAS"
+  },
+
+  "experimento_1": {
+    "nome": "Benchmarks de Tempo",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/01_benchmarks_tempo",
+    "status": "parcialmente_adequado",
+    "dados": "real",
+    "baseline": "simulado_com_sleep",
+    "tempos": "medidos_parcialmente",
+
+    "problemas_criticos": [
+      "BASELINE FRAGMENTADO USA time.sleep() PARA SIMULAR DELAYS - Linhas 135-160 em benchmark_fragmented.py usam sleep() para simular conversões (5min→5s, 15min→15s, etc)",
+      "Baseline não executa REALMENTE ferramentas fragmentadas (AIF360, Fairlearn, Alibi) - apenas simula os tempos esperados",
+      "DEMO_SPEEDUP_FACTOR = 60 converte minutos em segundos para 'demo rápido' - tempos não refletem execução real",
+      "DeepBridge executa REAL (usa deepbridge lib), mas baseline é FALSO - comparação inválida",
+      "Tempo do DeepBridge: 23.4s (0.39min) é MUITO rápido demais - provavelmente cache ou configuração 'quick' ao invés de 'full'"
+    ],
+
+    "problemas_menores": [
+      "Fairness tests retornou status 'no_data' - não executou ou falhou silenciosamente",
+      "Tempos são distribuídos proporcionalmente após run_tests() ao invés de medidos individualmente",
+      "Fallback para simulação se houver erro (linhas 304-328) - pode mascarar problemas",
+      "Logs indicam warnings sobre testes completarem muito rápido (<1s)",
+      "Código tem tanto benchmark_deepbridge.py quanto benchmark_deepbridge_REAL.py - confusão sobre qual usar"
+    ],
+
+    "pontos_fortes": [
+      "DeepBridge usa biblioteca REAL (from deepbridge import DBDataset, Experiment)",
+      "Dataset Adult Income é REAL (fetch_openml)",
+      "Modelo XGBoost é treinado de verdade",
+      "Estrutura de código bem organizada com logging adequado",
+      "10 runs para estatísticas (n=10 é aceitável)"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "borderline",
+    "score_qualidade": "4/10",
+
+    "recomendacao": "REQUER CORREÇÃO URGENTE: Remover time.sleep() do baseline e executar REALMENTE as ferramentas fragmentadas (AIF360, Fairlearn, Alibi, UQ360). Atualmente a comparação é inválida pois compara execução real vs simulação. Baseline deve executar as bibliotecas de verdade e medir tempos reais. Sem isso, o experimento NÃO É PUBLICÁVEL.",
+
+    "evidencias": {
+      "arquivo_baseline": "benchmark_fragmented.py",
+      "linhas_criticas": "135-160 (time.sleep para simular conversões), 30-32 (DEMO_SPEEDUP_FACTOR)",
+      "resultado": "deepbridge_times_REAL.json mostra total=23.4s (muito rápido)",
+      "baseline_resultado": "fragmented_times.json provavelmente tem tempos simulados"
+    }
+  },
+
+  "experimento_2": {
+    "nome": "Estudos de Caso",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/02_estudos_de_caso",
+    "status": "aceitavel_com_limitacoes",
+    "dados": "sintetico_controlado",
+    "baseline": "inexistente",
+    "tempos": "simulados_com_sleep",
+
+    "problemas_criticos": [
+      "Dados são SINTÉTICOS, não reais - load_german_credit_data() GERA dados com np.random ao invés de carregar UCI repository",
+      "Violações são INJETADAS artificialmente (linha 69-71: DI=0.74 forçado para females)",
+      "Validação DeepBridge é MOCK - run_deepbridge_validation() usa time.sleep() ao invés de executar DeepBridge real",
+      "Tempos são simulados: time.sleep(5) para fairness, time.sleep(7) para robustness, etc (linhas 124-147)",
+      "Não há comparação com baseline - apenas DeepBridge sozinho"
+    ],
+
+    "problemas_menores": [
+      "Comentário diz 'In real implementation, this would call deepbridge' mas não chama",
+      "Métricas são calculadas manualmente (calculate_disparate_impact, calculate_ece) ao invés de usar DeepBridge",
+      "Apenas 1 caso de uso implementado (Credit), outros domínios não verificados",
+      "N=1000 samples sintéticos é muito pequeno para caso real",
+      "PDF report generation é mock (generate_summary_report)"
+    ],
+
+    "pontos_fortes": [
+      "Estrutura do experimento está bem desenhada",
+      "Lógica de injeção de bias é clara e documentada",
+      "Métricas implementadas corretamente (DI, ECE)",
+      "Casos de uso são relevantes (Credit, Fraud, Healthcare, etc)",
+      "Logging adequado e resultados salvos"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "nao",
+    "score_qualidade": "3/10",
+
+    "recomendacao": "DEMONSTRAÇÃO, NÃO EXPERIMENTO: Este é um protótipo/demo, não um experimento científico válido. Para publicação: (1) Usar dados REAIS (UCI German Credit ou similar), (2) Executar DeepBridge REAL, não mock, (3) Comparar com baseline (ferramentas tradicionais), (4) Medir tempos reais, não simular. Como está, é útil para DEMONSTRAÇÃO mas INADEQUADO para paper científico.",
+
+    "evidencias": {
+      "arquivo_principal": "case_study_credit.py",
+      "linhas_dados_mock": "39-87 (geração sintética)",
+      "linhas_validacao_mock": "103-181 (time.sleep e mocks)",
+      "comentario_revelador": "Linha 108: 'MOCK implementation' confirmado"
+    }
+  },
+
+  "experimento_3": {
+    "nome": "Usabilidade",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/03_usabilidade",
+    "status": "limitado_mas_aceitavel",
+    "dados": "mock_completo",
+    "baseline": "inexistente",
+    "tempos": "gerados_estatisticamente",
+
+    "problemas_criticos": [
+      "100% MOCK DATA - generate_mock_data.py gera TODOS os dados de participantes sinteticamente",
+      "Não há estudo real com usuários - tudo é simulado estatisticamente",
+      "SUS scores são REVERSE ENGINEERED do target (87.5±3.2) - linhas 89-121",
+      "NASA TLX scores são gerados por distribuição normal ao invés de questionários reais",
+      "Task times são gerados por np.random.normal() - não medidos",
+      "N=20 'participantes' são fictícios"
+    ],
+
+    "problemas_menores": [
+      "Apenas 1 participante 'falha' (hardcoded como index 18) - muito conveniente",
+      "Demographics são shuffled arrays ao invés de dados reais",
+      "Erro counts seguem Poisson(1.3) sem validação empírica",
+      "Falta justificativa para targets (por que SUS=87.5? Por que TLX=28?)",
+      "Sem comparação com outras ferramentas"
+    ],
+
+    "pontos_fortes": [
+      "Mock data generation é TRANSPARENTE - arquivo se chama 'generate_mock_data.py'",
+      "Distribuições estatísticas são razoáveis (beta, normal, Poisson)",
+      "SUS e NASA-TLX são métricas validadas na literatura",
+      "Targets estão bem definidos (top 10% para SUS, low workload para TLX)",
+      "Para estudo de usabilidade, mock data é ACEITÁVEL se bem justificado no paper"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "borderline",
+    "score_qualidade": "5/10",
+
+    "recomendacao": "MOCK ACEITÁVEL COM DISCLOSURE: Estudos de usabilidade piloto com dados mock são aceitáveis em conferências SE: (1) Claramente descrito como 'pilot study' ou 'simulated user study', (2) Justificado estatisticamente, (3) Usado apenas para demonstrar viabilidade, NÃO para claims fortes. Recomendo: Adicionar disclaimer no paper, reduzir claims ('preliminary results', 'pilot study'), ou conduzir estudo real com ~20 participantes (viável em 2-3 semanas). Para Tier 1, estudo real é OBRIGATÓRIO.",
+
+    "evidencias": {
+      "arquivo_mock": "generate_mock_data.py",
+      "titulo_revelador": "Linha 1: 'Generate Mock Usability Study Data'",
+      "reverse_engineering": "Linhas 89-121 (SUS scores calculados backwards do target)",
+      "transparencia": "Código é honesto sobre ser mock"
+    }
+  },
+
+  "experimento_4": {
+    "nome": "HPM-KD Framework",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/04_hpmkd",
+    "status": "demonstracao_nao_experimento",
+    "dados": "sintetico",
+    "baseline": "inexistente",
+    "tempos": "nao_aplicavel",
+
+    "problemas_criticos": [
+      "DEMO SCRIPT, NÃO EXPERIMENTO - arquivo principal é 'run_demo.py'",
+      "Accuracies são GERADAS por np.random.normal() ao redor de targets fixos - linhas 52-62",
+      "Dataset é make_classification sintético, não Adult Income real",
+      "Não há implementação de HPM-KD - apenas gera números mock",
+      "Baseline methods (Vanilla KD, TAKD, Auto-KD) não são executados - valores inventados",
+      "Compression ratio e latency são constantes fixas, não medidas"
+    ],
+
+    "problemas_menores": [
+      "N=3 datasets - muito pequeno",
+      "Retention rates são calculados de accuracies mock",
+      "LaTeX table generation é única parte funcional",
+      "Sem código de Knowledge Distillation real",
+      "Comentário diz 'mock results' explicitamente"
+    ],
+
+    "pontos_fortes": [
+      "É EXPLICITAMENTE uma demonstração - título do arquivo é claro",
+      "Code é organizado e bem documentado",
+      "LaTeX table output é útil para prototipagem",
+      "Se houver implementação real em outro lugar, este demo é razoável"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "nao",
+    "score_qualidade": "1/10",
+
+    "recomendacao": "NÃO PUBLICÁVEL - Este é um demo/placeholder, não um experimento. Se HPM-KD for contribuição do paper, DEVE ter implementação real com: (1) Teacher ensemble real, (2) Student models reais, (3) KD training real, (4) Baselines executados (TAKD, Auto-KD), (5) Métricas medidas em datasets reais. Se HPM-KD NÃO for contribuição principal, REMOVER este experimento do paper. Incluir demo como experimento é DESONESTO e REJEITÁVEL.",
+
+    "evidencias": {
+      "arquivo": "run_demo.py",
+      "titulo": "Linha 1: 'HPM-KD Demo Script - Mock Implementation'",
+      "mock_accuracies": "Linhas 52-62 (np.random.normal com targets fixos)",
+      "comentario_critico": "Linha 29: 'Generate mock results for HPM-KD experiment'"
+    }
+  },
+
+  "experimento_5": {
+    "nome": "Conformidade Regulatória",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/05_conformidade",
+    "status": "corrigido_mas_problematico",
+    "dados": "sintetico_controlado",
+    "baseline": "parcialmente_real",
+    "tempos": "medidos_mas_suspeitos",
+
+    "problemas_criticos": [
+      "Ground truth INCOMPLETO - casos 27,38,39,48 têm violações não intencionais que GT ignora",
+      "Falsos positivos (4) são na verdade CORRETOS (DI entre 0.77-0.79) - problema é do GT, não do detector",
+      "Precision reportada 86.2% é ARTIFICIALMENTE BAIXA devido a GT incorreto",
+      "P-value = 0.0499 está NO LIMITE (p<0.05) - estatisticamente fraco",
+      "Tempo DeepBridge = 0.0017 min (0.1s para 50 casos) é IRREALISTA - deve ser erro de medição ou cache"
+    ],
+
+    "problemas_menores": [
+      "Baseline tempo (250min) é estimado, não medido",
+      "50 casos × 1000 samples = 50k amostras - tempo deveria ser maior",
+      "Dados são sintéticos (generate_ground_truth.py) com violações injetadas",
+      "AIF360 baseline pode ter issues próprios de implementação",
+      "N=50 casos é limite inferior para análise estatística robusta"
+    ],
+
+    "pontos_fortes": [
+      "Baseline USA AIF360 REAL - validate_baseline.py importa e executa aif360.metrics",
+      "Ground truth é bem documentado e reproduzível",
+      "Violation injection é controlada e clara",
+      "Detecção de violations usando DI >= 0.80 é padrão da literatura",
+      "Análise estatística (z-test) é apropriada",
+      "Resultados salvos em JSON estruturado"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "borderline",
+    "score_qualidade": "6/10",
+
+    "recomendacao": "CORREÇÕES NECESSÁRIAS: (1) Recalcular ground truth considerando TODAS violações (não só as injetadas) - casos com DI<0.80 são violações mesmo que não intencionais, (2) Investigar tempo de 0.1s - parece cache/config errada, deve ser ~5-10min real, (3) Aumentar N para 100+ casos para robustez estatística (p-value mais convincente), (4) Medir tempo baseline REAL ao invés de estimar. Com correções, pode ser publicável em Tier 2. Para Tier 1, usar datasets REAIS (COMPAS, Adult Income) ao invés de sintéticos.",
+
+    "evidencias": {
+      "arquivo_gt": "generate_ground_truth.py",
+      "arquivo_baseline": "validate_baseline.py - USA AIF360 REAL",
+      "falsos_positivos": "ANALISE_CRITICA_RESULTADOS.md linhas 33-45",
+      "tempo_suspeito": "Results mostram 0.0017min para DeepBridge",
+      "p_value": "0.0499 exatamente no limite"
+    }
+  },
+
+  "experimento_6": {
+    "nome": "Ablation Studies",
+    "diretorio": "/home/guhaase/projetos/DeepBridge/papers/00_DeepBridge_Overview/experimentos/06_ablation_studies",
+    "status": "invalido_completamente_simulado",
+    "dados": "sintetico",
+    "baseline": "simulado",
+    "tempos": "100%_simulados",
+
+    "problemas_criticos": [
+      "TEMPOS 100% SIMULADOS - run_ablation.py linha 156: simulated_time = base_time + variation",
+      "Expected times são HARDCODED (full=17min, no_api=83min, etc) - linha 40-89",
+      "Nenhuma execução REAL - apenas np.random.normal() ao redor de expectativas",
+      "time.sleep() é usado apenas para 'realism' (0.1s, 0.05s) não medição real - linhas 167-180",
+      "'Actually perform some work to make it realistic' (linha 161) é ENGANOSO - não mede trabalho real",
+      "Comentário 'simulated_time' na linha 189 ADMITE que é simulação",
+      "Todas as configurações (no_api, no_parallel, no_cache) são FAKE - não desabilitam componentes reais"
+    ],
+
+    "problemas_menores": [
+      "Dataset é make_classification sintético",
+      "Contributions analysis é calculado de tempos fake",
+      "Speedup factor (8.93x) é baseado em simulação",
+      "Nenhuma prova de que componentes existem ou funcionam",
+      "N=10 runs não importa se dados são simulados"
+    ],
+
+    "pontos_fortes": [
+      "Estrutura de ablation é conceitualmente correta",
+      "Componentes listados (API, parallelization, caching, auto-reporting) são razoáveis",
+      "Output JSON é bem formatado",
+      "Se fosse real, seria experimento útil"
+    ],
+
+    "adequacao_tier1": "nao",
+    "adequacao_tier2": "nao",
+    "score_qualidade": "0/10",
+
+    "recomendacao": "COMPLETAMENTE INVÁLIDO - NÃO PUBLICÁVEL DE FORMA ALGUMA. Este experimento é FRAUDE CIENTÍFICA se incluído em paper sem disclosure total. Opções: (1) REMOVER completamente do paper, (2) Implementar ablation REAL com execuções reais de cada configuração (2-4 semanas de trabalho), (3) Usar como 'expected results' em seção de 'future work'. Incluir isto como experimento real seria REJEIÇÃO IMEDIATA e dano à reputação. CRÍTICO: Remover ou corrigir ANTES de submissão.",
+
+    "evidencias": {
+      "arquivo": "run_ablation.py",
+      "linha_critica": "156: simulated_time = base_time + variation",
+      "expected_times": "Linhas 40-89 (hardcoded times)",
+      "comentario_revelador": "Linha 189: 'simulated' no log output",
+      "fake_work": "Linhas 161-180 (sleep simbólico, não medição)",
+      "total_sleep": "grep time.sleep encontrou 61 ocorrências em todos experimentos"
+    }
+  },
+
+  "resumo_executivo": {
+    "experimentos_publicaveis": 0,
+    "experimentos_borderline": 2,
+    "experimentos_invalidos": 4,
+
+    "classificacao_final": {
+      "tier1_ready": [],
+      "tier2_ready": [],
+      "borderline": ["Experimento 1 (com correções)", "Experimento 5 (com correções)"],
+      "inadequado": ["Experimento 2", "Experimento 3", "Experimento 4", "Experimento 6"]
+    },
+
+    "problemas_transversais": [
+      "61 ocorrências de time.sleep() usadas para SIMULAR delays ao invés de medir",
+      "Múltiplos experimentos usam dados sintéticos sem justificativa",
+      "Baselines são simulados ou ausentes - não há comparações reais",
+      "Tempos são frequentemente 'expected' ao invés de medidos",
+      "Falta transparência - código diz uma coisa, claims do paper podem dizer outra",
+      "Mix de código REAL e MOCK sem separação clara"
+    ],
+
+    "recomendacoes_gerais": [
+      "URGENTE: Revisar TODOS os experimentos antes de submissão",
+      "Separar código DEMO de código EXPERIMENTAL",
+      "Implementar baselines REAIS em todos experimentos",
+      "Usar datasets REAIS (UCI, Kaggle) ao invés de sintéticos",
+      "Medir tempos REAIS, remover ALL time.sleep() de benchmarks",
+      "Aumentar N (casos, participantes, runs) para robustez estatística",
+      "Adicionar disclaimers onde usar mock/sintético",
+      "Considerar remover Experimentos 4 e 6 completamente",
+      "Focar em 3-4 experimentos SÓLIDOS ao invés de 6 fracos"
+    ],
+
+    "estimativa_trabalho_correcao": {
+      "exp1_corrigir": "1-2 semanas (implementar baseline real)",
+      "exp2_corrigir": "2-3 semanas (dados reais + execução real)",
+      "exp3_corrigir": "2-3 semanas (estudo real com usuários) OU aceitar como pilot",
+      "exp4_decisao": "Remover (1h) OU implementar (4-6 semanas)",
+      "exp5_corrigir": "3-5 dias (GT + medição tempo)",
+      "exp6_decisao": "Remover (1h) OU implementar (2-4 semanas)",
+      "total_minimo": "4-6 semanas (corrigir exp1,5 + remover exp4,6)",
+      "total_completo": "3-4 meses (corrigir todos)"
+    },
+
+    "risco_rejeicao": {
+      "como_esta": "MUITO ALTO (90%+)",
+      "com_correcoes_minimas": "MÉDIO-ALTO (50-60%)",
+      "com_correcoes_completas": "MÉDIO-BAIXO (20-30%)",
+      "principal_risco": "Reviewers descobrirem simulações disfarçadas de experimentos reais"
+    }
+  },
+
+  "parecer_final": {
+    "status": "NÃO RECOMENDADO PARA SUBMISSÃO NO ESTADO ATUAL",
+    "severidade": "CRÍTICA",
+
+    "conclusao": "A análise rigorosa revela que 4 dos 6 experimentos (67%) são fundamentalmente inválidos devido a simulações não divulgadas, dados mock apresentados como reais, ou ausência completa de implementação. Os 2 experimentos restantes têm problemas significativos que requerem correções antes de serem publicáveis. O risco de rejeição imediata é MUITO ALTO se submetido como está. Reviewers competentes identificarão facilmente as simulações no código-fonte.",
+
+    "acao_recomendada": "PARAR submissão e executar roadmap de correções. Priorizar: (1) Corrigir Exp 1 e 5 (viável em 2-3 semanas), (2) Remover Exp 4 e 6, (3) Decidir sobre Exp 2 e 3 baseado em deadline. Submeter com 2-3 experimentos SÓLIDOS é melhor que 6 experimentos problemáticos.",
+
+    "honestidade_cientifica": "O código é geralmente HONESTO (arquivos nomeados 'mock', 'demo', 'simulate'), mas se o paper não deixar isso EXPLÍCITO, constitui má conduta. Certifique-se que paper descreve exatamente o que código faz.",
+
+    "score_geral": "3.2/10 - Inadequado para publicação científica de qualidade"
+  }
+}

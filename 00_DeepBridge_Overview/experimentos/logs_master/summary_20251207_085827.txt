@@ -1,0 +1,5 @@
+EXP1|Benchmarks de Tempo|SKIPPED|00:00:00
+EXP2|Estudos de Caso|SUCCESS|00:06:30
+EXP3|Usabilidade|SUCCESS|00:00:04
+EXP5|Conformidade Regulatória (MOCK)|SUCCESS|00:00:00
+EXP6|Ablation Studies (MOCK)|SUCCESS|00:00:00
